@@ -18,7 +18,7 @@ namespace Ouroboros.GameMode
         [Networked] public Core.TeamID CurrentExtractingTeam { get; set; }
         [Networked] public TickTimer ExtractionTimer { get; set; }
         
-        private HashSet<PlayerRef> playersInZone = new HashSet<PlayerRef>();
+        private Dictionary<PlayerRef, Core.TeamID> playersInZone = new Dictionary<PlayerRef, Core.TeamID>();
         
         public override void Spawned()
         {
@@ -49,7 +49,7 @@ namespace Ouroboros.GameMode
             Network.NetworkPlayer player = other.GetComponent<Network.NetworkPlayer>();
             if (player != null && player.IsAlive)
             {
-                playersInZone.Add(player.PlayerRef);
+                playersInZone[player.PlayerRef] = player.Team;
                 CheckExtractionStart(player.Team);
             }
         }
@@ -74,10 +74,15 @@ namespace Ouroboros.GameMode
         {
             if (CurrentExtractingTeam != Core.TeamID.None) return;
             
-            // Count team members in zone - need to track team info with players
-            // For now, simplified version that starts extraction with at least 1 team member
-            // In full implementation, would need to track player teams with PlayerRefs
-            int teamMembersInZone = playersInZone.Count;
+            // Count only members of the specified team in zone
+            int teamMembersInZone = 0;
+            foreach (var kvp in playersInZone)
+            {
+                if (kvp.Value == team)
+                {
+                    teamMembersInZone++;
+                }
+            }
             
             if (!requiresAllTeamMembers || teamMembersInZone >= Core.GameConstants.PLAYERS_PER_TEAM)
             {
@@ -94,7 +99,17 @@ namespace Ouroboros.GameMode
         
         private void CheckExtractionCancellation()
         {
-            if (playersInZone.Count == 0 && CurrentExtractingTeam != Core.TeamID.None)
+            // Check if any members of the extracting team remain in zone
+            int extractingTeamCount = 0;
+            foreach (var kvp in playersInZone)
+            {
+                if (kvp.Value == CurrentExtractingTeam)
+                {
+                    extractingTeamCount++;
+                }
+            }
+            
+            if (extractingTeamCount == 0 && CurrentExtractingTeam != Core.TeamID.None)
             {
                 CancelExtraction();
             }

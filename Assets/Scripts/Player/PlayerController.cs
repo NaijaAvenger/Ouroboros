@@ -17,6 +17,7 @@ namespace Ouroboros.Player
         [SerializeField] private float jumpHeight = 2f;
         [SerializeField] private float gravity = -9.81f;
         [SerializeField] private float defaultMovementSpeed = 5f;
+        [SerializeField] private float groundingForce = -2f;
         
         private Network.NetworkPlayer networkPlayer;
         private Core.BasePlayerClass currentClass;
@@ -71,7 +72,7 @@ namespace Ouroboros.Player
             // Apply gravity
             if (characterController.isGrounded && velocity.y < 0)
             {
-                velocity.y = -2f;
+                velocity.y = groundingForce;
             }
             
             // Jump
