@@ -30,17 +30,16 @@ namespace Ouroboros.Network
             
             // Find team with minimum players
             Core.TeamID selectedTeam = Core.TeamID.TeamAlpha;
-            int minPlayers = TeamPlayerCounts[(int)Core.TeamID.TeamAlpha - 1];
+            int minPlayers = TeamPlayerCounts[0]; // TeamAlpha index
             
             for (int i = 1; i < Core.GameConstants.MAX_TEAMS; i++)
             {
-                int teamIndex = i;
-                int playerCount = TeamPlayerCounts[teamIndex];
+                int playerCount = TeamPlayerCounts[i];
                 
                 if (playerCount < minPlayers)
                 {
                     minPlayers = playerCount;
-                    selectedTeam = (Core.TeamID)(i + 1);
+                    selectedTeam = (Core.TeamID)(i + 1); // TeamID enum starts at 1
                 }
             }
             

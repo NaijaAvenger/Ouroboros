@@ -74,13 +74,10 @@ namespace Ouroboros.GameMode
         {
             if (CurrentExtractingTeam != Core.TeamID.None) return;
             
-            // Count team members in zone
-            int teamMembersInZone = 0;
-            foreach (var playerRef in playersInZone)
-            {
-                // Would need to get player's team here
-                teamMembersInZone++;
-            }
+            // Count team members in zone - need to track team info with players
+            // For now, simplified version that starts extraction with at least 1 team member
+            // In full implementation, would need to track player teams with PlayerRefs
+            int teamMembersInZone = playersInZone.Count;
             
             if (!requiresAllTeamMembers || teamMembersInZone >= Core.GameConstants.PLAYERS_PER_TEAM)
             {

@@ -16,6 +16,7 @@ namespace Ouroboros.Player
         [SerializeField] private float mouseSensitivity = 2f;
         [SerializeField] private float jumpHeight = 2f;
         [SerializeField] private float gravity = -9.81f;
+        [SerializeField] private float defaultMovementSpeed = 5f;
         
         private Network.NetworkPlayer networkPlayer;
         private Core.BasePlayerClass currentClass;
@@ -61,7 +62,7 @@ namespace Ouroboros.Player
             float moveZ = Input.GetAxis("Vertical");
             
             // Calculate movement speed
-            float speed = currentClass != null ? currentClass.MovementSpeed : 5f;
+            float speed = currentClass != null ? currentClass.MovementSpeed : defaultMovementSpeed;
             
             // Apply movement
             Vector3 move = transform.right * moveX + transform.forward * moveZ;
