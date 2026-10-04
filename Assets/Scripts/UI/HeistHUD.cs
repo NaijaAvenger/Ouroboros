@@ -35,7 +35,7 @@ namespace Ouroboros.UI
         // Scoreboard
         private readonly TeamRow[] teamRows = new TeamRow[Core.GameConstants.MAX_TEAMS];
         // Vitals
-        private Label nameLabel, healthText, staminaText, statusLabel, lootLabel, kdLabel;
+        private Label nameLabel, healthText, staminaText, statusLabel, lootLabel, kdLabel, weaponLabel, ammoLabel;
         private VisualElement healthFill, staminaFill;
         // Abilities
         private readonly AbilitySlotView[] slots = new AbilitySlotView[Core.GameConstants.MAX_ABILITY_SLOTS];
@@ -229,7 +229,10 @@ namespace Ouroboros.UI
             econ.style.alignItems = Align.FlexEnd;
             lootLabel = Text("", 20, LootColor, bold: true);
             kdLabel = Text("", 13, Color.white);
-            econ.Add(lootLabel); econ.Add(kdLabel);
+            weaponLabel = Text("", 13, new Color(1f, 1f, 1f, 0.8f), bold: true);
+            weaponLabel.style.marginTop = 6;
+            ammoLabel = Text("", 24, Color.white, bold: true);
+            econ.Add(lootLabel); econ.Add(kdLabel); econ.Add(weaponLabel); econ.Add(ammoLabel);
             root.Add(econ);
 
             // Centre-bottom: zone prompt
@@ -423,6 +426,7 @@ namespace Ouroboros.UI
             statusLabel.text = StatusText(local.Status);
             lootLabel.text = $"${local.CarriedLoot}";
             kdLabel.text = $"K {local.Kills}  D {local.Deaths}";
+            RefreshAmmo();
 
             var cls = local.CurrentClass;
             for (int i = 0; i < slots.Length; i++)
@@ -444,6 +448,28 @@ namespace Ouroboros.UI
                 view.Cost.style.color = affordable ? StaminaColor : HealthColor;
                 view.Root.style.opacity = local.HasStatus(Core.StatusFlags.EMPDisabled) ? 0.35f : 1f;
             }
+        }
+
+        private void RefreshAmmo()
+        {
+            var lo = local.Loadout;
+            if (lo == null || lo.Object == null) { weaponLabel.text = ""; ammoLabel.text = ""; return; }
+
+            int p = (int)Equipment.EquipmentSlotType.Primary, s = (int)Equipment.EquipmentSlotType.Secondary;
+            var primary = lo.GetData(p);
+            var secondary = lo.GetData(s);
+
+            string Line(Data.EquipmentData d, int slot, string key)
+            {
+                if (d == null) return "";
+                if (!d.UsesAmmo) return $"{key} {d.equipmentName}";
+                if (lo.IsReloading(slot)) return $"{key} {d.equipmentName}  reloading {lo.ReloadProgress(slot):P0}";
+                return $"{key} {d.equipmentName}  {lo.Magazine[slot]} / {lo.Reserve[slot]}";
+            }
+
+            weaponLabel.text = Line(secondary, s, Core.LocalInputSource.Hint(Core.InputButtons.Secondary));
+            ammoLabel.text = Line(primary, p, Core.LocalInputSource.Hint(Core.InputButtons.Primary));
+            ammoLabel.style.color = primary != null && primary.UsesAmmo && lo.Magazine[p] == 0 ? HealthColor : Color.white;
         }
 
         private void RefreshZone()

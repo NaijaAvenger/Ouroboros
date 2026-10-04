@@ -21,6 +21,8 @@ namespace Ouroboros.UI
         private VisualElement panel;
         private Label title, subtitle;
         private Button startButton;
+        private readonly Label[] loadoutLabels = new Label[2];
+        private static readonly Equipment.EquipmentSlotType[] loadoutSlots = { Equipment.EquipmentSlotType.Primary, Equipment.EquipmentSlotType.Secondary };
         private readonly Button[] cards = new Button[4];
         private readonly Core.PlayerClassType[] cardTypes =
         {
@@ -96,6 +98,23 @@ namespace Ouroboros.UI
                 card.text = CardText(type, i);
                 row.Add(card);
                 cards[i] = card;
+            }
+
+            // Loadout rows: Primary / Secondary with < > cyclers
+            var loadoutBox = new VisualElement();
+            loadoutBox.style.marginTop = 12; loadoutBox.style.alignItems = Align.Center;
+            panel.Add(loadoutBox);
+            for (int i = 0; i < loadoutSlots.Length; i++)
+            {
+                var slot = loadoutSlots[i];
+                var rowEl = new VisualElement();
+                rowEl.style.flexDirection = FlexDirection.Row; rowEl.style.alignItems = Align.Center; rowEl.style.marginTop = 4;
+                var prev = new Button(() => CycleLoadout(slot, -1)) { text = "<" };
+                var label = new Label(""); label.style.minWidth = 260; label.style.unityTextAlign = TextAnchor.MiddleCenter; label.style.color = Color.white; label.style.fontSize = 14;
+                var next = new Button(() => CycleLoadout(slot, +1)) { text = ">" };
+                rowEl.Add(prev); rowEl.Add(label); rowEl.Add(next);
+                loadoutBox.Add(rowEl);
+                loadoutLabels[i] = label;
             }
 
             startButton = new Button(StartMatch) { text = "Start match now" };
@@ -175,6 +194,29 @@ namespace Ouroboros.UI
 
             bool canStart = gm.Object.HasStateAuthority && gm.CurrentState == GameMode.ExtractionHeistGameMode.GameState.WaitingForPlayers;
             startButton.style.display = canStart ? DisplayStyle.Flex : DisplayStyle.None;
+
+            var lo = local.Loadout;
+            for (int i = 0; i < loadoutSlots.Length; i++)
+            {
+                var data = lo != null && lo.Object != null ? lo.GetData(loadoutSlots[i]) : null;
+                loadoutLabels[i].text = $"{loadoutSlots[i]}: {(data != null ? data.equipmentName : "-")}";
+            }
+        }
+
+        private void CycleLoadout(Equipment.EquipmentSlotType slot, int direction)
+        {
+            if (local == null || local.Object == null) return;
+            var lo = local.Loadout;
+            var registry = Data.EquipmentRegistry.Active;
+            if (lo == null || registry == null) return;
+
+            var options = registry.Options(slot, local.ClassType);
+            if (options.Count == 0) return;
+
+            var current = lo.GetData(slot);
+            int index = options.IndexOf(current);
+            index = ((index + direction) % options.Count + options.Count) % options.Count;
+            lo.RequestEquip(options[index]);
         }
 
         private void Select(Core.PlayerClassType type)

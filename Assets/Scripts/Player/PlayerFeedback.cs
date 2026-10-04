@@ -35,12 +35,32 @@ namespace Ouroboros.Player
             player.StatusChanged += OnStatusChanged;
             Network.NetworkPlayer.AbilityUsed += OnAbilityUsed;
             Network.NetworkPlayer.PlayerExtracted += OnExtracted;
+            Equipment.NetworkLoadout.WeaponFired += OnWeaponFired;
+            Equipment.NetworkLoadout.ReloadStarted += OnReloadStarted;
         }
 
         private void OnDestroy()
         {
             Network.NetworkPlayer.AbilityUsed -= OnAbilityUsed;
             Network.NetworkPlayer.PlayerExtracted -= OnExtracted;
+            Equipment.NetworkLoadout.WeaponFired -= OnWeaponFired;
+            Equipment.NetworkLoadout.ReloadStarted -= OnReloadStarted;
+        }
+
+        private void OnWeaponFired(Equipment.NetworkLoadout loadout, int slot, Vector3 point, bool hit)
+        {
+            if (loadout == null || loadout.Owner != player) return;
+            var lib = Library;
+            if (lib == null) return;
+            Play(lib.weaponFire);
+            lib.SpawnVfx(lib.muzzleVfx, player.EyePosition + player.AimDirection * 0.6f, Quaternion.LookRotation(player.AimDirection));
+            if (hit) lib.SpawnVfx(lib.impactVfx, point, Quaternion.identity);
+        }
+
+        private void OnReloadStarted(Equipment.NetworkLoadout loadout, int slot)
+        {
+            if (loadout == null || loadout.Owner != player) return;
+            Play(Library?.reload);
         }
 
         private void Update()

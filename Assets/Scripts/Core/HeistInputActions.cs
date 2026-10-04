@@ -30,7 +30,7 @@ namespace Ouroboros.Core
         public InputAction CursorToggle { get; }
         public InputAction DebugHudToggle { get; }
 
-        private readonly InputAction[] buttons = new InputAction[(int)InputButtons.Gadget + 1];
+        private readonly InputAction[] buttons = new InputAction[(int)InputButtons.Reload + 1];
         private InputActionRebindingExtensions.RebindingOperation activeRebind;
 
         /// <summary>Raised after any rebind completes or bindings are reset.</summary>
@@ -72,6 +72,7 @@ namespace Ouroboros.Core
             Button(InputButtons.Secondary, "Secondary", "<Mouse>/rightButton",  "<Gamepad>/leftTrigger");
             Button(InputButtons.Utility,   "Utility",   "<Keyboard>/q",         "<Gamepad>/leftShoulder");
             Button(InputButtons.Gadget,    "Gadget",    "<Keyboard>/e",         "<Gamepad>/rightShoulder");
+            Button(InputButtons.Reload,    "Reload",    "<Keyboard>/r",         "<Gamepad>/buttonNorth");
 
             CursorToggle = Map.AddAction("CursorToggle", InputActionType.Button);
             CursorToggle.AddBinding("<Keyboard>/escape", groups: KeyboardGroup);

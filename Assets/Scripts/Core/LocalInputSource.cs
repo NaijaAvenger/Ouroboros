@@ -175,6 +175,7 @@ namespace Ouroboros.Core
                     case InputButtons.Secondary: return "LT";
                     case InputButtons.Utility:   return "LB";
                     case InputButtons.Gadget:    return "RB";
+                    case InputButtons.Reload:    return "Y";
                 }
             }
             switch (button)
@@ -190,6 +191,7 @@ namespace Ouroboros.Core
                 case InputButtons.Secondary: return "RMB";
                 case InputButtons.Utility:   return "Q";
                 case InputButtons.Gadget:    return "E";
+                case InputButtons.Reload:    return "R";
             }
             return "?";
         }
@@ -213,6 +215,7 @@ namespace Ouroboros.Core
                 case InputButtons.Secondary: return Input.GetMouseButton(1);
                 case InputButtons.Utility:   return Input.GetKey(KeyCode.Q)         || Input.GetKey(KeyCode.JoystickButton4);
                 case InputButtons.Gadget:    return Input.GetKey(KeyCode.E)         || Input.GetKey(KeyCode.JoystickButton5);
+                case InputButtons.Reload:    return Input.GetKey(KeyCode.R)         || Input.GetKey(KeyCode.JoystickButton3);
             }
             return false;
         }
@@ -232,6 +235,7 @@ namespace Ouroboros.Core
                 case InputButtons.Secondary: return Input.GetMouseButtonDown(1);
                 case InputButtons.Utility:   return Input.GetKeyDown(KeyCode.Q)         || Input.GetKeyDown(KeyCode.JoystickButton4);
                 case InputButtons.Gadget:    return Input.GetKeyDown(KeyCode.E)         || Input.GetKeyDown(KeyCode.JoystickButton5);
+                case InputButtons.Reload:    return Input.GetKeyDown(KeyCode.R)         || Input.GetKeyDown(KeyCode.JoystickButton3);
             }
             return false;
         }

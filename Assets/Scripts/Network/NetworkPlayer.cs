@@ -58,6 +58,7 @@ namespace Ouroboros.Network
         [SerializeField] private float eyeHeight = 1.6f;
 
         private Core.BasePlayerClass currentClass;
+        private Equipment.NetworkLoadout loadout; // optional (v0.4)
         private ChangeDetector changeDetector;
 
         /// <summary>Fired on every peer when the class component is (re)created.</summary>
@@ -88,7 +89,9 @@ namespace Ouroboros.Network
         public float MaxStamina => currentClass != null ? currentClass.MaxStamina : 100f;
         public float MovementSpeed => currentClass != null ? currentClass.MovementSpeed : 5f;
         public float SprintSpeed => currentClass != null ? currentClass.SprintSpeed : 7f;
-        public float OutgoingDamageMultiplier => currentClass != null ? currentClass.OutgoingDamageMultiplier : 1f;
+        public float OutgoingDamageMultiplier =>
+            (currentClass != null ? currentClass.OutgoingDamageMultiplier : 1f) * (loadout != null ? loadout.OutgoingDamageMultiplier : 1f);
+        public Equipment.NetworkLoadout Loadout => loadout != null ? loadout : (loadout = GetComponent<Equipment.NetworkLoadout>());
 
         // ---- IAbilityContext / IDamageable ----
         public Core.TeamID Team
@@ -111,6 +114,7 @@ namespace Ouroboros.Network
         public override void Spawned()
         {
             if (!All.Contains(this)) All.Add(this);
+            loadout = GetComponent<Equipment.NetworkLoadout>();
 
             changeDetector = GetChangeDetector(ChangeDetector.Source.SimulationState);
 
@@ -493,6 +497,10 @@ namespace Ouroboros.Network
             if (attacker != null && attacker != this)
             {
                 damage *= attacker.OutgoingDamageMultiplier;
+            }
+            if (!ignoreShield && loadout != null)
+            {
+                damage *= loadout.DamageTakenMultiplier; // v0.4: armor
             }
 
             // [v0.1] currentClass.TakeDamage(damage);            // BUG: class kept a second health value

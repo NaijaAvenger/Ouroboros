@@ -74,6 +74,14 @@ Watch the **DevHUD** (F1) and console:
 - [ ] Taking damage flashes the screen red; assigning clips in `Assets/Ouroboros/FeedbackLibrary.asset` plays them on the matching events
 - [ ] Gamepad: left stick moves, right stick looks, D-pad fires abilities; HUD key hints switch to gamepad labels
 
+## 7c. Phase 2 validation (v0.4)
+- [ ] Re-run the setup menu: `Assets/Ouroboros/Equipment/*` assets, `EquipmentRegistry`, `Projectile.prefab` exist; each `ClassData` has starting equipment; the Player prefab has `NetworkLoadout`
+- [ ] HUD bottom-right shows the primary weapon with `mag / reserve`; LMB fires (auto weapons while held), R reloads, counts update on client and host
+- [ ] Shooting another player lowers their health on every peer; damage flash on the victim; kill feed on death
+- [ ] Demolitions: RMB launches a grenade that arcs and explodes (radial damage); the sticky charge bounces then detonates
+- [ ] Lobby: `< >` cyclers swap Primary / Secondary; selection replicates; starting ammo matches the item
+- [ ] Light Armor reduces damage taken; Stim Rig raises speed
+
 ## 8. Exit criteria
 - Steps 5 and 6 pass with no non-authority write warnings in the console.
 - Section 3's table updated with any further fixes.

@@ -30,10 +30,20 @@ namespace Ouroboros.UI
             GameMode.ExtractionHeistGameMode.TeamExtractedEvent += OnTeamExtracted;
             GameMode.LootObjective.Completed += OnObjectiveCompleted;
             Network.NetworkPlayer.PlayerKilled += OnPlayerKilled;
+            Equipment.Projectile.Exploded += OnExploded;
+        }
+
+        private void OnExploded(Vector3 point, float radius)
+        {
+            var lib = Library;
+            if (lib == null) return;
+            if (lib.explosion != null) AudioSource.PlayClipAtPoint(lib.explosion, point, lib.matchVolume);
+            lib.SpawnVfx(lib.explosionVfx, point, Quaternion.identity);
         }
 
         private void OnDisable()
         {
+            Equipment.Projectile.Exploded -= OnExploded;
             GameMode.ExtractionHeistGameMode.StateChanged -= OnStateChanged;
             GameMode.ExtractionHeistGameMode.ExtractionOpened -= OnExtractionOpened;
             GameMode.ExtractionHeistGameMode.TeamExtractedEvent -= OnTeamExtracted;

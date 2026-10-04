@@ -19,6 +19,9 @@ namespace Ouroboros.Data
         public AudioClip shieldOn;
         public AudioClip stealthOn;
         public AudioClip lootGained;
+        public AudioClip weaponFire;
+        public AudioClip reload;
+        public AudioClip explosion;
 
         [Header("Player - VFX prefabs (auto-destroyed)")]
         public GameObject abilityVfx;
@@ -26,6 +29,9 @@ namespace Ouroboros.Data
         public GameObject deathVfx;
         public GameObject respawnVfx;
         public GameObject extractedVfx;
+        public GameObject muzzleVfx;
+        public GameObject impactVfx;
+        public GameObject explosionVfx;
 
         [Header("Match - audio (2D)")]
         public AudioClip matchStart;

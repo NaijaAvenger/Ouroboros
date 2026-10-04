@@ -40,6 +40,10 @@ namespace Ouroboros.Network
         [Tooltip("Audio/VFX library used by PlayerFeedback and MatchFeedback when they have no override.")]
         [SerializeField] private Data.FeedbackLibrary feedbackLibrary;
 
+        [Header("Equipment (optional)")]
+        [Tooltip("Ordered item list used for networked equipment ids. Published as EquipmentRegistry.Active.")]
+        [SerializeField] private Data.EquipmentRegistry equipmentRegistry;
+
         [Header("Class Data (optional)")]
         [Tooltip("Designer stats / ability numbers / class prefabs. Published to every peer as ClassRegistry.Active.")]
         [SerializeField] private Data.ClassRegistry classRegistry;
@@ -82,6 +86,7 @@ namespace Ouroboros.Network
             spawnPoints = new TeamSpawnPointCache();
             if (classRegistry != null) Data.ClassRegistry.Active = classRegistry;
             FeedbackLibrary = feedbackLibrary;
+            if (equipmentRegistry != null) Data.EquipmentRegistry.Active = equipmentRegistry;
         }
 
         private void OnDestroy()
@@ -271,7 +276,7 @@ namespace Ouroboros.Network
             }
 
             // Edge-triggered buttons are latched here (Update runs more often than OnInput) so no press is lost.
-            for (int b = 0; b <= (int)Core.InputButtons.Gadget; b++)
+            for (int b = 0; b <= (int)Core.InputButtons.Reload; b++)
             {
                 if (Core.LocalInputSource.Pressed((Core.InputButtons)b)) pressedSinceLastTick |= 1 << b;
             }
@@ -302,7 +307,7 @@ namespace Ouroboros.Network
             };
 
             // [v0.2] data.Buttons.Set(..., Input.GetKey(KeyCode.X) || WasPressed(...)) per button (legacy only)
-            for (int b = 0; b <= (int)Core.InputButtons.Gadget; b++)
+            for (int b = 0; b <= (int)Core.InputButtons.Reload; b++)
             {
                 var button = (Core.InputButtons)b;
                 data.Buttons.Set(b, Core.LocalInputSource.Held(button) || WasPressed(button));

@@ -105,6 +105,7 @@ namespace Ouroboros.Core
         Primary = 7,
         Secondary = 8,
         Utility = 9,
-        Gadget = 10
+        Gadget = 10,
+        Reload = 11
     }
 }

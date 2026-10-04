@@ -34,6 +34,11 @@
 - `BehaviorTree.cs` - Sequence, Selector, Inverter, Condition/Action (+ delegate variants)
 - `GuardAI.cs` - Patrol / investigate / fight
 
+### Equipment (v0.4)
+- `Equipment/NetworkLoadout.cs` (replicated slots/ammo/cooldowns), `EquipmentLoadout.cs` (local components), `BaseEquipment.cs`
+- `Equipment/HitscanWeapon.cs`, `ProjectileWeapon.cs`, `Projectile.cs`, `PassiveGear.cs`
+- `Data/EquipmentData.cs` (kind + weapon stats), `Data/EquipmentRegistry.cs` (network ids)
+
 ### Data / Player / Equipment / UI
 - `Data/GameModeConfig.cs` (all match rules), `ClassData.cs`, `ClassRegistry.cs`, `EquipmentData.cs`
 - `Player/PlayerController.cs`, `Player/TeamSpawnPoint.cs`, `Player/PlayerPresentation.cs`

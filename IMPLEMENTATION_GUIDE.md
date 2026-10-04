@@ -114,9 +114,16 @@ Create → Ouroboros → Class Data for designer-facing numbers.
 
 ---
 
-## Example 2: Adding New Equipment - "Grappling Hook"
+## Example 2: Adding New Equipment
 
-Equipment is still a local `MonoBehaviour` (networking it is Phase 2). The pattern is unchanged:
+### 2a. A new weapon or gear piece — no code
+1. Create → Ouroboros → Equipment Data; set `kind` (Hitscan / Projectile / PassiveGear), slot, stats, allowed classes.
+2. Add it to the `EquipmentRegistry` asset (append at the end — ids are index-based and must match on every peer).
+3. Reference it from a `ClassData.startingEquipment` list, or let players pick it in the lobby.
+
+### 2b. A new item family — "Grappling Hook" (custom behaviour)
+Add a value to `EquipmentKind`, map it in `EquipmentLoadout.ComponentTypeFor`, and implement the behaviour.
+`OnUse` runs on the state authority only; cooldowns come from the loadout.
 
 ```csharp
 using UnityEngine;
@@ -128,31 +135,21 @@ namespace Ouroboros.Equipment
         [SerializeField] private float maxGrappleDistance = 30f;
         [SerializeField] private LayerMask grappleableLayers;
 
-        protected override void Awake()
+        protected override bool OnUse()
         {
-            base.Awake();
-            equipmentName = "Grappling Hook";
-            description = "Launch a hook to quickly reach high locations";
-            slotType = EquipmentSlotType.Gadget;
-            cooldown = 8f;
-        }
-
-        protected override void OnUse()
-        {
-            var player = GetComponent<Network.NetworkPlayer>();
-            if (player == null) return;
-
-            if (Physics.Raycast(player.EyePosition, player.AimDirection, out RaycastHit hit, maxGrappleDistance, grappleableLayers))
+            if (Physics.Raycast(owner.EyePosition, owner.AimDirection, out RaycastHit hit, maxGrappleDistance, grappleableLayers))
             {
                 Debug.Log($"[GrapplingHook] Grappling to {hit.point}");
                 // Move the player toward hit.point (e.g. via PlayerController.Teleport over several ticks)
+                return true;   // consumes the cooldown
             }
+            return false;      // nothing happened: no cooldown
         }
     }
 }
 ```
-Equip with `equipmentLoadout.EquipItem(gameObject.AddComponent<GrapplingHook>())`; **E** uses the Gadget slot.
-Use `player.AimDirection` rather than `Camera.main` so the server resolves the same ray as the client.
+`owner`, `loadout`, `data` and `slotIndex` are set by `EquipmentLoadout` before use. Use `owner.AimDirection`
+rather than `Camera.main` so the server resolves the same ray as the client. **E** uses the Gadget slot.
 
 ---
 

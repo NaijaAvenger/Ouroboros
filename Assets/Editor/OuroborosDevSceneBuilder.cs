@@ -36,6 +36,9 @@ namespace Ouroboros.EditorTools
         private const string ThemePath = UIDir + "/HeistRuntimeTheme.tss";
         private const string PanelSettingsPath = UIDir + "/HeistPanelSettings.asset";
         private const string FeedbackPath = Root + "/FeedbackLibrary.asset";
+        private const string EquipDir = Root + "/Equipment";
+        private const string EquipRegistryPath = EquipDir + "/EquipmentRegistry.asset";
+        private const string ProjectilePrefabPath = PrefabDir + "/Projectile.prefab";
 
         [MenuItem("Ouroboros/Setup/Create Dev Scene (Phase 0)")]
         public static void CreateDevScene()
@@ -47,10 +50,13 @@ namespace Ouroboros.EditorTools
             var lootDropPrefab = CreateLootDropPrefab();
             var trapPrefab = CreateTrapPrefab();
             var registry = CreateClassAssets(trapPrefab);
+            var projectilePrefab = CreateProjectilePrefab();
+            var equipment = CreateEquipmentAssets(projectilePrefab);
+            AssignStartingEquipment(registry, equipment);
             var panelSettings = CreatePanelSettings();
             var feedback = CreateFeedbackLibrary();
 
-            BuildScene(config, playerPrefab, lootDropPrefab, registry, panelSettings, feedback);
+            BuildScene(config, playerPrefab, lootDropPrefab, registry, panelSettings, feedback, equipment);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -73,7 +79,7 @@ namespace Ouroboros.EditorTools
 
         private static void EnsureFolders()
         {
-            foreach (var dir in new[] { Root, PrefabDir, SceneDir, ClassDir, UIDir })
+            foreach (var dir in new[] { Root, PrefabDir, SceneDir, ClassDir, UIDir, EquipDir })
             {
                 if (!AssetDatabase.IsValidFolder(dir))
                 {
@@ -132,6 +138,7 @@ namespace Ouroboros.EditorTools
             var netObj = go.AddComponent<NetworkObject>();
             go.AddComponent<NetworkTransform>();
             var networkPlayer = go.AddComponent<Network.NetworkPlayer>();
+            go.AddComponent<Equipment.NetworkLoadout>();
             var controller = go.AddComponent<Player.PlayerController>();
             go.AddComponent<Equipment.EquipmentLoadout>();
 
@@ -164,6 +171,16 @@ namespace Ouroboros.EditorTools
             if (root.GetComponent<Player.PlayerFeedback>() == null)
             {
                 root.AddComponent<Player.PlayerFeedback>();
+                changed = true;
+            }
+            if (root.GetComponent<Equipment.NetworkLoadout>() == null)
+            {
+                root.AddComponent<Equipment.NetworkLoadout>();
+                changed = true;
+            }
+            if (root.GetComponent<Equipment.EquipmentLoadout>() == null)
+            {
+                root.AddComponent<Equipment.EquipmentLoadout>();
                 changed = true;
             }
 
@@ -244,6 +261,130 @@ namespace Ouroboros.EditorTools
             return data;
         }
 
+        // ------------------------------------------------------------------
+        // Equipment
+
+        private static NetworkObject CreateProjectilePrefab()
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(ProjectilePrefabPath);
+            if (existing != null) return existing.GetComponent<NetworkObject>();
+
+            var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            go.name = "Projectile";
+            go.transform.localScale = Vector3.one * 0.25f;
+            Object.DestroyImmediate(go.GetComponent<Collider>()); // sweeps its own path; must not hit itself
+            Tint(go, new Color(0.3f, 0.3f, 0.3f));
+            go.AddComponent<NetworkObject>();
+            go.AddComponent<NetworkTransform>();
+            go.AddComponent<Equipment.Projectile>();
+
+            var prefab = PrefabUtility.SaveAsPrefabAsset(go, ProjectilePrefabPath);
+            Object.DestroyImmediate(go);
+            return prefab.GetComponent<NetworkObject>();
+        }
+
+        private static Data.EquipmentRegistry CreateEquipmentAssets(NetworkObject projectilePrefab)
+        {
+            var registry = AssetDatabase.LoadAssetAtPath<Data.EquipmentRegistry>(EquipRegistryPath);
+            if (registry == null)
+            {
+                registry = ScriptableObject.CreateInstance<Data.EquipmentRegistry>();
+                AssetDatabase.CreateAsset(registry, EquipRegistryPath);
+            }
+
+            var items = new List<Data.EquipmentData>
+            {
+                Weapon("Assault Rifle", Equipment.EquipmentSlotType.Primary, dmg: 14f, cd: 0.1f, auto: true, mag: 30, reserve: 90, reload: 1.8f, spread: 1.5f, pellets: 1, range: 80f,
+                    "Reliable automatic rifle. Good at everything, great at nothing."),
+                Weapon("Suppressed SMG", Equipment.EquipmentSlotType.Primary, dmg: 10f, cd: 0.07f, auto: true, mag: 25, reserve: 100, reload: 1.5f, spread: 2.5f, pellets: 1, range: 45f,
+                    "Fast and quiet. Made for Saboteurs working up close.", Core.PlayerClassType.Saboteur, Core.PlayerClassType.Agent),
+                Weapon("Breacher Shotgun", Equipment.EquipmentSlotType.Primary, dmg: 9f, cd: 0.8f, auto: false, mag: 6, reserve: 24, reload: 2.4f, spread: 6f, pellets: 8, range: 25f,
+                    "Eight pellets of persuasion.", Core.PlayerClassType.Demolitions, Core.PlayerClassType.Agent),
+                Weapon("Marksman Rifle", Equipment.EquipmentSlotType.Primary, dmg: 45f, cd: 0.6f, auto: false, mag: 8, reserve: 32, reload: 2.2f, spread: 0.2f, pellets: 1, range: 150f,
+                    "Precision over volume.", Core.PlayerClassType.Hacker, Core.PlayerClassType.Agent),
+                Weapon("Service Pistol", Equipment.EquipmentSlotType.Secondary, dmg: 18f, cd: 0.2f, auto: false, mag: 12, reserve: 48, reload: 1.2f, spread: 1f, pellets: 1, range: 50f,
+                    "Standard sidearm."),
+                Launcher("Grenade Launcher", projectilePrefab, dmg: 60f, cd: 1.2f, mag: 3, reserve: 9, reload: 2.5f, speed: 22f, gravity: -9.81f, radius: 4f, fuse: 0f,
+                    "Impact-fused grenades. Mind the splash.", Core.PlayerClassType.Demolitions),
+                Launcher("Sticky Charge Thrower", projectilePrefab, dmg: 70f, cd: 1.5f, mag: 2, reserve: 6, reload: 2.5f, speed: 14f, gravity: -9.81f, radius: 3.5f, fuse: 2.5f,
+                    "Lobbed charge with a short fuse.", Core.PlayerClassType.Demolitions, Core.PlayerClassType.Saboteur),
+                Passive("Light Armor", Equipment.EquipmentSlotType.Armor, defense: 0.15f, speed: -0.05f, damage: 0f, "Take 15% less damage, move 5% slower."),
+                Passive("Stim Rig", Equipment.EquipmentSlotType.Accessory, defense: 0f, speed: 0.08f, damage: 0f, "Move 8% faster."),
+                Passive("Hollow Points", Equipment.EquipmentSlotType.Accessory, defense: 0f, speed: 0f, damage: 0.1f, "Deal 10% more damage."),
+            };
+
+            registry.items = items.ToArray();
+            EditorUtility.SetDirty(registry);
+            return registry;
+        }
+
+        private static Data.EquipmentData LoadOrCreateEquipment(string name, out bool created)
+        {
+            string path = $"{EquipDir}/{name.Replace(' ', '_')}.asset";
+            var data = AssetDatabase.LoadAssetAtPath<Data.EquipmentData>(path);
+            created = data == null;
+            if (created)
+            {
+                data = ScriptableObject.CreateInstance<Data.EquipmentData>();
+                AssetDatabase.CreateAsset(data, path);
+            }
+            return data;
+        }
+
+        private static Data.EquipmentData Weapon(string name, Equipment.EquipmentSlotType slot, float dmg, float cd, bool auto, int mag, int reserve,
+            float reload, float spread, int pellets, float range, string description, params Core.PlayerClassType[] allowed)
+        {
+            var d = LoadOrCreateEquipment(name, out bool created);
+            if (!created) return d; // keep designer edits
+            d.equipmentName = name; d.description = description; d.slotType = slot; d.kind = Data.EquipmentKind.HitscanWeapon;
+            d.damage = dmg; d.cooldown = cd; d.automatic = auto; d.magazineSize = mag; d.reserveAmmo = reserve; d.reloadTime = reload;
+            d.spreadDegrees = spread; d.pelletCount = pellets; d.range = range; d.allowedClasses = allowed;
+            EditorUtility.SetDirty(d);
+            return d;
+        }
+
+        private static Data.EquipmentData Launcher(string name, NetworkObject projectile, float dmg, float cd, int mag, int reserve, float reload,
+            float speed, float gravity, float radius, float fuse, string description, params Core.PlayerClassType[] allowed)
+        {
+            var d = LoadOrCreateEquipment(name, out bool created);
+            if (!created) return d;
+            d.equipmentName = name; d.description = description; d.slotType = Equipment.EquipmentSlotType.Secondary; d.kind = Data.EquipmentKind.ProjectileWeapon;
+            d.damage = dmg; d.cooldown = cd; d.automatic = false; d.magazineSize = mag; d.reserveAmmo = reserve; d.reloadTime = reload;
+            d.projectilePrefab = projectile; d.projectileSpeed = speed; d.projectileGravity = gravity; d.explosionRadius = radius; d.fuseTime = fuse;
+            d.allowedClasses = allowed;
+            EditorUtility.SetDirty(d);
+            return d;
+        }
+
+        private static Data.EquipmentData Passive(string name, Equipment.EquipmentSlotType slot, float defense, float speed, float damage, string description)
+        {
+            var d = LoadOrCreateEquipment(name, out bool created);
+            if (!created) return d;
+            d.equipmentName = name; d.description = description; d.slotType = slot; d.kind = Data.EquipmentKind.PassiveGear;
+            d.cooldown = 0f; d.magazineSize = 0; d.defenseModifier = defense; d.speedModifier = speed; d.damageModifier = damage;
+            EditorUtility.SetDirty(d);
+            return d;
+        }
+
+        /// <summary>Fills empty ClassData.startingEquipment so every class spawns armed.</summary>
+        private static void AssignStartingEquipment(Data.ClassRegistry classes, Data.EquipmentRegistry equipment)
+        {
+            Data.EquipmentData Find(string n) { foreach (var i in equipment.items) if (i != null && i.equipmentName == n) return i; return null; }
+
+            foreach (var cls in classes.classes)
+            {
+                if (cls == null || (cls.startingEquipment != null && cls.startingEquipment.Length > 0)) continue;
+                switch (cls.classType)
+                {
+                    case Core.PlayerClassType.Hacker:      cls.startingEquipment = new[] { Find("Marksman Rifle"), Find("Service Pistol"), Find("Stim Rig") }; break;
+                    case Core.PlayerClassType.Saboteur:    cls.startingEquipment = new[] { Find("Suppressed SMG"), Find("Service Pistol"), Find("Hollow Points") }; break;
+                    case Core.PlayerClassType.Demolitions: cls.startingEquipment = new[] { Find("Breacher Shotgun"), Find("Grenade Launcher"), Find("Light Armor") }; break;
+                    default:                               cls.startingEquipment = new[] { Find("Assault Rifle"), Find("Service Pistol"), Find("Light Armor") }; break;
+                }
+                EditorUtility.SetDirty(cls);
+            }
+        }
+
         private static Data.FeedbackLibrary CreateFeedbackLibrary()
         {
             var lib = AssetDatabase.LoadAssetAtPath<Data.FeedbackLibrary>(FeedbackPath);
@@ -320,7 +461,7 @@ namespace Ouroboros.EditorTools
         // ------------------------------------------------------------------
 
         private static void BuildScene(Data.GameModeConfig config, NetworkObject playerPrefab, NetworkObject lootDropPrefab,
-            Data.ClassRegistry registry, PanelSettings panelSettings, Data.FeedbackLibrary feedback)
+            Data.ClassRegistry registry, PanelSettings panelSettings, Data.FeedbackLibrary feedback, Data.EquipmentRegistry equipment)
         {
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
@@ -368,6 +509,7 @@ namespace Ouroboros.EditorTools
             SetReference(session, "playerPrefabObject", playerPrefab);
             SetReference(session, "classRegistry", registry);
             SetReference(session, "feedbackLibrary", feedback);
+            SetReference(session, "equipmentRegistry", equipment);
             var devHud = sessionGo.AddComponent<UI.DevHUD>();
             SetBool(devHud, "visible", false); // F1 brings the debug overlay back
 

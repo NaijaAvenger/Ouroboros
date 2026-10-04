@@ -31,7 +31,7 @@ A modular multiplayer extraction heist game built with **Photon Fusion 2**, feat
 - ✅ **Lobby class picker** and pre-match ability lock
 - ✅ **Feedback hooks** — `FeedbackLibrary` audio/VFX slots wired to every gameplay event (assets not included)
 - ⬜ **Animation / art** — presentation is placeholder capsules
-- ⬜ **Weapons** — equipment slots exist; networked weapons are Phase 2
+- ✅ **Weapons** — networked loadout (ammo, reload, cooldowns), lag-compensated hitscan, server-simulated projectiles, passive gear, lobby loadout picker
 
 ### Player Classes
 
@@ -98,6 +98,7 @@ Input goes through the **Input System** package (keyboard, mouse, gamepad) when 
 | Abilities 1–4 | 1 2 3 4 | D-pad ↑ → ↓ ← |
 | Primary / Secondary | LMB / RMB | RT / LT |
 | Utility / Gadget | Q / E | LB / RB |
+| Reload | R | Y |
 | Cursor lock toggle | Esc | Start |
 | Debug overlay | F1 | Select |
 

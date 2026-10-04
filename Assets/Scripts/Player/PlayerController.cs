@@ -27,6 +27,7 @@ namespace Ouroboros.Player
         private Network.NetworkPlayer networkPlayer;
         private Core.BasePlayerClass currentClass;
         private Equipment.EquipmentLoadout equipmentLoadout;
+        private Equipment.NetworkLoadout networkLoadout;
         private NetworkTransform networkTransform;
 
         // Vertical velocity is part of the simulation state so prediction/resimulation stays consistent.
@@ -43,6 +44,7 @@ namespace Ouroboros.Player
         {
             networkPlayer = GetComponent<Network.NetworkPlayer>();
             equipmentLoadout = GetComponent<Equipment.EquipmentLoadout>();
+            networkLoadout = GetComponent<Equipment.NetworkLoadout>();
             networkTransform = GetComponent<NetworkTransform>();
             if (characterController == null) characterController = GetComponent<CharacterController>();
 
@@ -112,7 +114,7 @@ namespace Ouroboros.Player
             {
                 HandleAbilities(pressed);
                 HandleInteract(input.Buttons);
-                HandleEquipment(pressed);
+                HandleEquipment(pressed, input.Buttons);
             }
         }
 
@@ -143,6 +145,7 @@ namespace Ouroboros.Player
             float speed = currentClass != null
                 ? (canSprint ? currentClass.SprintSpeed : currentClass.MovementSpeed)
                 : defaultMovementSpeed;
+            if (networkLoadout != null) speed *= networkLoadout.SpeedMultiplier; // v0.4: armor / accessories
 
             if (Object.HasStateAuthority)
             {
@@ -187,13 +190,24 @@ namespace Ouroboros.Player
             networkPlayer.SetStatus(Core.StatusFlags.Interacting, held.IsSet((int)Core.InputButtons.Interact));
         }
 
-        private void HandleEquipment(NetworkButtons pressed)
+        // [v0.2] private void HandleEquipment(NetworkButtons pressed) { ...UseEquipment(slot) on press only... }
+        private void HandleEquipment(NetworkButtons pressed, NetworkButtons held)
         {
             if (equipmentLoadout == null) return;
-            if (pressed.IsSet((int)Core.InputButtons.Primary))   equipmentLoadout.UseEquipment(Equipment.EquipmentSlotType.Primary);
-            if (pressed.IsSet((int)Core.InputButtons.Secondary)) equipmentLoadout.UseEquipment(Equipment.EquipmentSlotType.Secondary);
-            if (pressed.IsSet((int)Core.InputButtons.Utility))   equipmentLoadout.UseEquipment(Equipment.EquipmentSlotType.Utility);
-            if (pressed.IsSet((int)Core.InputButtons.Gadget))    equipmentLoadout.UseEquipment(Equipment.EquipmentSlotType.Gadget);
+            Dispatch(Equipment.EquipmentSlotType.Primary,   Core.InputButtons.Primary,   pressed, held);
+            Dispatch(Equipment.EquipmentSlotType.Secondary, Core.InputButtons.Secondary, pressed, held);
+            Dispatch(Equipment.EquipmentSlotType.Utility,   Core.InputButtons.Utility,   pressed, held);
+            Dispatch(Equipment.EquipmentSlotType.Gadget,    Core.InputButtons.Gadget,    pressed, held);
+
+            if (pressed.IsSet((int)Core.InputButtons.Reload) && networkLoadout != null)
+            {
+                networkLoadout.ReloadAny();
+            }
+        }
+
+        private void Dispatch(Equipment.EquipmentSlotType slot, Core.InputButtons button, NetworkButtons pressed, NetworkButtons held)
+        {
+            equipmentLoadout.UseEquipment(slot, pressed.IsSet((int)button), held.IsSet((int)button));
         }
 
         /// <summary>

@@ -97,10 +97,17 @@ Still requires a machine with Unity + Fusion:
 
 Still open in Phase 1: actual audio/VFX assets in the FeedbackLibrary, a controls/rebind screen (API is ready), animations.
 
-### Phase 2 — Weapons & equipment
-- Networked `BaseEquipment` with tick-timer cooldowns and server-side execution (currently local `Time.time`).
-- Hitscan primary + projectile secondary using `DamageUtil.Hitscan` / lag compensation.
-- Loadout selection in lobby and `EquipmentData` → runtime instantiation.
+### Phase 2 — Weapons & equipment (implemented in v0.4, awaiting in-engine validation)
+- **NetworkLoadout** (`Equipment/NetworkLoadout.cs`, on the player prefab): replicated item id per slot, magazine, reserve, use cooldowns and reload timers; equips class defaults from `ClassData.startingEquipment`; lobby swaps via `RequestEquip`; `WeaponFired` / `ReloadStarted` events for cosmetics; summed passive modifiers (defense, damage, speed).
+- **EquipmentRegistry** asset gives every `EquipmentData` a network id; `EquipmentLoadout` builds the local `BaseEquipment` component per slot from the id (`EquipmentKind` → class).
+- **BaseEquipment v2**: owner/loadout context, press-vs-held use (automatic weapons), cooldown and ammo through the loadout, state-authority-only execution.
+- **HitscanWeapon**: lag-compensated raycast (`Runner.LagCompensation.Raycast`, PhysX colliders included), spread, pellets, damage to any `IDamageable`.
+- **ProjectileWeapon + Projectile**: server-simulated networked projectile with gravity, sphere-cast collision, direct or radial damage, optional fuse (bounces until it blows), `Exploded` event.
+- **PassiveGear**: armor / accessories as modifiers consulted by `NetworkPlayer.ApplyDamage` and `PlayerController` speed.
+- **Reload** input (R / Y), HUD ammo readout, lobby loadout cyclers (Primary / Secondary), feedback hooks (fire, impact, reload, explosion).
+- Scene builder creates ten starter items + registry + projectile prefab and arms each class.
+
+Still open in Phase 2: `Hitbox`/`HitboxRoot` on the player prefab for full lag compensation (PhysX fallback works today), ammo pickups, deployables (`EquipmentKind.Deployable` is a placeholder), weapon viewmodels.
 
 ### Phase 3 — Heist depth
 - Alarm system: cameras/guards raise an alarm level that spawns reinforcements and shortens extraction windows.
