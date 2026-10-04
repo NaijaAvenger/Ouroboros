@@ -34,21 +34,34 @@ namespace Ouroboros.Equipment
             {
                 Vector3 dir = ApplySpread(aim, data.spreadDegrees);
 
-                if (Runner.LagCompensation.Raycast(origin, dir, range, owner.Object.InputAuthority, out LagCompensatedHit hit, mask,
-                        HitOptions.IncludePhysX | HitOptions.IgnoreInputAuthority))
-                {
-                    lastPoint = hit.Point;
-                    hitAnything = true;
+                GameObject hitObject = null;
+                Vector3 hitPoint = origin + dir * range;
+                bool didHit;
 
-                    var target = hit.GameObject != null ? hit.GameObject.GetComponentInParent<Combat.IDamageable>() : null;
+                // Lag-compensated when the runner provides it (Host/Server with hitboxes enabled); plain physics otherwise.
+                // [v0.4] previously called Runner.LagCompensation unconditionally → NullReferenceException on runners without it.
+                var lagComp = Runner.LagCompensation;
+                if (lagComp != null)
+                {
+                    didHit = lagComp.Raycast(origin, dir, range, owner.Object.InputAuthority, out LagCompensatedHit hit, mask,
+                        HitOptions.IncludePhysX | HitOptions.IgnoreInputAuthority);
+                    if (didHit) { hitPoint = hit.Point; hitObject = hit.GameObject; }
+                }
+                else
+                {
+                    didHit = Physics.Raycast(origin, dir, out RaycastHit hit, range, mask, QueryTriggerInteraction.Ignore);
+                    if (didHit) { hitPoint = hit.point; hitObject = hit.collider.gameObject; }
+                }
+
+                lastPoint = hitPoint;
+                if (didHit)
+                {
+                    hitAnything = true;
+                    var target = hitObject != null ? hitObject.GetComponentInParent<Combat.IDamageable>() : null;
                     if (target != null && !ReferenceEquals(target, owner) && target.IsAlive)
                     {
                         target.ApplyDamage(damagePerPellet, owner);
                     }
-                }
-                else
-                {
-                    lastPoint = origin + dir * range;
                 }
             }
 

@@ -157,7 +157,8 @@ namespace Ouroboros.EditorTools
             var camPivot = new GameObject("CameraPivot");
             camPivot.transform.SetParent(go.transform, false);
             camPivot.transform.localPosition = new Vector3(0f, 1.6f, 0f);
-            camPivot.AddComponent<Camera>();
+            var playerCam = camPivot.AddComponent<Camera>();
+            playerCam.depth = 10f; // renders above the spectator camera
             camPivot.AddComponent<AudioListener>();
 
             var netObj = go.AddComponent<NetworkObject>();
@@ -514,6 +515,7 @@ namespace Ouroboros.EditorTools
             // Session
             var session = Object.FindFirstObjectByType<Network.GameSessionManager>();
             if (session == null) session = new GameObject("GameSessionManager").AddComponent<Network.GameSessionManager>();
+            if (playerPrefab == null) Debug.LogError("[Ouroboros] Player prefab reference is null; GameSessionManager.playerPrefabObject will be empty.");
             SetReference(session, "playerPrefabObject", playerPrefab);
             SetReference(session, "classRegistry", registry);
             SetReference(session, "feedbackLibrary", feedback);
@@ -533,12 +535,18 @@ namespace Ouroboros.EditorTools
                 camGo.AddComponent<AudioListener>();
                 spectator = camGo.AddComponent<Player.SpectatorCamera>();
             }
+            SetReference(session, "spectatorCamera", spectator);
 
             // HUD (UI Toolkit)
             var hud = Object.FindFirstObjectByType<UI.HeistHUD>();
             GameObject hudGo = hud != null ? hud.gameObject : new GameObject("HUD");
             var doc = hudGo.GetComponent<UIDocument>() ?? hudGo.AddComponent<UIDocument>();
             doc.panelSettings = panelSettings;
+            SetReference(doc, "m_PanelSettings", panelSettings); // the property alone did not persist into the saved scene
+            if (panelSettings == null || panelSettings.themeStyleSheet == null)
+            {
+                Debug.LogError("[Ouroboros] Panel settings / theme missing: delete Assets/Ouroboros/UI and re-run the setup menu.");
+            }
             if (hud == null) hudGo.AddComponent<UI.HeistHUD>();
             if (hudGo.GetComponent<UI.ClassPickerUI>() == null) hudGo.AddComponent<UI.ClassPickerUI>();
             if (hudGo.GetComponent<UI.MatchFeedback>() == null) hudGo.AddComponent<UI.MatchFeedback>();

@@ -70,7 +70,8 @@ namespace Ouroboros.UI
             var panelRoot = document.rootVisualElement;
             if (panelRoot == null)
             {
-                Debug.LogWarning("[HeistHUD] UIDocument has no PanelSettings; run Ouroboros > Setup > Create Dev Scene.");
+                Debug.LogError("[HeistHUD] The HUD's UIDocument has no Panel Settings, so nothing can render. Assign " +
+                               "Assets/Ouroboros/UI/HeistPanelSettings.asset to it, or re-run Ouroboros > Setup > Create Dev Scene (it repairs this).");
                 enabled = false;
                 return;
             }

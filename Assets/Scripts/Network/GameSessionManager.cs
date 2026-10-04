@@ -74,6 +74,8 @@ namespace Ouroboros.Network
         private float accumulatedYaw;
         private float accumulatedPitch;
         private int pressedSinceLastTick;
+        /// <summary>Set when a click was used to re-lock the cursor; that press must not also fire the weapon.</summary>
+        private bool swallowPrimaryUntilRelease;
 
         public NetworkRunner Runner => runner;
         public static Data.FeedbackLibrary FeedbackLibrary { get; private set; }
@@ -127,6 +129,8 @@ namespace Ouroboros.Network
             {
                 Cursor.lockState = CursorLockMode.Locked;
                 Cursor.visible = false;
+                swallowPrimaryUntilRelease = true;
+                pressedSinceLastTick &= ~(1 << (int)Core.InputButtons.Primary);
             }
         }
 
@@ -341,6 +345,12 @@ namespace Ouroboros.Network
             {
                 var button = (Core.InputButtons)b;
                 data.Buttons.Set(b, Core.LocalInputSource.Held(button) || WasPressed(button));
+            }
+
+            if (swallowPrimaryUntilRelease)
+            {
+                data.Buttons.Set((int)Core.InputButtons.Primary, false);
+                if (!Core.LocalInputSource.Held(Core.InputButtons.Primary)) swallowPrimaryUntilRelease = false;
             }
 
             pressedSinceLastTick = 0;

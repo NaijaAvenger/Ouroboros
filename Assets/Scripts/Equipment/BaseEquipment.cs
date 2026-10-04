@@ -131,6 +131,9 @@ namespace Ouroboros.Equipment
                 if (owner == null || owner.Object == null || !owner.Object.HasStateAuthority) return false;
                 if (!owner.IsActiveInMatch) return false;
                 if (!loadout.CanUse(slotIndex)) return false;
+
+                var gm = GameMode.ExtractionHeistGameMode.Instance;
+                if (gm != null && gm.Object != null && !gm.IsMatchLive && !gm.Config.allowAbilitiesBeforeMatch) return false;
             }
             // [v0.1] if (Time.time - lastUseTime < cooldown) return false;  // non-networked items have no cooldown now
             return true;

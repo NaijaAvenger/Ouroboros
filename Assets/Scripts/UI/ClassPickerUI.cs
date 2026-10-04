@@ -44,7 +44,12 @@ namespace Ouroboros.UI
         {
             document = GetComponent<UIDocument>();
             var panelRoot = document.rootVisualElement;
-            if (panelRoot == null) { enabled = false; return; }
+            if (panelRoot == null)
+            {
+                Debug.LogError("[ClassPickerUI] UIDocument has no Panel Settings (see HeistHUD error). Picker disabled.");
+                enabled = false;
+                return;
+            }
 
             panelRoot.Q(RootName)?.RemoveFromHierarchy();
             root = new VisualElement { name = RootName };

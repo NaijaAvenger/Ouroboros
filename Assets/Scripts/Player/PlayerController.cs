@@ -73,7 +73,12 @@ namespace Ouroboros.Player
             {
                 Cursor.lockState = CursorLockMode.Locked;
                 Cursor.visible = false;
-                if (cameraTransform != null) cameraTransform.gameObject.SetActive(true);
+                if (cameraTransform != null)
+                {
+                    cameraTransform.gameObject.SetActive(true);
+                    var cam = cameraTransform.GetComponentInChildren<Camera>();
+                    if (cam != null) { cam.enabled = true; cam.depth = 10f; } // above any scene / spectator camera
+                }
             }
             else if (cameraTransform != null)
             {
