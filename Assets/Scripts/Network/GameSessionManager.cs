@@ -36,6 +36,10 @@ namespace Ouroboros.Network
         [Tooltip("Fallback used when playerPrefab is unset: a direct prefab reference (the Phase 0 scene builder fills this).")]
         [SerializeField] private NetworkObject playerPrefabObject;
 
+        [Header("Class Data (optional)")]
+        [Tooltip("Designer stats / ability numbers / class prefabs. Published to every peer as ClassRegistry.Active.")]
+        [SerializeField] private Data.ClassRegistry classRegistry;
+
         [Header("Defaults")]
         [SerializeField] private Core.PlayerClassType defaultClass = Core.PlayerClassType.Agent;
         [Tooltip("Cycle through classes for successive joins so a dev lobby exercises every class.")]
@@ -68,6 +72,7 @@ namespace Ouroboros.Network
             }
             Instance = this;
             spawnPoints = new TeamSpawnPointCache();
+            if (classRegistry != null) Data.ClassRegistry.Active = classRegistry;
         }
 
         private void OnDestroy()

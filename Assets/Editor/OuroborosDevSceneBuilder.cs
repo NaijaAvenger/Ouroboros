@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UIElements;
 using Fusion;
 
 namespace Ouroboros.EditorTools
@@ -25,6 +26,11 @@ namespace Ouroboros.EditorTools
         private const string LootDropPrefabPath = PrefabDir + "/LootDrop.prefab";
         private const string TrapPrefabPath = PrefabDir + "/ProximityTrap.prefab";
         private const string ScenePath = SceneDir + "/DevArena.unity";
+        private const string ClassDir = Root + "/Classes";
+        private const string RegistryPath = ClassDir + "/ClassRegistry.asset";
+        private const string UIDir = Root + "/UI";
+        private const string ThemePath = UIDir + "/HeistRuntimeTheme.tss";
+        private const string PanelSettingsPath = UIDir + "/HeistPanelSettings.asset";
 
         [MenuItem("Ouroboros/Setup/Create Dev Scene (Phase 0)")]
         public static void CreateDevScene()
@@ -34,9 +40,11 @@ namespace Ouroboros.EditorTools
             var config = CreateOrLoadConfig();
             var playerPrefab = CreatePlayerPrefab();
             var lootDropPrefab = CreateLootDropPrefab();
-            CreateTrapPrefab();
+            var trapPrefab = CreateTrapPrefab();
+            var registry = CreateClassAssets(trapPrefab);
+            var panelSettings = CreatePanelSettings();
 
-            BuildScene(config, playerPrefab, lootDropPrefab);
+            BuildScene(config, playerPrefab, lootDropPrefab, registry, panelSettings);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -59,7 +67,7 @@ namespace Ouroboros.EditorTools
 
         private static void EnsureFolders()
         {
-            foreach (var dir in new[] { Root, PrefabDir, SceneDir })
+            foreach (var dir in new[] { Root, PrefabDir, SceneDir, ClassDir, UIDir })
             {
                 if (!AssetDatabase.IsValidFolder(dir))
                 {
@@ -94,7 +102,7 @@ namespace Ouroboros.EditorTools
         private static NetworkObject CreatePlayerPrefab()
         {
             var existing = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefabPath);
-            if (existing != null) return existing.GetComponent<NetworkObject>();
+            if (existing != null) return UpgradePlayerPrefab(existing);
 
             var go = new GameObject("Player");
 
@@ -125,9 +133,127 @@ namespace Ouroboros.EditorTools
             SetReference(controller, "cameraTransform", camPivot.transform);
             SetReference(networkPlayer, "playerModel", model.transform);
 
+            var presentation = go.AddComponent<Player.PlayerPresentation>();
+            SetReference(presentation, "modelRenderer", model.GetComponent<Renderer>());
+
             var prefab = PrefabUtility.SaveAsPrefabAsset(go, PlayerPrefabPath);
             Object.DestroyImmediate(go);
             return prefab.GetComponent<NetworkObject>();
+        }
+
+        /// <summary>Adds components introduced after the prefab was first generated (idempotent).</summary>
+        private static NetworkObject UpgradePlayerPrefab(GameObject prefabAsset)
+        {
+            var root = PrefabUtility.LoadPrefabContents(PlayerPrefabPath);
+            bool changed = false;
+
+            if (root.GetComponent<Player.PlayerPresentation>() == null)
+            {
+                var presentation = root.AddComponent<Player.PlayerPresentation>();
+                var model = root.transform.Find("Model");
+                if (model != null) SetReference(presentation, "modelRenderer", model.GetComponent<Renderer>());
+                changed = true;
+            }
+
+            if (changed) PrefabUtility.SaveAsPrefabAsset(root, PlayerPrefabPath);
+            PrefabUtility.UnloadPrefabContents(root);
+            return AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefabPath).GetComponent<NetworkObject>();
+        }
+
+        // ------------------------------------------------------------------
+        // Class data
+
+        private static Data.ClassRegistry CreateClassAssets(NetworkObject trapPrefab)
+        {
+            var registry = AssetDatabase.LoadAssetAtPath<Data.ClassRegistry>(RegistryPath);
+            if (registry == null)
+            {
+                registry = ScriptableObject.CreateInstance<Data.ClassRegistry>();
+                AssetDatabase.CreateAsset(registry, RegistryPath);
+            }
+
+            var list = new List<Data.ClassData>
+            {
+                ClassAsset(Core.PlayerClassType.Hacker, "Hacker", 85f, 5.5f, 7.8f,
+                    "Electronic warfare specialist capable of disabling security systems and hacking enemy equipment.",
+                    ("System Hack", 15f, 15f, 5f), ("Disable Camera", 20f, 10f, 5f), ("EMP Blast", 25f, 25f, 4f), ("Data Mine", 30f, 20f, 5f)),
+                ClassAsset(Core.PlayerClassType.Saboteur, "Saboteur", 90f, 6f, 8.5f,
+                    "Stealth operative skilled in setting traps, sabotaging equipment, and silent elimination.",
+                    ("Place Trap", 6f, 10f, 0f), ("Stealth Mode", 25f, 25f, 10f), ("Sabotage", 18f, 15f, 8f), ("Smoke Bomb", 15f, 10f, 8f)),
+                ClassAsset(Core.PlayerClassType.Demolitions, "Demolitions", 110f, 4.5f, 6.5f,
+                    "Explosives expert capable of breaching reinforced structures and creating area denial zones.",
+                    ("Place Explosive", 2f, 5f, 0f), ("Detonate", 4f, 0f, 0f), ("Breaching Charge", 20f, 20f, 0f), ("Incendiary", 18f, 15f, 5f)),
+                ClassAsset(Core.PlayerClassType.Agent, "Agent", 100f, 5.2f, 7.5f,
+                    "Versatile field operative with balanced combat capabilities and tactical support options.",
+                    ("Tactical Shield", 20f, 20f, 8f), ("Damage Boost", 18f, 15f, 6f), ("Recon Drone", 25f, 10f, 6f), ("Flashbang", 12f, 10f, 3f)),
+            };
+
+            foreach (var data in list)
+            {
+                if (data.classType == Core.PlayerClassType.Saboteur && data.trapPrefab == null)
+                {
+                    data.trapPrefab = trapPrefab;
+                    EditorUtility.SetDirty(data);
+                }
+            }
+
+            registry.classes = list.ToArray();
+            EditorUtility.SetDirty(registry);
+            return registry;
+        }
+
+        private static Data.ClassData ClassAsset(Core.PlayerClassType type, string name, float hp, float speed, float sprint,
+            string description, params (string name, float cooldown, float cost, float duration)[] abilities)
+        {
+            string path = $"{ClassDir}/{name}.asset";
+            var data = AssetDatabase.LoadAssetAtPath<Data.ClassData>(path);
+            if (data != null) return data; // keep designer edits
+
+            data = ScriptableObject.CreateInstance<Data.ClassData>();
+            data.className = name;
+            data.description = description;
+            data.classType = type;
+            data.maxHealth = hp;
+            data.maxStamina = 100f;
+            data.movementSpeed = speed;
+            data.sprintSpeed = sprint;
+            data.abilities = new Data.AbilityData[abilities.Length];
+            for (int i = 0; i < abilities.Length; i++)
+            {
+                data.abilities[i] = new Data.AbilityData
+                {
+                    abilityName = abilities[i].name,
+                    cooldown = abilities[i].cooldown,
+                    energyCost = abilities[i].cost,
+                    duration = abilities[i].duration
+                };
+            }
+            AssetDatabase.CreateAsset(data, path);
+            return data;
+        }
+
+        // ------------------------------------------------------------------
+        // UI Toolkit assets
+
+        private static PanelSettings CreatePanelSettings()
+        {
+            var settings = AssetDatabase.LoadAssetAtPath<PanelSettings>(PanelSettingsPath);
+            if (settings != null) return settings;
+
+            if (!File.Exists(ThemePath))
+            {
+                File.WriteAllText(ThemePath, "@import url(\"unity-theme://default\");\n");
+                AssetDatabase.ImportAsset(ThemePath);
+            }
+            var theme = AssetDatabase.LoadAssetAtPath<ThemeStyleSheet>(ThemePath);
+
+            settings = ScriptableObject.CreateInstance<PanelSettings>();
+            settings.themeStyleSheet = theme;
+            settings.scaleMode = PanelScaleMode.ScaleWithScreenSize;
+            settings.referenceResolution = new Vector2Int(1920, 1080);
+            settings.match = 0.5f;
+            AssetDatabase.CreateAsset(settings, PanelSettingsPath);
+            return settings;
         }
 
         private static NetworkObject CreateLootDropPrefab()
@@ -172,7 +298,8 @@ namespace Ouroboros.EditorTools
 
         // ------------------------------------------------------------------
 
-        private static void BuildScene(Data.GameModeConfig config, NetworkObject playerPrefab, NetworkObject lootDropPrefab)
+        private static void BuildScene(Data.GameModeConfig config, NetworkObject playerPrefab, NetworkObject lootDropPrefab,
+            Data.ClassRegistry registry, PanelSettings panelSettings)
         {
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
@@ -218,7 +345,15 @@ namespace Ouroboros.EditorTools
             var sessionGo = new GameObject("GameSessionManager");
             var session = sessionGo.AddComponent<Network.GameSessionManager>();
             SetReference(session, "playerPrefabObject", playerPrefab);
-            sessionGo.AddComponent<UI.DevHUD>();
+            SetReference(session, "classRegistry", registry);
+            var devHud = sessionGo.AddComponent<UI.DevHUD>();
+            SetBool(devHud, "visible", false); // F1 brings the debug overlay back
+
+            // HUD (UI Toolkit)
+            var hudGo = new GameObject("HUD");
+            var doc = hudGo.AddComponent<UIDocument>();
+            doc.panelSettings = panelSettings;
+            hudGo.AddComponent<UI.HeistHUD>();
 
             // Spawn points: one per team in each corner, facing the centre
             var spawns = new GameObject("SpawnPoints");
@@ -317,6 +452,15 @@ namespace Ouroboros.EditorTools
             var prop = so.FindProperty(field);
             if (prop == null) return;
             prop.intValue = value;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void SetBool(Object target, string field, bool value)
+        {
+            var so = new SerializedObject(target);
+            var prop = so.FindProperty(field);
+            if (prop == null) return;
+            prop.boolValue = value;
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 

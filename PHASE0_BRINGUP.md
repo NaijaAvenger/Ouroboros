@@ -61,6 +61,14 @@ Watch the **DevHUD** (F1) and console:
 - [ ] Window > AI > Navigation → bake the NavMesh for `DevArena`
 - [ ] Guard patrols, spots you, chases and shoots (`HP` drops on the HUD), investigates where it lost you
 
+## 7b. Phase 1 validation (v0.3)
+- [ ] HUD appears (UI Toolkit). If it doesn't: the `HUD` object needs `UIDocument.panelSettings` = `Assets/Ouroboros/UI/HeistPanelSettings.asset` (re-run the setup menu).
+- [ ] Vitals bars and ability slots update; cooldown fill drains; cost turns red when stamina is short
+- [ ] Walk to a vault: zone prompt shows "Hold F to crack", progress bar fills, kill-feed line on completion
+- [ ] Other players are tinted by team; your own capsule is hidden; Saboteur stealth hides them from enemies
+- [ ] Death shows the red overlay with countdown; extraction shows the green overlay; match end shows the table
+- [ ] `ClassData` edits (e.g. Hacker max health in `Assets/Ouroboros/Classes/Hacker.asset`) take effect on next spawn on every peer
+
 ## 8. Exit criteria
 - Steps 5 and 6 pass with no non-authority write warnings in the console.
 - Section 3's table updated with any further fixes.

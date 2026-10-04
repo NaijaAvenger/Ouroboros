@@ -14,6 +14,11 @@ namespace Ouroboros.GameMode
     /// </summary>
     public class LootObjective : NetworkBehaviour, Interaction.IHackable
     {
+        /// <summary>Live registry on this peer (HUD proximity lookups).</summary>
+        public static readonly List<LootObjective> All = new List<LootObjective>();
+        /// <summary>Fired on every peer when an objective is secured (objective, team, loot).</summary>
+        public static event System.Action<LootObjective, Core.TeamID, int> Completed;
+
         [Header("Objective")]
         [SerializeField] private string objectiveName = "Vault";
         [SerializeField] private int lootValue = 500;
@@ -42,10 +47,13 @@ namespace Ouroboros.GameMode
 
         public string ObjectiveName => objectiveName;
         public int LootValue => lootValue;
+        public float InteractRadius => interactRadius;
         public float ProgressNormalized => Mathf.Clamp01(Progress / Mathf.Max(0.01f, captureTime));
 
         public override void Spawned()
         {
+            if (!All.Contains(this)) All.Add(this);
+
             if (Object.HasStateAuthority)
             {
                 IsAvailable = true;
@@ -53,6 +61,11 @@ namespace Ouroboros.GameMode
                 CapturingTeam = Core.TeamID.None;
                 Progress = 0f;
             }
+        }
+
+        public override void Despawned(NetworkRunner runner, bool hasState)
+        {
+            All.Remove(this);
         }
 
         public override void FixedUpdateNetwork()
@@ -231,7 +244,11 @@ namespace Ouroboros.GameMode
         private void RPC_CaptureCancelled(Core.TeamID team) => Debug.Log($"[Objective:{objectiveName}] {team} capture cancelled");
 
         [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-        private void RPC_Completed(Core.TeamID team, int loot) => Debug.Log($"[Objective:{objectiveName}] {team} secured {loot} loot!");
+        private void RPC_Completed(Core.TeamID team, int loot)
+        {
+            Debug.Log($"[Objective:{objectiveName}] {team} secured {loot} loot!");
+            Completed?.Invoke(this, team, loot);
+        }
 
         [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
         private void RPC_Hacked(Core.TeamID team, NetworkBool unlocked) => Debug.Log($"[Objective:{objectiveName}] hacked by {team}" + (unlocked ? " (unlocked)" : " (progress bonus)"));

@@ -58,6 +58,10 @@ namespace Ouroboros.GameMode
 
         /// <summary>Fired on every peer when <see cref="CurrentState"/> changes.</summary>
         public static event Action<GameState> StateChanged;
+        /// <summary>Fired on every peer when extraction points open (v0.3).</summary>
+        public static event Action ExtractionOpened;
+        /// <summary>Fired on every peer when a team extracts members (team, members, loot) (v0.3).</summary>
+        public static event Action<Core.TeamID, int, int> TeamExtractedEvent;
 
         public enum GameState
         {
@@ -254,6 +258,7 @@ namespace Ouroboros.GameMode
         private void RPC_OnExtractionOpened()
         {
             Debug.Log("[ExtractionHeist] Extraction points are now open");
+            ExtractionOpened?.Invoke();
         }
 
         [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
@@ -429,6 +434,7 @@ namespace Ouroboros.GameMode
         private void RPC_TeamExtracted(Core.TeamID team, int members, int loot)
         {
             Debug.Log($"[ExtractionHeist] {team} extracted {members} member(s) with {loot} loot!");
+            TeamExtractedEvent?.Invoke(team, members, loot);
         }
 
         // [v0.1] private void CheckMatchEnd()

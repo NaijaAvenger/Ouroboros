@@ -82,11 +82,14 @@ Still requires a machine with Unity + Fusion:
 2. Run the menu item, press Play, complete the solo smoke test (§5) and Host + Client test (§6).
 3. Record the fixes that were needed in PHASE0_BRINGUP.md §3.
 
-### Phase 1 — Feel and clarity
-- Minimal HUD: health/stamina, cooldown pips, status icons, carried loot, match/phase timers, objective & extraction progress bars, team scores. All data already replicated.
-- Kill feed + death/respawn flow (`Died`/`Respawned` events are wired).
-- Audio/VFX hooks on the existing RPC stubs.
-- Data-driven class stats: load `ClassData` into `BasePlayerClass` (today's values are code defaults; `ClassData` fields exist). Move `trapPrefab`/VFX prefabs into `ClassData` so runtime-added class components can reference them.
+### Phase 1 — Feel and clarity (implemented in v0.3, awaiting in-engine validation)
+- **HeistHUD** (`UI/HeistHUD.cs`, UI Toolkit, code-built): match state + timers, team scoreboard, vitals bars, ability slots with cooldown fill / stamina cost / EMP dimming, status chips, loot and K/D, nearest vault or extraction zone with progress and contextual hint, kill feed, banners, death overlay with respawn countdown, extracted overlay, end-of-match table.
+- **Events for presentation**: `NetworkPlayer.PlayerKilled` / `PlayerExtracted`, `LootObjective.Completed`, `ExtractionHeistGameMode.ExtractionOpened` / `TeamExtractedEvent` (all fire on every peer from the existing RPCs).
+- **PlayerPresentation** (`Player/PlayerPresentation.cs`): team colour, status tints (shield, boost, revealed, burning, EMP), stealth hidden from enemy viewers unless revealed, own model hidden in first person, hidden on death / extraction. Replace with animation/VFX without touching gameplay.
+- **ClassData wiring**: `BasePlayerClass.ApplyClassData` overrides stats and per-slot cooldown / stamina / duration; `ClassRegistry` asset published through `GameSessionManager` so every peer applies the same data; Saboteur's trap prefab now comes from `ClassData.trapPrefab`.
+- **Scene builder** now also creates the four `ClassData` assets + `ClassRegistry`, the UI Toolkit theme + `PanelSettings`, the HUD object, and upgrades an existing Player prefab with `PlayerPresentation`. DevHUD stays available on F1.
+
+Still open in Phase 1: audio, real VFX/animation on the presentation hooks, a lobby class picker UI (`NetworkPlayer.RequestClass` exists).
 
 ### Phase 2 — Weapons & equipment
 - Networked `BaseEquipment` with tick-timer cooldowns and server-side execution (currently local `Time.time`).

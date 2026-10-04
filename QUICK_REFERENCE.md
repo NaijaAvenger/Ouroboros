@@ -34,9 +34,11 @@
 - `BehaviorTree.cs` - Sequence, Selector, Inverter, Condition/Action (+ delegate variants)
 - `GuardAI.cs` - Patrol / investigate / fight
 
-### Data / Player / Equipment
-- `Data/GameModeConfig.cs` (all match rules), `ClassData.cs`, `EquipmentData.cs`
-- `Player/PlayerController.cs`, `Player/TeamSpawnPoint.cs`
+### Data / Player / Equipment / UI
+- `Data/GameModeConfig.cs` (all match rules), `ClassData.cs`, `ClassRegistry.cs`, `EquipmentData.cs`
+- `Player/PlayerController.cs`, `Player/TeamSpawnPoint.cs`, `Player/PlayerPresentation.cs`
+- `UI/HeistHUD.cs` (UI Toolkit HUD), `UI/DevHUD.cs` (F1 debug overlay)
+- `Assets/Editor/OuroborosDevSceneBuilder.cs` — menu *Ouroboros > Setup > Create Dev Scene*
 - `Equipment/BaseEquipment.cs`, `EquipmentLoadout.cs`, `BaseTech.cs`
 
 ## Key Constants

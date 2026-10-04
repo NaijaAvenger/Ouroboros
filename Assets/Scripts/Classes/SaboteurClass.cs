@@ -69,18 +69,26 @@ namespace Ouroboros.Classes
             Log($"Placing trap {currentTrapsPlaced + 1}/{maxTraps}");
             currentTrapsPlaced++;
 
-            if (context != null && context.Runner != null && trapPrefab.IsValid)
+            NetworkObject dataPrefab = classData != null ? classData.trapPrefab : null;
+            if (context != null && context.Runner != null && (trapPrefab.IsValid || dataPrefab != null))
             {
                 Vector3 pos = context.Transform.position + context.Transform.forward * Mathf.Min(1.5f, trapPlacementRange);
                 var owner = context;
-                context.Runner.Spawn(trapPrefab, pos, Quaternion.identity, owner.PlayerRef, (runner, obj) =>
+                void InitTrap(NetworkRunner runner, NetworkObject obj)
                 {
                     var trap = obj.GetComponent<Interaction.ProximityTrap>();
                     if (trap != null)
                     {
                         trap.Configure(owner.Team, trapDamage, trapTriggerRadius, this);
                     }
-                });
+                }
+                // [v0.2] context.Runner.Spawn(trapPrefab, pos, Quaternion.identity, owner.PlayerRef, (runner, obj) => { ... });
+                if (trapPrefab.IsValid) context.Runner.Spawn(trapPrefab, pos, Quaternion.identity, owner.PlayerRef, InitTrap);
+                else context.Runner.Spawn(dataPrefab, pos, Quaternion.identity, owner.PlayerRef, InitTrap);
+            }
+            else
+            {
+                Log("No trap prefab assigned (ClassData.trapPrefab) - trap simulated without a networked object");
             }
             return true;
         }
