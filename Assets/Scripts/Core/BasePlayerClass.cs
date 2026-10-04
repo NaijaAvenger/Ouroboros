@@ -30,6 +30,9 @@ namespace Ouroboros.Core
         /// <summary>Owner-provided context. Null until <see cref="Initialize(IAbilityContext)"/> runs.</summary>
         protected IAbilityContext context;
 
+        /// <summary>Designer data applied via <see cref="ApplyClassData"/>; null when running on code defaults.</summary>
+        protected Data.ClassData classData;
+
         /// <summary>Per-slot ability definitions. Filled by subclasses in <see cref="OnInitialize"/>.</summary>
         protected readonly AbilitySlot[] abilitySlots = new AbilitySlot[GameConstants.MAX_ABILITY_SLOTS];
 
@@ -40,6 +43,7 @@ namespace Ouroboros.Core
         public float MovementSpeed => movementSpeed;
         public float SprintSpeed => sprintSpeed;
         public IAbilityContext Context => context;
+        public Data.ClassData ClassData => classData;
 
         public virtual void Initialize()
         {
@@ -62,6 +66,44 @@ namespace Ouroboros.Core
         {
             OnClassEquipped();
         }
+
+        /// <summary>
+        /// Overrides code defaults with designer values. Call after <see cref="Initialize()"/> (slots must
+        /// exist) and before the owner reads <see cref="MaxHealth"/>. Zero / empty fields are ignored.
+        /// </summary>
+        public virtual void ApplyClassData(Data.ClassData data)
+        {
+            if (data == null) return;
+            classData = data;
+
+            if (!string.IsNullOrEmpty(data.className)) className = data.className;
+            if (!string.IsNullOrEmpty(data.description)) description = data.description;
+            if (data.maxHealth > 0f) maxHealth = data.maxHealth;
+            if (data.maxStamina > 0f) maxStamina = data.maxStamina;
+            if (data.movementSpeed > 0f) movementSpeed = data.movementSpeed;
+            if (data.sprintSpeed > 0f) sprintSpeed = data.sprintSpeed;
+
+            if (data.abilities != null)
+            {
+                int count = Mathf.Min(data.abilities.Length, abilitySlots.Length);
+                for (int i = 0; i < count; i++)
+                {
+                    var a = data.abilities[i];
+                    if (a == null) continue;
+                    AbilitySlot slot = abilitySlots[i];
+                    if (!string.IsNullOrEmpty(a.abilityName)) slot.Name = a.abilityName;
+                    if (a.cooldown > 0f) slot.Cooldown = a.cooldown;
+                    if (a.energyCost > 0f) slot.StaminaCost = a.energyCost;
+                    if (a.duration > 0f) slot.Duration = a.duration;
+                    abilitySlots[i] = slot;
+                }
+            }
+
+            OnClassDataApplied(data);
+        }
+
+        /// <summary>Hook for classes that read extra fields (prefabs, modifiers) from their data.</summary>
+        protected virtual void OnClassDataApplied(Data.ClassData data) { }
 
         /// <summary>
         /// Gate-keeps ability use (slot validity, cooldown, stamina) and then defers to

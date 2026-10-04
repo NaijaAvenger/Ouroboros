@@ -5,6 +5,9 @@ namespace Ouroboros.Data
     /// <summary>
     /// ScriptableObject for player class configuration.
     /// Allows designers to create and modify class data without code changes.
+    ///
+    /// v0.3: applied at runtime through <see cref="ClassRegistry"/> → <c>BasePlayerClass.ApplyClassData</c>.
+    /// Zero / empty values mean "keep the code default", so partial assets are fine.
     /// </summary>
     [CreateAssetMenu(fileName = "New Class Data", menuName = "Ouroboros/Class Data")]
     public class ClassData : ScriptableObject
@@ -33,6 +36,18 @@ namespace Ouroboros.Data
         public float defenseMultiplier = 1f;
         public float stealthMultiplier = 1f;
         public float hackingMultiplier = 1f;
+
+        [Header("Class Prefabs (v0.3)")]
+        [Tooltip("Networked prefab the Saboteur spawns for Place Trap. Runtime-added class components cannot hold their own prefab references, so class prefabs live here.")]
+        public Fusion.NetworkObject trapPrefab;
+        [Tooltip("Any additional networked prefabs a class may spawn (projectiles, drones, deployables).")]
+        public Fusion.NetworkObject[] extraPrefabs;
+
+        /// <summary>Convenience accessor for <see cref="extraPrefabs"/> by index; null when out of range.</summary>
+        public Fusion.NetworkObject GetExtraPrefab(int index)
+        {
+            return extraPrefabs != null && index >= 0 && index < extraPrefabs.Length ? extraPrefabs[index] : null;
+        }
     }
     
     /// <summary>

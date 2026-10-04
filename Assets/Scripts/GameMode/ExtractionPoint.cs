@@ -44,6 +44,7 @@ namespace Ouroboros.GameMode
         }
 
         public float ProgressNormalized => Mathf.Clamp01(Progress / Mathf.Max(0.01f, ExtractionTime));
+        public float ExtractionRadius => extractionRadius;
 
         private bool RequiresWholeTeam
         {

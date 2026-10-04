@@ -26,6 +26,8 @@ namespace Ouroboros.GameMode
         [Header("Prefabs (optional)")]
         [Tooltip("Spawned where a player dies carrying loot. Leave empty to simply lose the loot.")]
         [SerializeField] private NetworkPrefabRef lootDropPrefab;
+        [Tooltip("Fallback direct prefab reference (filled by the Phase 0 scene builder).")]
+        [SerializeField] private NetworkObject lootDropPrefabObject;
 
         [Networked] public TickTimer MatchTimer { get; set; }
         /// <summary>Timer for the current phase (pre-match countdown, extraction window).</summary>
@@ -56,6 +58,10 @@ namespace Ouroboros.GameMode
 
         /// <summary>Fired on every peer when <see cref="CurrentState"/> changes.</summary>
         public static event Action<GameState> StateChanged;
+        /// <summary>Fired on every peer when extraction points open (v0.3).</summary>
+        public static event Action ExtractionOpened;
+        /// <summary>Fired on every peer when a team extracts members (team, members, loot) (v0.3).</summary>
+        public static event Action<Core.TeamID, int, int> TeamExtractedEvent;
 
         public enum GameState
         {
@@ -252,6 +258,7 @@ namespace Ouroboros.GameMode
         private void RPC_OnExtractionOpened()
         {
             Debug.Log("[ExtractionHeist] Extraction points are now open");
+            ExtractionOpened?.Invoke();
         }
 
         [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
@@ -311,14 +318,16 @@ namespace Ouroboros.GameMode
             }
 
             int loot = victim.TakeAllLoot();
-            if (loot > 0 && Config.dropLootOnDeath && lootDropPrefab.IsValid)
+            if (loot > 0 && Config.dropLootOnDeath && (lootDropPrefab.IsValid || lootDropPrefabObject != null))
             {
                 Vector3 pos = victim.transform.position + Vector3.up * 0.5f;
-                Runner.Spawn(lootDropPrefab, pos, Quaternion.identity, null, (runner, obj) =>
+                void InitDrop(NetworkRunner runner, NetworkObject obj)
                 {
                     var drop = obj.GetComponent<LootDrop>();
                     if (drop != null) drop.Value = loot;
-                });
+                }
+                if (lootDropPrefab.IsValid) Runner.Spawn(lootDropPrefab, pos, Quaternion.identity, null, InitDrop);
+                else Runner.Spawn(lootDropPrefabObject, pos, Quaternion.identity, null, InitDrop);
             }
         }
 
@@ -425,6 +434,7 @@ namespace Ouroboros.GameMode
         private void RPC_TeamExtracted(Core.TeamID team, int members, int loot)
         {
             Debug.Log($"[ExtractionHeist] {team} extracted {members} member(s) with {loot} loot!");
+            TeamExtractedEvent?.Invoke(team, members, loot);
         }
 
         // [v0.1] private void CheckMatchEnd()

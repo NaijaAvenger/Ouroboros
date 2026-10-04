@@ -69,6 +69,11 @@ namespace Ouroboros.Network
         /// <summary>Fired on every peer when <see cref="Status"/> changes.</summary>
         public event Action<NetworkPlayer, Core.StatusFlags> StatusChanged;
 
+        /// <summary>Fired on every peer when any player dies (victim, killer or <c>PlayerRef.None</c>). Drives kill feeds (v0.3).</summary>
+        public static event Action<NetworkPlayer, PlayerRef> PlayerKilled;
+        /// <summary>Fired on every peer when any player extracts (v0.3).</summary>
+        public static event Action<NetworkPlayer> PlayerExtracted;
+
         public Core.BasePlayerClass CurrentClass => currentClass;
         public bool IsLocalPlayer => Object != null && Object.HasInputAuthority;
         /// <summary>Alive, not extracted: still participating in the match.</summary>
@@ -225,6 +230,12 @@ namespace Ouroboros.Network
 
             currentClass = (Core.BasePlayerClass)gameObject.AddComponent(wanted);
             currentClass.Initialize(this);
+
+            // v0.3: designer overrides from the active ClassRegistry (same asset on every peer)
+            var registry = Data.ClassRegistry.Active;
+            var data = registry != null ? registry.Get(ClassType) : null;
+            if (data != null) currentClass.ApplyClassData(data);
+
             currentClass.OnClassSelected();
             ClassChanged?.Invoke(this, currentClass);
         }
@@ -512,7 +523,7 @@ namespace Ouroboros.Network
         private void RPC_OnPlayerDeath(PlayerRef killer)
         {
             Debug.Log($"[NetworkPlayer] Player {PlayerRef} ({DisplayName}) died" + (killer != default ? $" to {killer}" : ""));
-            // Cosmetic hooks (ragdoll, kill feed) subscribe to Died / listen here.
+            PlayerKilled?.Invoke(this, killer);
         }
 
         /// <summary>Restores state for a respawn. Called by <see cref="GameSessionManager"/> after teleporting.</summary>
@@ -564,7 +575,8 @@ namespace Ouroboros.Network
         private void RPC_OnExtracted()
         {
             Debug.Log($"[NetworkPlayer] Player {PlayerRef} ({DisplayName}) extracted");
-            if (playerModel != null) playerModel.gameObject.SetActive(false);
+            // [v0.2] if (playerModel != null) playerModel.gameObject.SetActive(false); // now handled by PlayerPresentation
+            PlayerExtracted?.Invoke(this);
         }
 
         // ------------------------------------------------------------------

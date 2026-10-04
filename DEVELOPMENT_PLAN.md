@@ -70,18 +70,26 @@ history of each change is readable inline.
 
 ## 3. Roadmap
 
-### Phase 0 — Bring-up in Unity (next, blocking everything else)
-1. Open in Unity 2021.3+ (2022.3 LTS recommended), import Fusion 2, add **AI Navigation** package (2022.2+).
-2. Build the player prefab: `NetworkObject`, `NetworkTransform`, `CharacterController`, `NetworkPlayer`, `PlayerController`, child camera. Register it in the Fusion prefab table.
-3. Scene: `GameSessionManager`, `TeamManager` + `ExtractionHeistGameMode` as scene NetworkObjects, 4+ `TeamSpawnPoint`s, 2–4 `ExtractionPoint`s, 3+ `LootObjective`s, a `GameModeConfig` asset (set `minPlayersToStart = 1` for solo testing).
-4. Fix any compile errors from SDK signature drift; run Host + 1 client (ParrelSync or two builds).
-5. Validate: spawn/teams, movement prediction, sprint drain, abilities on cooldown, objective crack → loot → extraction → scoring → winner.
+### Phase 0 — Bring-up in Unity (in progress; checklist in PHASE0_BRINGUP.md)
+Done from the repo side:
+- `Packages/manifest.json` (incl. AI Navigation) and `ProjectSettings/ProjectVersion.txt` (2022.3 LTS) so the folder opens as a project.
+- `Assets/Editor/OuroborosDevSceneBuilder.cs`: menu **Ouroboros > Setup > Create Dev Scene (Phase 0)** builds the dev `GameModeConfig`, Player / LootDrop / ProximityTrap prefabs and the `DevArena` scene, and adds it to Build Settings.
+- `Assets/Scripts/UI/DevHUD.cs`: F1 overlay with state, timers, vitals, cooldowns, loot, team scores, zone progress.
+- Prefab references accept a direct `NetworkObject` fallback; the runner refuses to start with a clear error if the scene isn't in Build Settings; `NetworkButtons` calls use the `int` overloads.
 
-### Phase 1 — Feel and clarity
-- Minimal HUD: health/stamina, cooldown pips, status icons, carried loot, match/phase timers, objective & extraction progress bars, team scores. All data already replicated.
-- Kill feed + death/respawn flow (`Died`/`Respawned` events are wired).
-- Audio/VFX hooks on the existing RPC stubs.
-- Data-driven class stats: load `ClassData` into `BasePlayerClass` (today's values are code defaults; `ClassData` fields exist). Move `trapPrefab`/VFX prefabs into `ClassData` so runtime-added class components can reference them.
+Still requires a machine with Unity + Fusion:
+1. Import Fusion 2, set the App ID, fix any SDK-signature drift (table in PHASE0_BRINGUP.md §3).
+2. Run the menu item, press Play, complete the solo smoke test (§5) and Host + Client test (§6).
+3. Record the fixes that were needed in PHASE0_BRINGUP.md §3.
+
+### Phase 1 — Feel and clarity (implemented in v0.3, awaiting in-engine validation)
+- **HeistHUD** (`UI/HeistHUD.cs`, UI Toolkit, code-built): match state + timers, team scoreboard, vitals bars, ability slots with cooldown fill / stamina cost / EMP dimming, status chips, loot and K/D, nearest vault or extraction zone with progress and contextual hint, kill feed, banners, death overlay with respawn countdown, extracted overlay, end-of-match table.
+- **Events for presentation**: `NetworkPlayer.PlayerKilled` / `PlayerExtracted`, `LootObjective.Completed`, `ExtractionHeistGameMode.ExtractionOpened` / `TeamExtractedEvent` (all fire on every peer from the existing RPCs).
+- **PlayerPresentation** (`Player/PlayerPresentation.cs`): team colour, status tints (shield, boost, revealed, burning, EMP), stealth hidden from enemy viewers unless revealed, own model hidden in first person, hidden on death / extraction. Replace with animation/VFX without touching gameplay.
+- **ClassData wiring**: `BasePlayerClass.ApplyClassData` overrides stats and per-slot cooldown / stamina / duration; `ClassRegistry` asset published through `GameSessionManager` so every peer applies the same data; Saboteur's trap prefab now comes from `ClassData.trapPrefab`.
+- **Scene builder** now also creates the four `ClassData` assets + `ClassRegistry`, the UI Toolkit theme + `PanelSettings`, the HUD object, and upgrades an existing Player prefab with `PlayerPresentation`. DevHUD stays available on F1.
+
+Still open in Phase 1: audio, real VFX/animation on the presentation hooks, a lobby class picker UI (`NetworkPlayer.RequestClass` exists).
 
 ### Phase 2 — Weapons & equipment
 - Networked `BaseEquipment` with tick-timer cooldowns and server-side execution (currently local `Time.time`).
