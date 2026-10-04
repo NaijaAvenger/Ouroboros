@@ -191,8 +191,8 @@ namespace Ouroboros.UI
 
         private static void SetCursorLocked(bool locked)
         {
-            Cursor.lockState = locked ? CursorLockMode.Locked : CursorLockMode.None;
-            Cursor.visible = !locked;
+            UnityEngine.Cursor.lockState = locked ? CursorLockMode.Locked : CursorLockMode.None;
+            UnityEngine.Cursor.visible = !locked;
         }
 
         private static Network.NetworkPlayer FindLocal()
