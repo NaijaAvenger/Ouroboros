@@ -60,7 +60,8 @@ Assets/Scripts/
 ## Getting Started
 
 ### Prerequisites
-- **Unity 6000.4** (project settings are committed; built-in render pipeline, legacy Input Manager)
+- **Unity 6000.4** (project settings are committed; built-in render pipeline, Input System + legacy "Both")
+- **Input System** (`com.unity.inputsystem`) and **uGUI** (`com.unity.ugui`, provides TextMeshPro for the Fusion Menu) — both in `Packages/manifest.json`
 - **Photon Fusion 2.1.3** (committed under `Assets/Photon`) + your Photon App ID
 - **AI Navigation** package (`com.unity.ai.navigation`) for NavMesh baking (GuardAI)
 
@@ -83,10 +84,19 @@ Assets/Scripts/
 Scoring: objectives, kills, first extraction per team, each member extracted, and banked loot (`GameModeConfig`).
 
 ## Controls
-- **WASD** — Move · **Shift** — Sprint (drains stamina) · **Space** — Jump · **Mouse** — Look
-- **1–4** — Class abilities · **F (hold)** — Interact (crack objectives)
-- **LMB / RMB** — Primary / Secondary · **Q** — Utility · **E** — Gadget
-- **Esc** — Toggle cursor lock
+Input goes through the **Input System** package (keyboard, mouse, gamepad) when it is enabled; the legacy Input Manager is only a fallback.
+
+| Action | Keyboard / Mouse | Gamepad |
+|--------|------------------|---------|
+| Move / Look | WASD / Mouse | Left stick / Right stick |
+| Sprint (drains stamina) | Shift | L3 (left stick click) |
+| Jump | Space | A |
+| Interact (hold to crack vaults) | F | X |
+| Abilities 1–4 | 1 2 3 4 | D-pad ↑ → ↓ ← |
+| Primary / Secondary | LMB / RMB | RT / LT |
+| Utility / Gadget | Q / E | LB / RB |
+| Cursor lock toggle | Esc | Start |
+| Debug overlay | F1 | Select |
 
 ## Technical Details
 - **Max Players**: 16 (4 teams × 4 players)

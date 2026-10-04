@@ -12,14 +12,14 @@ namespace Ouroboros.UI
     public class DevHUD : MonoBehaviour
     {
         [SerializeField] private bool visible = true;
-        [SerializeField] private KeyCode toggleKey = KeyCode.F1;
+        // [v0.2] [SerializeField] private KeyCode toggleKey = KeyCode.F1; // now F1 / gamepad Select via LocalInputSource
 
         private readonly StringBuilder sb = new StringBuilder(1024);
         private GUIStyle style;
 
         private void Update()
         {
-            if (Input.GetKeyDown(toggleKey)) visible = !visible;
+            if (Core.LocalInputSource.DebugHudTogglePressed()) visible = !visible;
         }
 
         private void OnGUI()
@@ -45,7 +45,7 @@ namespace Ouroboros.UI
         {
             var gm = GameMode.ExtractionHeistGameMode.Instance;
             var session = Network.GameSessionManager.Instance;
-            sb.AppendLine("<b>OUROBOROS DEV HUD</b>  (F1 toggles, Esc frees cursor)");
+            sb.AppendLine($"<b>OUROBOROS DEV HUD</b>  (F1/Select toggles, Esc/Start frees cursor)  input: {(Core.LocalInputSource.UsingInputSystem ? "Input System" : "legacy")}{(Core.LocalInputSource.LastDeviceWasGamepad ? " [gamepad]" : "")}");
             if (session != null && session.Runner != null)
             {
                 sb.AppendLine($"Session: {session.Runner.GameMode}  IsServer={session.Runner.IsServer}  Local={session.Runner.LocalPlayer}");

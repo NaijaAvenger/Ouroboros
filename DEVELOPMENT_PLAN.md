@@ -89,7 +89,9 @@ Still requires a machine with Unity + Fusion:
 - **ClassData wiring**: `BasePlayerClass.ApplyClassData` overrides stats and per-slot cooldown / stamina / duration; `ClassRegistry` asset published through `GameSessionManager` so every peer applies the same data; Saboteur's trap prefab now comes from `ClassData.trapPrefab`.
 - **Scene builder** now also creates the four `ClassData` assets + `ClassRegistry`, the UI Toolkit theme + `PanelSettings`, the HUD object, and upgrades an existing Player prefab with `PlayerPresentation`. DevHUD stays available on F1.
 
-Still open in Phase 1: audio, real VFX/animation on the presentation hooks, a lobby class picker UI (`NetworkPlayer.RequestClass` exists).
+- **Input System first** (`Core/LocalInputSource.cs`): keyboard, mouse and gamepad through `UnityEngine.InputSystem` when enabled, legacy Input Manager otherwise; HUD hints follow the last-used device.
+
+Still open in Phase 1: audio, real VFX/animation on the presentation hooks, a lobby class picker UI (`NetworkPlayer.RequestClass` exists), rebindable actions (an `InputActionAsset` can replace the direct device polling in `LocalInputSource` without touching callers).
 
 ### Phase 2 — Weapons & equipment
 - Networked `BaseEquipment` with tick-timer cooldowns and server-side execution (currently local `Time.time`).

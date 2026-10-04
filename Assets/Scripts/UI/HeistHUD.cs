@@ -194,7 +194,7 @@ namespace Ouroboros.UI
                 slot.CooldownFill.style.height = Length.Percent(0);
                 slot.CooldownFill.style.backgroundColor = new Color(1f, 1f, 1f, 0.18f);
                 slot.Root.Add(slot.CooldownFill);
-                slot.Key = Text((i + 1).ToString(), 12, new Color(1f, 1f, 1f, 0.6f), bold: true);
+                slot.Key = Text(Core.LocalInputSource.Hint((Core.InputButtons)((int)Core.InputButtons.Ability1 + i)), 12, new Color(1f, 1f, 1f, 0.6f), bold: true);
                 slot.Name = Text("", 12, Color.white, bold: true);
                 slot.Name.style.whiteSpace = WhiteSpace.Normal;
                 slot.Cooldown = Text("", 14, LootColor, bold: true);
@@ -406,6 +406,7 @@ namespace Ouroboros.UI
                 if (!has) continue;
 
                 view.Name.text = def.Name;
+                view.Key.text = Core.LocalInputSource.Hint((Core.InputButtons)((int)Core.InputButtons.Ability1 + i));
                 float remaining = local.AbilityCooldownRemaining(i);
                 float frac = def.Cooldown > 0f ? Mathf.Clamp01(remaining / def.Cooldown) : 0f;
                 view.CooldownFill.style.height = Length.Percent(frac * 100f);
@@ -464,9 +465,9 @@ namespace Ouroboros.UI
                 SetBar(zoneFill, bestObj.ProgressNormalized, 1f);
                 if (!bestObj.IsAvailable) zoneHint.text = "Depleted";
                 else if (!bestObj.IsUnlocked) zoneHint.text = "Locked - needs a Hacker";
-                else if (bestObj.CapturingTeam == Core.TeamID.None) zoneHint.text = "Hold F to crack";
+                else if (bestObj.CapturingTeam == Core.TeamID.None) zoneHint.text = $"Hold {Core.LocalInputSource.Hint(Core.InputButtons.Interact)} to crack";
                 else if (bestObj.IsContested) zoneHint.text = $"{TeamName(bestObj.CapturingTeam)} cracking - CONTESTED";
-                else zoneHint.text = bestObj.CapturingTeam == local.Team ? "Cracking... keep holding F" : $"{TeamName(bestObj.CapturingTeam)} is cracking it!";
+                else zoneHint.text = bestObj.CapturingTeam == local.Team ? $"Cracking... keep holding {Core.LocalInputSource.Hint(Core.InputButtons.Interact)}" : $"{TeamName(bestObj.CapturingTeam)} is cracking it!";
             }
             else
             {
