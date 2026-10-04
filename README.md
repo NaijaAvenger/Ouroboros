@@ -4,7 +4,7 @@
 A modular multiplayer extraction heist game built with **Photon Fusion 2**, featuring 4 teams of 4 players competing to crack objectives, hold onto the loot, and extract before the window closes.
 
 > **Status: v0.2 — architecture + gameplay loop implemented, awaiting first in-engine bring-up.**
-> See [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) for the audit, what changed, and the roadmap.
+> See [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) for the audit, what changed, and the roadmap, and [PHASE0_BRINGUP.md](PHASE0_BRINGUP.md) for the first-run checklist.
 
 ## Overview
 - **4 Teams** of 4 players each (16 players total)
@@ -63,6 +63,8 @@ Assets/Scripts/
 - **AI Navigation** package (`com.unity.ai.navigation`) on Unity 2022.2+ for `NavMeshAgent`
 
 ### Scene Setup
+**Fast path:** menu **Ouroboros > Setup > Create Dev Scene (Phase 0)** generates the config asset, prefabs and a playable `DevArena` scene (see [PHASE0_BRINGUP.md](PHASE0_BRINGUP.md)). Manual equivalent:
+
 1. **Player prefab**: `NetworkObject` + `NetworkTransform` + `CharacterController` + `NetworkPlayer` + `PlayerController` (+ child camera assigned to `cameraTransform`). Register it in the Fusion `NetworkProjectConfig` prefab table.
 2. **Scene objects**: `GameSessionManager` (assign the player prefab), `TeamManager` and `ExtractionHeistGameMode` as scene `NetworkObject`s.
 3. **Config**: Create → Ouroboros → Game Mode Config, assign to `ExtractionHeistGameMode`. For solo testing set `minPlayersToStart = 1`.

@@ -136,7 +136,7 @@ namespace Ouroboros.Player
             transform.rotation = Quaternion.Euler(0f, input.Yaw, 0f);
 
             Vector2 axes = Vector2.ClampMagnitude(input.Move, 1f);
-            bool wantsSprint = input.Buttons.IsSet(Core.InputButtons.Sprint) && axes.y > 0.1f;
+            bool wantsSprint = input.Buttons.IsSet((int)Core.InputButtons.Sprint) && axes.y > 0.1f;
             bool canSprint = wantsSprint && networkPlayer.Stamina > Core.GameConstants.SPRINT_MIN_STAMINA
                              && !networkPlayer.HasStatus(Core.StatusFlags.Flashed);
 
@@ -163,7 +163,7 @@ namespace Ouroboros.Player
             }
 
             // Jump
-            if (input.Buttons.IsSet(Core.InputButtons.Jump) && characterController.isGrounded)
+            if (input.Buttons.IsSet((int)Core.InputButtons.Jump) && characterController.isGrounded)
             {
                 VerticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
             }
@@ -176,24 +176,24 @@ namespace Ouroboros.Player
 
         private void HandleAbilities(NetworkButtons pressed)
         {
-            if (pressed.IsSet(Core.InputButtons.Ability1)) networkPlayer.UseAbility(0);
-            if (pressed.IsSet(Core.InputButtons.Ability2)) networkPlayer.UseAbility(1);
-            if (pressed.IsSet(Core.InputButtons.Ability3)) networkPlayer.UseAbility(2);
-            if (pressed.IsSet(Core.InputButtons.Ability4)) networkPlayer.UseAbility(3);
+            if (pressed.IsSet((int)Core.InputButtons.Ability1)) networkPlayer.UseAbility(0);
+            if (pressed.IsSet((int)Core.InputButtons.Ability2)) networkPlayer.UseAbility(1);
+            if (pressed.IsSet((int)Core.InputButtons.Ability3)) networkPlayer.UseAbility(2);
+            if (pressed.IsSet((int)Core.InputButtons.Ability4)) networkPlayer.UseAbility(3);
         }
 
         private void HandleInteract(NetworkButtons held)
         {
-            networkPlayer.SetStatus(Core.StatusFlags.Interacting, held.IsSet(Core.InputButtons.Interact));
+            networkPlayer.SetStatus(Core.StatusFlags.Interacting, held.IsSet((int)Core.InputButtons.Interact));
         }
 
         private void HandleEquipment(NetworkButtons pressed)
         {
             if (equipmentLoadout == null) return;
-            if (pressed.IsSet(Core.InputButtons.Primary))   equipmentLoadout.UseEquipment(Equipment.EquipmentSlotType.Primary);
-            if (pressed.IsSet(Core.InputButtons.Secondary)) equipmentLoadout.UseEquipment(Equipment.EquipmentSlotType.Secondary);
-            if (pressed.IsSet(Core.InputButtons.Utility))   equipmentLoadout.UseEquipment(Equipment.EquipmentSlotType.Utility);
-            if (pressed.IsSet(Core.InputButtons.Gadget))    equipmentLoadout.UseEquipment(Equipment.EquipmentSlotType.Gadget);
+            if (pressed.IsSet((int)Core.InputButtons.Primary))   equipmentLoadout.UseEquipment(Equipment.EquipmentSlotType.Primary);
+            if (pressed.IsSet((int)Core.InputButtons.Secondary)) equipmentLoadout.UseEquipment(Equipment.EquipmentSlotType.Secondary);
+            if (pressed.IsSet((int)Core.InputButtons.Utility))   equipmentLoadout.UseEquipment(Equipment.EquipmentSlotType.Utility);
+            if (pressed.IsSet((int)Core.InputButtons.Gadget))    equipmentLoadout.UseEquipment(Equipment.EquipmentSlotType.Gadget);
         }
 
         /// <summary>

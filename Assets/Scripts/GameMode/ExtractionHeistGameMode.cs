@@ -26,6 +26,8 @@ namespace Ouroboros.GameMode
         [Header("Prefabs (optional)")]
         [Tooltip("Spawned where a player dies carrying loot. Leave empty to simply lose the loot.")]
         [SerializeField] private NetworkPrefabRef lootDropPrefab;
+        [Tooltip("Fallback direct prefab reference (filled by the Phase 0 scene builder).")]
+        [SerializeField] private NetworkObject lootDropPrefabObject;
 
         [Networked] public TickTimer MatchTimer { get; set; }
         /// <summary>Timer for the current phase (pre-match countdown, extraction window).</summary>
@@ -311,14 +313,16 @@ namespace Ouroboros.GameMode
             }
 
             int loot = victim.TakeAllLoot();
-            if (loot > 0 && Config.dropLootOnDeath && lootDropPrefab.IsValid)
+            if (loot > 0 && Config.dropLootOnDeath && (lootDropPrefab.IsValid || lootDropPrefabObject != null))
             {
                 Vector3 pos = victim.transform.position + Vector3.up * 0.5f;
-                Runner.Spawn(lootDropPrefab, pos, Quaternion.identity, null, (runner, obj) =>
+                void InitDrop(NetworkRunner runner, NetworkObject obj)
                 {
                     var drop = obj.GetComponent<LootDrop>();
                     if (drop != null) drop.Value = loot;
-                });
+                }
+                if (lootDropPrefab.IsValid) Runner.Spawn(lootDropPrefab, pos, Quaternion.identity, null, InitDrop);
+                else Runner.Spawn(lootDropPrefabObject, pos, Quaternion.identity, null, InitDrop);
             }
         }
 

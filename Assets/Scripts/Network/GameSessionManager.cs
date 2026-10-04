@@ -32,6 +32,8 @@ namespace Ouroboros.Network
 
         [Header("Prefabs")]
         [SerializeField] private NetworkPrefabRef playerPrefab;
+        [Tooltip("Fallback used when playerPrefab is unset: a direct prefab reference (the Phase 0 scene builder fills this).")]
+        [SerializeField] private NetworkObject playerPrefabObject;
 
         [Header("Defaults")]
         [SerializeField] private Core.PlayerClassType defaultClass = Core.PlayerClassType.Agent;
@@ -106,7 +108,16 @@ namespace Ouroboros.Network
             var sceneManager = runner.GetComponent<NetworkSceneManagerDefault>();
             if (sceneManager == null) sceneManager = runner.gameObject.AddComponent<NetworkSceneManagerDefault>();
 
-            var scene = SceneRef.FromIndex(SceneManager.GetActiveScene().buildIndex);
+            int buildIndex = SceneManager.GetActiveScene().buildIndex;
+            if (buildIndex < 0)
+            {
+                Debug.LogError("[GameSessionManager] The active scene is not in Build Settings, so Fusion cannot reference it. " +
+                               "Add it via File > Build Settings (Ouroboros > Setup > Create Dev Scene does this for DevArena).");
+                if (runnerPrefab != null) Destroy(runner.gameObject); else Destroy(runner);
+                runner = null;
+                return false;
+            }
+            var scene = SceneRef.FromIndex(buildIndex);
 
             var result = await runner.StartGame(new StartGameArgs
             {
@@ -146,9 +157,9 @@ namespace Ouroboros.Network
 
         private void SpawnPlayer(NetworkRunner r, PlayerRef player)
         {
-            if (!playerPrefab.IsValid)
+            if (!playerPrefab.IsValid && playerPrefabObject == null)
             {
-                Debug.LogError("[GameSessionManager] Player prefab not assigned");
+                Debug.LogError("[GameSessionManager] Player prefab not assigned (set playerPrefab or playerPrefabObject)");
                 return;
             }
 
@@ -170,7 +181,7 @@ namespace Ouroboros.Network
             Vector3 pos = point != null ? point.GetSpawnPosition() : Vector3.zero;
             Quaternion rot = point != null ? point.GetSpawnRotation() : Quaternion.identity;
 
-            NetworkObject obj = r.Spawn(playerPrefab, pos, rot, player, (runner, o) =>
+            void InitPlayer(NetworkRunner runner, NetworkObject o)
             {
                 var np = o.GetComponent<NetworkPlayer>();
                 if (np != null)
@@ -180,7 +191,12 @@ namespace Ouroboros.Network
                     np.ClassType = classType;
                     np.DisplayName = $"Player {player.PlayerId}";
                 }
-            });
+            }
+
+            // [v0.2] NetworkObject obj = r.Spawn(playerPrefab, pos, rot, player, (runner, o) => { ... });
+            NetworkObject obj = playerPrefab.IsValid
+                ? r.Spawn(playerPrefab, pos, rot, player, InitPlayer)
+                : r.Spawn(playerPrefabObject, pos, rot, player, InitPlayer);
 
             if (obj == null) return;
 
@@ -270,17 +286,17 @@ namespace Ouroboros.Network
                 Pitch = accumulatedPitch
             };
 
-            data.Buttons.Set(Core.InputButtons.Jump,      Input.GetKey(KeyCode.Space) || WasPressed(Core.InputButtons.Jump));
-            data.Buttons.Set(Core.InputButtons.Sprint,    Input.GetKey(KeyCode.LeftShift));
-            data.Buttons.Set(Core.InputButtons.Interact,  Input.GetKey(KeyCode.F));
-            data.Buttons.Set(Core.InputButtons.Ability1,  Input.GetKey(KeyCode.Alpha1) || WasPressed(Core.InputButtons.Ability1));
-            data.Buttons.Set(Core.InputButtons.Ability2,  Input.GetKey(KeyCode.Alpha2) || WasPressed(Core.InputButtons.Ability2));
-            data.Buttons.Set(Core.InputButtons.Ability3,  Input.GetKey(KeyCode.Alpha3) || WasPressed(Core.InputButtons.Ability3));
-            data.Buttons.Set(Core.InputButtons.Ability4,  Input.GetKey(KeyCode.Alpha4) || WasPressed(Core.InputButtons.Ability4));
-            data.Buttons.Set(Core.InputButtons.Primary,   Input.GetMouseButton(0) || WasPressed(Core.InputButtons.Primary));
-            data.Buttons.Set(Core.InputButtons.Secondary, Input.GetMouseButton(1) || WasPressed(Core.InputButtons.Secondary));
-            data.Buttons.Set(Core.InputButtons.Utility,   Input.GetKey(KeyCode.Q) || WasPressed(Core.InputButtons.Utility));
-            data.Buttons.Set(Core.InputButtons.Gadget,    Input.GetKey(KeyCode.E) || WasPressed(Core.InputButtons.Gadget));
+            data.Buttons.Set((int)Core.InputButtons.Jump,      Input.GetKey(KeyCode.Space) || WasPressed(Core.InputButtons.Jump));
+            data.Buttons.Set((int)Core.InputButtons.Sprint,    Input.GetKey(KeyCode.LeftShift));
+            data.Buttons.Set((int)Core.InputButtons.Interact,  Input.GetKey(KeyCode.F));
+            data.Buttons.Set((int)Core.InputButtons.Ability1,  Input.GetKey(KeyCode.Alpha1) || WasPressed(Core.InputButtons.Ability1));
+            data.Buttons.Set((int)Core.InputButtons.Ability2,  Input.GetKey(KeyCode.Alpha2) || WasPressed(Core.InputButtons.Ability2));
+            data.Buttons.Set((int)Core.InputButtons.Ability3,  Input.GetKey(KeyCode.Alpha3) || WasPressed(Core.InputButtons.Ability3));
+            data.Buttons.Set((int)Core.InputButtons.Ability4,  Input.GetKey(KeyCode.Alpha4) || WasPressed(Core.InputButtons.Ability4));
+            data.Buttons.Set((int)Core.InputButtons.Primary,   Input.GetMouseButton(0) || WasPressed(Core.InputButtons.Primary));
+            data.Buttons.Set((int)Core.InputButtons.Secondary, Input.GetMouseButton(1) || WasPressed(Core.InputButtons.Secondary));
+            data.Buttons.Set((int)Core.InputButtons.Utility,   Input.GetKey(KeyCode.Q) || WasPressed(Core.InputButtons.Utility));
+            data.Buttons.Set((int)Core.InputButtons.Gadget,    Input.GetKey(KeyCode.E) || WasPressed(Core.InputButtons.Gadget));
 
             pressedSinceLastTick = 0;
             input.Set(data);
