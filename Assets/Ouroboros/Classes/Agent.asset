@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd4a7c37877836f4ba55066e34996b38, type: 3}
+  m_Name: Agent
+  m_EditorClassIdentifier: Assembly-CSharp::Ouroboros.Data.ClassData
+  className: Agent
+  description: Versatile field operative with balanced combat capabilities and tactical
+    support options.
+  classType: 4
+  classIcon: {fileID: 0}
+  maxHealth: 100
+  maxStamina: 100
+  movementSpeed: 5.2
+  sprintSpeed: 7.5
+  abilities:
+  - abilityName: Tactical Shield
+    description: 
+    abilityIcon: {fileID: 0}
+    cooldown: 20
+    duration: 8
+    energyCost: 20
+    effectType: 0
+  - abilityName: Damage Boost
+    description: 
+    abilityIcon: {fileID: 0}
+    cooldown: 18
+    duration: 6
+    energyCost: 15
+    effectType: 0
+  - abilityName: Recon Drone
+    description: 
+    abilityIcon: {fileID: 0}
+    cooldown: 25
+    duration: 6
+    energyCost: 10
+    effectType: 0
+  - abilityName: Flashbang
+    description: 
+    abilityIcon: {fileID: 0}
+    cooldown: 12
+    duration: 3
+    energyCost: 10
+    effectType: 0
+  startingEquipment: []
+  damageMultiplier: 1
+  defenseMultiplier: 1
+  stealthMultiplier: 1
+  hackingMultiplier: 1
+  trapPrefab: {fileID: 0}
+  extraPrefabs: []

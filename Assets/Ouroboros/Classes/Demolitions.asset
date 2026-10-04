@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd4a7c37877836f4ba55066e34996b38, type: 3}
+  m_Name: Demolitions
+  m_EditorClassIdentifier: Assembly-CSharp::Ouroboros.Data.ClassData
+  className: Demolitions
+  description: Explosives expert capable of breaching reinforced structures and creating
+    area denial zones.
+  classType: 3
+  classIcon: {fileID: 0}
+  maxHealth: 110
+  maxStamina: 100
+  movementSpeed: 4.5
+  sprintSpeed: 6.5
+  abilities:
+  - abilityName: Place Explosive
+    description: 
+    abilityIcon: {fileID: 0}
+    cooldown: 2
+    duration: 0
+    energyCost: 5
+    effectType: 0
+  - abilityName: Detonate
+    description: 
+    abilityIcon: {fileID: 0}
+    cooldown: 4
+    duration: 0
+    energyCost: 0
+    effectType: 0
+  - abilityName: Breaching Charge
+    description: 
+    abilityIcon: {fileID: 0}
+    cooldown: 20
+    duration: 0
+    energyCost: 20
+    effectType: 0
+  - abilityName: Incendiary
+    description: 
+    abilityIcon: {fileID: 0}
+    cooldown: 18
+    duration: 5
+    energyCost: 15
+    effectType: 0
+  startingEquipment: []
+  damageMultiplier: 1
+  defenseMultiplier: 1
+  stealthMultiplier: 1
+  hackingMultiplier: 1
+  trapPrefab: {fileID: 0}
+  extraPrefabs: []
