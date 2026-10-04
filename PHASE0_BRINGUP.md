@@ -5,24 +5,22 @@ Everything below that can be automated is: the menu item **Ouroboros > Setup > C
 builds the config asset, prefabs and a playable `DevArena` scene.
 
 ## 1. Open the project
-- [ ] Unity Hub → Add project → this folder (`ProjectSettings/ProjectVersion.txt` pins **2022.3.20f1**; any 2022.3 LTS is fine, Hub will offer to switch).
-- [ ] Let the package manager resolve `Packages/manifest.json` (includes **AI Navigation**, needed by `NavMeshAgent`).
-- [ ] Expect compile errors at this point: every script references `Fusion`. That's the next step.
+- [x] Project files are committed on `main`: **Unity 6000.4.1f1**, built-in render pipeline, legacy Input Manager active (`activeInputHandler: 0`, required by `GameSessionManager.SampleLocalInput`).
+- [ ] Unity Hub → Add project → this folder.
+- [ ] Package Manager → install **AI Navigation** (`com.unity.ai.navigation` 2.x). `NavMeshAgent` compiles without it, but Unity 6 has no NavMesh baking UI without the package (needed for GuardAI).
 
-## 2. Import Photon Fusion 2
-- [ ] Asset Store / Photon dashboard → import the **Fusion 2** SDK (2.0.x).
+## 2. Photon Fusion 2
+- [x] **Fusion 2.1.3** is committed under `Assets/Photon`.
 - [ ] Fusion Hub (Window > Fusion > Fusion Hub) → paste your **App ID**.
 - [ ] Wait for the Fusion ILWeaver to run (console: "Weaving ... Assembly-CSharp").
 
-## 3. First compile — expected adjustments
-The code targets Fusion 2.0.x and has only been syntax-checked, never compiled. Fix in this order:
-
+## 3. First compile — adjustments found
 | Symptom | Fix |
 |---------|-----|
-| `GameSessionManager` does not implement interface member `INetworkRunnerCallbacks.X` / signature mismatch | Right-click the class → *Implement interface* and delete the old stub, or adjust the parameter list to your SDK's version. Only `OnPlayerJoined`, `OnPlayerLeft`, `OnInput`, `OnShutdown` carry logic. |
-| `NetworkDictionary` has no `Set` | Replace `PlayerTeams.Set(player, team)` with `PlayerTeams.Add(player, team)` guarded by `ContainsKey`, or the indexer. (`Network/TeamManager.cs`) |
+| `GameSessionManager` does not implement `INetworkRunnerCallbacks.OnReliableDataReceived` | **Fixed.** Fusion 2.1 changed the last parameter from `ArraySegment<byte>` to `ReadOnlySpan<byte>`. Signatures were verified against `Assets/Photon/Fusion/Runtime/Utilities/RunnerVisibility/RunnerEnableVisibility.cs`. |
+| `NetworkDictionary` has no `Set` | If it happens: replace `PlayerTeams.Set(player, team)` with `PlayerTeams.Add(player, team)` guarded by `ContainsKey`, or the indexer. (`Network/TeamManager.cs`) |
 | `NetworkTransform.Teleport` overload | Use `Teleport(position, rotation)` positional form that exists in your version. (`Player/PlayerController.cs`) |
-| `SceneRef.FromIndex` missing | `SceneRef.FromIndex(int)` is 2.0; on older betas use `SceneManager.GetActiveScene().buildIndex` cast. (`Network/GameSessionManager.cs`) |
+| `SceneRef.FromIndex` missing | Present in 2.1.3 (verified in `Fusion.Runtime.dll`). |
 | Hiding warning: `NetworkPlayer.HasStateAuthority` hides inherited member | Harmless; add `new` or delete the property (the inherited one satisfies the interface). |
 | `FindObjectOfType` obsolete warning (2023+) | Already guarded by `UNITY_2023_1_OR_NEWER` in `Core/SceneUtil.cs`. |
 

@@ -17,8 +17,9 @@ namespace Ouroboros.Network
     /// PlayerController. <see cref="TeamManager"/> and <see cref="GameMode.ExtractionHeistGameMode"/>
     /// are expected to be scene NetworkObjects.
     ///
-    /// Interface signatures target Photon Fusion 2.0.x. If your SDK differs, let the IDE regenerate the
-    /// <see cref="INetworkRunnerCallbacks"/> stubs; only OnPlayerJoined / OnPlayerLeft / OnInput carry logic.
+    /// Interface signatures match Photon Fusion 2.1.3 (the SDK checked into Assets/Photon). If a future SDK
+    /// differs, let the IDE regenerate the <see cref="INetworkRunnerCallbacks"/> stubs; only OnPlayerJoined /
+    /// OnPlayerLeft / OnInput / OnShutdown carry logic.
     /// </summary>
     public class GameSessionManager : MonoBehaviour, INetworkRunnerCallbacks
     {
@@ -361,7 +362,8 @@ namespace Ouroboros.Network
         public void OnSessionListUpdated(NetworkRunner r, List<SessionInfo> sessionList) { }
         public void OnCustomAuthenticationResponse(NetworkRunner r, Dictionary<string, object> data) { }
         public void OnHostMigration(NetworkRunner r, HostMigrationToken hostMigrationToken) { }
-        public void OnReliableDataReceived(NetworkRunner r, PlayerRef player, ReliableKey key, ArraySegment<byte> data) { }
+        // [v0.2] public void OnReliableDataReceived(NetworkRunner r, PlayerRef player, ReliableKey key, ArraySegment<byte> data) { } // Fusion 2.0 signature
+        public void OnReliableDataReceived(NetworkRunner r, PlayerRef player, ReliableKey key, ReadOnlySpan<byte> data) { }           // Fusion 2.1.x signature
         public void OnReliableDataProgress(NetworkRunner r, PlayerRef player, ReliableKey key, float progress) { }
         public void OnSceneLoadDone(NetworkRunner r) { }
         public void OnSceneLoadStart(NetworkRunner r) { }

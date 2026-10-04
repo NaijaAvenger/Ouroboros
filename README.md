@@ -58,9 +58,9 @@ Assets/Scripts/
 ## Getting Started
 
 ### Prerequisites
-- Unity 2021.3+ (2022.3 LTS recommended)
-- Photon Fusion 2 SDK + Photon App ID
-- **AI Navigation** package (`com.unity.ai.navigation`) on Unity 2022.2+ for `NavMeshAgent`
+- **Unity 6000.4** (project settings are committed; built-in render pipeline, legacy Input Manager)
+- **Photon Fusion 2.1.3** (committed under `Assets/Photon`) + your Photon App ID
+- **AI Navigation** package (`com.unity.ai.navigation`) for NavMesh baking (GuardAI)
 
 ### Scene Setup
 **Fast path:** menu **Ouroboros > Setup > Create Dev Scene (Phase 0)** generates the config asset, prefabs and a playable `DevArena` scene (see [PHASE0_BRINGUP.md](PHASE0_BRINGUP.md)). Manual equivalent:
