@@ -2,300 +2,147 @@
 
 ## File Organization
 
-### Core System (`Assets/Scripts/Core/`)
-- `IPlayerClass.cs` - Interface for all player classes
-- `BasePlayerClass.cs` - Abstract base class with common functionality
-- `GameConstants.cs` - Game-wide constants and enums
+### Core (`Assets/Scripts/Core/`)
+- `GameConstants.cs` - Limits, `TeamID`, `PlayerClassType`, `StatusFlags`, `InputButtons`, `TeamUtil`
+- `IPlayerClass.cs` / `BasePlayerClass.cs` - Class contract, ability gate, `AbilitySlot`
+- `IAbilityContext.cs` - Owner services a class may use
+- `NetworkInputData.cs` - `INetworkInput` sent each tick
+- `SceneUtil.cs` - Version-safe scene lookups
 
-### Player Classes (`Assets/Scripts/Classes/`)
-- `HackerClass.cs` - Electronic warfare specialist (85 HP, 5.5 Speed)
-- `SaboteurClass.cs` - Stealth and traps (90 HP, 6.0 Speed)
-- `DemolitionsClass.cs` - Explosives expert (110 HP, 4.5 Speed)
-- `AgentClass.cs` - Balanced operative (100 HP, 5.2 Speed)
+### Classes (`Assets/Scripts/Classes/`)
+- `HackerClass.cs` (85 HP, 5.5) · `SaboteurClass.cs` (90 HP, 6.0) · `DemolitionsClass.cs` (110 HP, 4.5) · `AgentClass.cs` (100 HP, 5.2)
 
-### Network System (`Assets/Scripts/Network/`)
-- `NetworkPlayer.cs` - Main networked player component (Photon Fusion)
-- `TeamManager.cs` - 4-team management and balancing
+### Network (`Assets/Scripts/Network/`)
+- `NetworkPlayer.cs` - Authoritative player state, abilities, damage, loot, extraction
+- `TeamManager.cs` - Replicated team assignments and team status
+- `GameSessionManager.cs` - Runner start, spawning, respawns, input sampling
 
 ### Game Mode (`Assets/Scripts/GameMode/`)
-- `ExtractionHeistGameMode.cs` - Main game loop and match management
-- `ExtractionPoint.cs` - Extraction zone implementation
+- `ExtractionHeistGameMode.cs` - Match state machine, scoring, winner
+- `ExtractionPoint.cs` - Extraction zone (contested, reusable)
+- `LootObjective.cs` - Hold-to-crack vault
+- `LootDrop.cs` - Dropped loot pickup
 
-### Equipment (`Assets/Scripts/Equipment/`)
-- `BaseEquipment.cs` - Base class for all equipment
-- `EquipmentLoadout.cs` - Player equipment management (6 slots)
-- `BaseTech.cs` - Special tech/abilities system
+### Interaction / Combat
+- `Interaction/Interfaces.cs` - `IHackable`, `ISecurityDevice`, `IBreachable`
+- `Interaction/ProximityTrap.cs`, `SecurityCamera.cs`, `BreachableDoor.cs`
+- `Combat/IDamageable.cs`, `Combat/DamageUtil.cs`
 
-### AI System (`Assets/Scripts/AI/`)
-- `BaseAIAgent.cs` - Base AI with NavMesh and state machine
-- `BehaviorTree.cs` - Behavior tree node system
+### AI (`Assets/Scripts/AI/`)
+- `BaseAIAgent.cs` - Networked AI base with perception and nav helpers
+- `Perception.cs` - FOV / LOS / reveal-aware visibility
+- `BehaviorTree.cs` - Sequence, Selector, Inverter, Condition/Action (+ delegate variants)
+- `GuardAI.cs` - Patrol / investigate / fight
 
-### Data (`Assets/Scripts/Data/`)
-- `ClassData.cs` - ScriptableObject for class configuration
-- `EquipmentData.cs` - ScriptableObject for equipment
-- `GameModeConfig.cs` - ScriptableObject for game mode settings
-
-### Player (`Assets/Scripts/Player/`)
-- `PlayerController.cs` - Player input and movement
+### Data / Player / Equipment
+- `Data/GameModeConfig.cs` (all match rules), `ClassData.cs`, `EquipmentData.cs`
+- `Player/PlayerController.cs`, `Player/TeamSpawnPoint.cs`
+- `Equipment/BaseEquipment.cs`, `EquipmentLoadout.cs`, `BaseTech.cs`
 
 ## Key Constants
-
 ```csharp
-MAX_TEAMS = 4
-PLAYERS_PER_TEAM = 4
-MAX_PLAYERS = 16
-MAX_ABILITY_SLOTS = 4
-MAX_EQUIPMENT_SLOTS = 6
-MAX_TECH_SLOTS = 3
+MAX_TEAMS = 4            PLAYERS_PER_TEAM = 4        MAX_PLAYERS = 16
+MAX_ABILITY_SLOTS = 4    MAX_EQUIPMENT_SLOTS = 6     MAX_TECH_SLOTS = 3
+STAMINA_REGEN_PER_SECOND = 10   SPRINT_STAMINA_DRAIN_PER_SECOND = 15   STAMINA_REGEN_DELAY = 1s
 ```
 
-## Team IDs
-```csharp
-TeamAlpha = 1
-TeamBravo = 2
-TeamCharlie = 3
-TeamDelta = 4
-```
-
-## Player Class Types
-```csharp
-Hacker = 1
-Saboteur = 2
-Demolitions = 3
-Agent = 4
-```
-
-## Equipment Slot Types
-```csharp
-Primary
-Secondary
-Utility
-Gadget
-Armor
-Accessory
-```
-
-## AI Agent Types
-```csharp
-Guard
-Patrol
-Elite
-Boss
-Civilian
-```
-
-## AI Behavior States
-```csharp
-Idle
-Patrol
-Alert
-Combat
-Fleeing
-Investigating
-```
-
-## Game States
-```csharp
-WaitingForPlayers
-PreMatch
-InProgress
-Extraction
-MatchEnded
-```
+## Enums
+- `TeamID`: None, TeamAlpha=1, TeamBravo, TeamCharlie, TeamDelta
+- `PlayerClassType`: None, Hacker=1, Saboteur, Demolitions, Agent
+- `StatusFlags` (bit flags): Shielded, DamageBoost, Stealthed, Flashed, EMPDisabled, Revealed, Burning, Sprinting, Interacting, Extracted
+- `InputButtons`: Jump, Sprint, Interact, Ability1-4, Primary, Secondary, Utility, Gadget
+- `ExtractionHeistGameMode.GameState`: WaitingForPlayers, PreMatch, InProgress, Extraction, MatchEnded
+- `AIAgentType`: Guard, Patrol, Elite, Boss, Civilian, Sniper · `AIBehaviorState`: Idle, Patrol, Alert, Combat, Fleeing, Investigating
 
 ## Controls
-
-### Movement
-- `W/A/S/D` - Move
-- `Space` - Jump
-- `Mouse` - Look
-
-### Abilities
-- `1` - Ability 1
-- `2` - Ability 2
-- `3` - Ability 3
-- `4` - Ability 4
-
-### Equipment
-- `LMB` - Primary
-- `RMB` - Secondary
-- `Q` - Utility
-- `E` - Gadget
+| Key | Action |
+|-----|--------|
+| W/A/S/D | Move |
+| Shift | Sprint |
+| Space | Jump |
+| Mouse | Look |
+| 1 – 4 | Abilities |
+| F (hold) | Interact / crack objective |
+| LMB / RMB | Primary / Secondary |
+| Q / E | Utility / Gadget |
+| Esc | Toggle cursor |
 
 ## Quick Setup Steps
-
-1. **Import Photon Fusion 2**
-   - Add via Package Manager or Asset Store
-   - Configure App ID
-
-2. **Create Network Scene**
-   - Add NetworkRunner
-   - Configure Fusion settings
-   - Add NetworkPlayer prefab
-
-3. **Setup Game Mode**
-   - Add ExtractionHeistGameMode to scene
-   - Add TeamManager
-   - Place ExtractionPoints
-
-4. **Configure Classes**
-   - Create ClassData assets
-   - Assign to player spawner
-
-5. **Test**
-   - Build multiple instances
-   - Test network synchronization
+1. Import Fusion 2, set App ID; add AI Navigation package (2022.2+)
+2. Player prefab: NetworkObject, NetworkTransform, CharacterController, NetworkPlayer, PlayerController, camera child → register in prefab table
+3. Scene: GameSessionManager (assign prefab), TeamManager, ExtractionHeistGameMode (+ GameModeConfig asset), TeamSpawnPoints, ExtractionPoints, LootObjectives
+4. Press Play (AutoHostOrClient); second instance joins
 
 ## Common Tasks
 
-### Spawn a Player with Class
+### Spawn is automatic — but to assign a class later
 ```csharp
-var player = Runner.Spawn(playerPrefab, position, rotation, inputAuthority);
-var networkPlayer = player.GetComponent<NetworkPlayer>();
-networkPlayer.AssignClass(PlayerClassType.Hacker);
+networkPlayer.AssignClass(PlayerClassType.Hacker);   // state authority
+networkPlayer.RequestClass(PlayerClassType.Hacker);  // from the owning client (pre-match only)
 ```
 
-### Use an Ability
+### Use an ability (normally driven by input)
 ```csharp
-networkPlayer.UseAbility(0); // First ability
+bool used = networkPlayer.UseAbility(0);
+float cd = networkPlayer.AbilityCooldownRemaining(0);
 ```
 
-### Equip Item
+### Deal damage
 ```csharp
-var equipment = gameObject.AddComponent<YourEquipment>();
-equipmentLoadout.EquipItem(equipment);
+target.ApplyDamage(25f, attackerNetworkPlayer);                      // any IDamageable
+DamageUtil.ApplyRadialDamage(pos, 6f, 60f, attacker, attacker.Team);
 ```
 
-### Award Team Points
+### Status effects
 ```csharp
-gameModeManager.AwardTeamScore(TeamID.TeamAlpha, 100);
+player.ApplyTimedStatus(StatusFlags.Revealed, 5f);
+if (player.HasStatus(StatusFlags.Stealthed)) { ... }
 ```
 
-### Trigger Extraction
+### Loot and scoring
 ```csharp
-gameModeManager.TeamExtractedSuccessfully(TeamID.TeamAlpha);
+player.AddLoot(250);
+gameMode.AwardTeamScore(TeamID.TeamAlpha, 100);
+gameMode.OnTeamExtractionCompleted(team, membersInZone);
+```
+
+### Match control
+```csharp
+gameMode.StartMatch();            // or automatic via GameModeConfig.autoStart
+gameMode.MatchTimeRemaining;      // float?
+ExtractionHeistGameMode.StateChanged += state => ...;
 ```
 
 ## Network Patterns
-
-### Networked Property
 ```csharp
 [Networked] public float Health { get; set; }
+[Networked, Capacity(4)] public NetworkArray<TickTimer> Cooldowns => default;
+[Networked, Capacity(16)] public NetworkDictionary<PlayerRef, TeamID> Teams => default;
+
+if (!Object.HasStateAuthority) return;              // before any write
+
+TickTimer t = TickTimer.CreateFromSeconds(Runner, 10f);
+if (t.Expired(Runner)) { ... }                       // never Time.time / Invoke
+
+if (GetInput(out NetworkInputData input)) { ... }    // runs on input + state authority
+var pressed = input.Buttons.GetPressed(PreviousButtons);
+
+changeDetector = GetChangeDetector(ChangeDetector.Source.SimulationState);  // in Spawned
+foreach (var c in changeDetector.DetectChanges(this)) { ... }                // in Render
 ```
-
-### RPC Call
-```csharp
-[Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-private void RPC_UseAbility(int index) { }
-```
-
-### Check Authority
-```csharp
-if (Object.HasStateAuthority) { }
-if (Object.HasInputAuthority) { }
-```
-
-### Network Timer
-```csharp
-[Networked] public TickTimer Timer { get; set; }
-Timer = TickTimer.CreateFromSeconds(Runner, 10f);
-if (Timer.Expired(Runner)) { }
-```
-
-## Class Stats Reference
-
-| Class       | Health | Speed | Role              |
-|-------------|--------|-------|-------------------|
-| Hacker      | 85     | 5.5   | Electronic warfare|
-| Saboteur    | 90     | 6.0   | Stealth/Traps    |
-| Demolitions | 110    | 4.5   | Explosives       |
-| Agent       | 100    | 5.2   | Balanced         |
 
 ## Ability Indices
-
-### Hacker
-0. System Hack
-1. Disable Camera
-2. EMP Blast
-3. Data Mine
-
-### Saboteur
-0. Place Trap
-1. Stealth Mode
-2. Sabotage Equipment
-3. Smoke Bomb
-
-### Demolitions
-0. Place Explosive
-1. Detonate All
-2. Breaching Charge
-3. Incendiary Grenade
-
-### Agent
-0. Tactical Shield
-1. Damage Boost
-2. Recon Drone
-3. Flashbang
-
-## Extension Points
-
-### Add New Class
-1. Add to `PlayerClassType` enum
-2. Create class file inheriting `BasePlayerClass`
-3. Update `NetworkPlayer.RPC_AssignClass()`
-4. Create `ClassData` asset
-
-### Add New Equipment
-1. Create class inheriting `BaseEquipment`
-2. Override `OnUse()`
-3. Create `EquipmentData` asset
-
-### Add New AI
-1. Create class inheriting `BaseAIAgent`
-2. Implement behavior methods
-3. Build behavior tree
-
-### Add New Game Mode
-1. Create `GameModeConfig` asset
-2. (Optional) Extend `ExtractionHeistGameMode`
-3. Configure objectives
+| Slot | Hacker | Saboteur | Demolitions | Agent |
+|------|--------|----------|-------------|-------|
+| 0 | System Hack | Place Trap | Place Explosive | Tactical Shield |
+| 1 | Disable Camera | Stealth Mode | Detonate | Damage Boost |
+| 2 | EMP Blast | Sabotage | Breaching Charge | Recon Drone |
+| 3 | Data Mine | Smoke Bomb | Incendiary | Flashbang |
 
 ## Debugging Tips
-
-### Check Network Sync
-- Use Fusion Stats Monitor
-- Check `[Networked]` properties in inspector
-- Verify RPCs are being called
-
-### Test Locally
-- Build standalone builds
-- Run multiple instances
-- Test with network simulation
-
-### Common Issues
-- **Players not syncing**: Check authority
-- **Abilities not working**: Verify RPC setup
-- **Teams unbalanced**: Check TeamManager
-- **AI not moving**: Check NavMesh
-
-## Performance Tips
-
-1. Use object pooling for frequently spawned objects
-2. Minimize RPC calls - batch when possible
-3. Use NetworkArray for fixed-size collections
-4. Cache component references
-5. Avoid expensive operations in FixedUpdateNetwork
-
-## Documentation Files
-
-- `README.md` - Project overview
-- `ARCHITECTURE.md` - Detailed architecture documentation
-- `IMPLEMENTATION_GUIDE.md` - Examples for adding content
-- `QUICK_REFERENCE.md` - This file
-
-## Support
-
-For detailed information, see:
-- Full architecture: `ARCHITECTURE.md`
-- Implementation examples: `IMPLEMENTATION_GUIDE.md`
-- Code comments in source files
+- **Players not syncing**: prefab missing `NetworkTransform`, or a write outside state authority
+- **Abilities do nothing**: check `AbilityCooldownRemaining`, stamina, `EMPDisabled`, and that the press reached the server (`GetInput` true?)
+- **No spawn**: `GameSessionManager.playerPrefab` unassigned or not in the prefab table
+- **Match never starts**: `GameModeConfig.minPlayersToStart` too high for your test
+- **AI static**: NavMesh not baked / AI Navigation package missing
+- **Objective won't crack**: hold **F** inside the radius, match must be InProgress, enemy inside pauses it

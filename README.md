@@ -1,154 +1,102 @@
 # Ouroboros
 ## 4v4v4v4 Team-Based Extraction Heist Game
 
-A modular multiplayer extraction heist game built with **Photon Fusion 2**, featuring 4 teams of 4 players competing to complete objectives and successfully extract with their loot.
+A modular multiplayer extraction heist game built with **Photon Fusion 2**, featuring 4 teams of 4 players competing to crack objectives, hold onto the loot, and extract before the window closes.
+
+> **Status: v0.2 — architecture + gameplay loop implemented, awaiting first in-engine bring-up.**
+> See [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) for the audit, what changed, and the roadmap.
 
 ## Overview
-Ouroboros is designed as a highly modular and expandable game architecture supporting:
 - **4 Teams** of 4 players each (16 players total)
 - **4 Initial Classes**: Hacker, Saboteur, Demolitions, Agent
-- **Extraction-based gameplay** with dynamic objectives
-- **Modular systems** for easy expansion of classes, equipment, tech, and AI
+- **Heist loop**: crack vaults → carry loot → extract to bank it. Dying drops your loot for anyone to grab.
+- **Modular systems** for easy expansion of classes, equipment, interactables, and AI
 
 ## Features
 
 ### Core Systems
-- ✅ **Modular Class System** - Easy to add new player classes
-- ✅ **Network Integration** - Built on Photon Fusion 2
-- ✅ **Team Management** - Automatic 4-team balancing
-- ✅ **Extraction Mechanics** - Time-based extraction zones
-- ✅ **Equipment System** - 6 equipment slots per player
-- ✅ **Tech/Ability System** - Special abilities and tech
-- ✅ **AI Framework** - Behavior tree-based AI system
-- ✅ **Data-Driven Design** - ScriptableObjects for configuration
+- ✅ **Fusion input pipeline** — `INetworkInput` + `GetInput`, client prediction, server authority
+- ✅ **Session bootstrap** — runner start, spawning at team spawn points, team/class assignment, respawns
+- ✅ **Networked player state** — health, stamina (sprint), replicated status effects, cooldowns, loot
+- ✅ **Class system** — per-slot cooldown/stamina table, tick-timer effects, damage hooks
+- ✅ **Team management** — replicated assignments, alive/extracted/dead tracking
+- ✅ **Match flow** — countdown → match → extraction window → winner, all from `GameModeConfig`
+- ✅ **Objectives & loot** — hold-to-crack vaults, contested capture, loot drops
+- ✅ **Extraction zones** — contested pause, reusable points, whole-team option
+- ✅ **Interactables** — hackable/breachable doors, security cameras, proximity traps
+- ✅ **AI** — server-authoritative agents, perception, behavior trees, a working guard
+- ⬜ **HUD / VFX / audio** — data is replicated, presentation is Phase 1
+- ⬜ **Weapons** — equipment slots exist; networked weapons are Phase 2
 
 ### Player Classes
 
-#### 🔹 Hacker
-Electronic warfare specialist with system infiltration capabilities
-- **Stats**: 85 HP, 5.5 Speed
-- **Abilities**: System Hack, Camera Disable, EMP Blast, Data Mine
-
-#### 🔹 Saboteur
-Stealth operative skilled in traps and silent operations
-- **Stats**: 90 HP, 6.0 Speed
-- **Abilities**: Place Trap, Stealth Mode, Sabotage, Smoke Bomb
-
-#### 🔹 Demolitions
-Explosives expert for breaching and area denial
-- **Stats**: 110 HP, 4.5 Speed
-- **Abilities**: Place Explosive, Detonate, Breaching Charge, Incendiary
-
-#### 🔹 Agent
-Versatile balanced operative with tactical support
-- **Stats**: 100 HP, 5.2 Speed
-- **Abilities**: Tactical Shield, Damage Boost, Recon Drone, Flashbang
+| Class | HP | Speed / Sprint | Abilities (1–4) |
+|-------|----|----------------|-----------------|
+| **Hacker** | 85 | 5.5 / 7.8 | System Hack, Disable Camera, EMP Blast, Data Mine |
+| **Saboteur** | 90 | 6.0 / 8.5 | Place Trap, Stealth Mode, Sabotage, Smoke Bomb |
+| **Demolitions** | 110 | 4.5 / 6.5 | Place Explosive, Detonate, Breaching Charge, Incendiary |
+| **Agent** | 100 | 5.2 / 7.5 | Tactical Shield, Damage Boost, Recon Drone, Flashbang |
 
 ## Architecture
-The game is built with modularity and expansion in mind. See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed documentation.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed documentation.
 
 ### Directory Structure
 ```
 Assets/Scripts/
-├── Core/         # Base interfaces and constants
+├── Core/         # Constants, interfaces, input struct, ability context, scene utils
 ├── Classes/      # Player class implementations
-├── Network/      # Photon Fusion integration
-├── GameMode/     # Game modes and objectives
+├── Network/      # Session manager, networked player, team manager
+├── GameMode/     # Match flow, extraction points, loot objectives, loot drops
+├── Interaction/  # Hackable / breachable / security interfaces and objects
+├── Combat/       # IDamageable and damage helpers
 ├── Equipment/    # Equipment and tech systems
-├── AI/           # AI agents and behavior trees
+├── AI/           # Networked AI base, perception, behavior trees, GuardAI
 ├── Data/         # ScriptableObject definitions
-└── Player/       # Player control and input
+└── Player/       # Player controller and spawn points
 ```
 
 ## Getting Started
 
 ### Prerequisites
-- Unity 2021.3+ (LTS)
-- Photon Fusion 2 SDK
-- Photon Account & App ID
+- Unity 2021.3+ (2022.3 LTS recommended)
+- Photon Fusion 2 SDK + Photon App ID
+- **AI Navigation** package (`com.unity.ai.navigation`) on Unity 2022.2+ for `NavMeshAgent`
 
-### Installation
-1. Clone the repository
-2. Open in Unity
-3. Import Photon Fusion 2 from Package Manager or Asset Store
-4. Configure your Photon App ID in Fusion settings
-5. Open the main scene and test
-
-### Quick Setup
-1. **Create Class Data**: Right-click → Create → Ouroboros → Class Data
-2. **Setup Network**: Add NetworkPlayer prefab to Fusion settings
-3. **Configure Game Mode**: Add ExtractionHeistGameMode to scene
-4. **Place Extraction Points**: Add ExtractionPoint components around map
-5. **Test**: Build and run multiple instances
-
-## Expansion Guide
-
-### Adding New Classes
-1. Add enum to `PlayerClassType` in `GameConstants.cs`
-2. Create new class inheriting from `BasePlayerClass`
-3. Implement abilities in `UseAbility()` method
-4. Update `NetworkPlayer.RPC_AssignClass()`
-5. Create `ClassData` ScriptableObject
-
-### Adding New Equipment
-1. Inherit from `BaseEquipment`
-2. Override `OnUse()` method
-3. Create `EquipmentData` ScriptableObject
-4. Assign to equipment slots
-
-### Adding New AI
-1. Inherit from `BaseAIAgent`
-2. Implement behavior state methods
-3. Build behavior tree using node system
-4. Add to AI spawn system
+### Scene Setup
+1. **Player prefab**: `NetworkObject` + `NetworkTransform` + `CharacterController` + `NetworkPlayer` + `PlayerController` (+ child camera assigned to `cameraTransform`). Register it in the Fusion `NetworkProjectConfig` prefab table.
+2. **Scene objects**: `GameSessionManager` (assign the player prefab), `TeamManager` and `ExtractionHeistGameMode` as scene `NetworkObject`s.
+3. **Config**: Create → Ouroboros → Game Mode Config, assign to `ExtractionHeistGameMode`. For solo testing set `minPlayersToStart = 1`.
+4. **Level**: place `TeamSpawnPoint`s (one per team at minimum), `ExtractionPoint`s, `LootObjective`s, optional `SecurityCamera`s, `BreachableDoor`s and `GuardAI`s (with a baked NavMesh).
+5. Press Play — `GameSessionManager` auto-starts an `AutoHostOrClient` session. Run a second instance (ParrelSync or a build) to join.
 
 ## Game Flow
-1. **Lobby** - Players join and select classes
-2. **Match Start** - Teams spawn at designated locations
-3. **Objective Phase** - Complete objectives, combat other teams
-4. **Extraction Phase** - Rush to extraction points
-5. **Results** - Score calculation and winner determination
+1. **Waiting** — players join, get a team and class
+2. **Pre-match countdown** (10s default)
+3. **In progress** — crack objectives, fight; extraction points open after 5 minutes (default)
+4. **Extraction window** — match timer expired, 2 minutes (default) to get out; no respawns
+5. **Results** — highest score wins (ties: banked loot, then extracted members)
 
-## Network Architecture
-Built on Photon Fusion 2 using:
-- **State Authority** - Server-authoritative game state
-- **RPCs** - Remote procedure calls for actions
-- **Network Properties** - Synchronized player state
-- **Tick-based Timing** - Precise network timing
+Scoring: objectives, kills, first extraction per team, each member extracted, and banked loot (`GameModeConfig`).
 
 ## Controls
-- **WASD** - Movement
-- **Mouse** - Look around
-- **1-4** - Use class abilities
-- **LMB** - Primary weapon/equipment
-- **RMB** - Secondary weapon/equipment
-- **Q** - Utility equipment
-- **E** - Gadget equipment
-- **Space** - Jump
+- **WASD** — Move · **Shift** — Sprint (drains stamina) · **Space** — Jump · **Mouse** — Look
+- **1–4** — Class abilities · **F (hold)** — Interact (crack objectives)
+- **LMB / RMB** — Primary / Secondary · **Q** — Utility · **E** — Gadget
+- **Esc** — Toggle cursor lock
 
 ## Technical Details
 - **Max Players**: 16 (4 teams × 4 players)
-- **Match Duration**: 15 minutes (configurable)
-- **Ability Slots**: 4 per class
-- **Equipment Slots**: 6 per player
-- **Tech Slots**: 3 per player
+- **Match Duration**: 15 min + 2 min extraction window (configurable)
+- **Ability Slots**: 4 per class · **Equipment Slots**: 6 · **Tech Slots**: 3
 
 ## Roadmap
-- [ ] Additional player classes
-- [ ] Expanded equipment variety
-- [ ] More AI types and behaviors
-- [ ] Progression system
-- [ ] Cosmetics and customization
-- [ ] Multiple game modes
-- [ ] Map variety
-- [ ] Ranked matchmaking
+See [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) — Phase 0 (engine bring-up) through Phase 5 (meta).
 
 ## Contributing
-When adding new features:
-1. Follow the modular architecture patterns
-2. Use interfaces for extensibility
-3. Create ScriptableObjects for configuration
-4. Integrate properly with Photon Fusion
+1. Write `[Networked]` state only on the state authority
+2. Use `TickTimer`, never `Invoke` / `Time.time`, for gameplay timing
+3. Put tunables in `GameModeConfig` / `AbilitySlot` definitions
+4. Keep superseded code as `// [v0.1]` comments next to its replacement
 5. Document expansion points
 
 ## License
