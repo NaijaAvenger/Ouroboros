@@ -1,5 +1,10 @@
 # Implementation Guide - Adding New Content
 
+All examples target the v0.2 APIs. Patterns to keep: write `[Networked]` state only on the state
+authority, time things with `TickTimer`, and leave superseded code as `// [v0.1]` comments.
+
+---
+
 ## Example 1: Adding a New Player Class - "Medic"
 
 ### Step 1: Update GameConstants.cs
@@ -17,6 +22,7 @@ public enum PlayerClassType
 
 ### Step 2: Create MedicClass.cs in Assets/Scripts/Classes/
 ```csharp
+using Fusion;
 using UnityEngine;
 
 namespace Ouroboros.Classes
@@ -26,93 +32,92 @@ namespace Ouroboros.Classes
         [Header("Medic Abilities")]
         [SerializeField] private float healAmount = 50f;
         [SerializeField] private float healRange = 10f;
-        [SerializeField] private float reviveTime = 3f;
-        
+        [SerializeField] private float stimDuration = 6f;
+
+        private TickTimer stimTimer;
+        private bool stimActive;
+
         protected override void OnInitialize()
         {
             className = "Medic";
             description = "Medical specialist capable of healing allies and reviving teammates.";
-            
             maxHealth = 95f;
             movementSpeed = 5.3f;
+            sprintSpeed = 7.6f;
+
+            DefineAbility(0, "Heal Teammates", cooldown: 12f, staminaCost: 20f);
+            DefineAbility(1, "Deploy Medkit",  cooldown: 30f, staminaCost: 15f);
+            DefineAbility(2, "Revive Ally",    cooldown: 45f, staminaCost: 30f);
+            DefineAbility(3, "Stim Boost",     cooldown: 25f, staminaCost: 10f, duration: stimDuration);
         }
-        
-        public override void UseAbility(int abilityIndex)
+
+        // Return false when nothing happened so the cooldown is refunded.
+        protected override bool ExecuteAbility(int abilityIndex)
         {
             switch (abilityIndex)
             {
-                case 0:
-                    HealTeammate();
-                    break;
-                case 1:
-                    DeployMedkit();
-                    break;
-                case 2:
-                    ReviveAlly();
-                    break;
-                case 3:
-                    StimBoost();
-                    break;
+                case 0: return HealTeammates();
+                case 1: Log("Deploying medkit station"); return true;
+                case 2: Log("Reviving ally"); return true;
+                case 3: return StimBoost();
+            }
+            return false;
+        }
+
+        private bool HealTeammates()
+        {
+            if (context == null) return true;
+            int healed = 0;
+            foreach (var p in Network.NetworkPlayer.FindPlayersInRadius(context.Transform.position, healRange, Core.TeamID.None, aliveOnly: true))
+            {
+                if (p.Team != context.Team) continue;
+                p.Heal(healAmount);
+                healed++;
+            }
+            return healed > 0;
+        }
+
+        private bool StimBoost()
+        {
+            if (stimActive) return false;
+            stimActive = true;
+            stimTimer = StartTimer(stimDuration);
+            SetStatus(Core.StatusFlags.DamageBoost, true);
+            return true;
+        }
+
+        protected override void OnUpdate(float deltaTime)
+        {
+            if (stimActive && TimerExpired(stimTimer))
+            {
+                stimActive = false;
+                SetStatus(Core.StatusFlags.DamageBoost, false);
             }
         }
-        
-        private void HealTeammate()
-        {
-            Debug.Log($"[Medic] Healing nearby teammates for {healAmount} HP");
-            // Implementation
-        }
-        
-        private void DeployMedkit()
-        {
-            Debug.Log("[Medic] Deploying medkit station");
-            // Implementation
-        }
-        
-        private void ReviveAlly()
-        {
-            Debug.Log($"[Medic] Reviving ally - {reviveTime}s required");
-            // Implementation
-        }
-        
-        private void StimBoost()
-        {
-            Debug.Log("[Medic] Applying stim boost to team");
-            // Implementation
-        }
+
+        public override float OutgoingDamageMultiplier => stimActive ? 1.2f : 1f;
     }
 }
 ```
 
-### Step 3: Update NetworkPlayer.cs
-Add to the switch statement in `RPC_AssignClass()`:
+### Step 3: Register in NetworkPlayer.ClassComponentType
 ```csharp
-case Core.PlayerClassType.Medic:
-    currentClass = gameObject.AddComponent<Classes.MedicClass>();
-    break;
+case Core.PlayerClassType.Medic: return typeof(Classes.MedicClass);
 ```
 
-### Step 4: Create ClassData ScriptableObject
-1. Right-click in Project window
-2. Create → Ouroboros → Class Data
-3. Name it "MedicClassData"
-4. Configure:
-   - Class Name: "Medic"
-   - Description: "Medical specialist..."
-   - Class Type: Medic
-   - Max Health: 95
-   - Movement Speed: 5.3
-   - Configure abilities array
+### Step 4: (Optional) ClassData asset
+Create → Ouroboros → Class Data for designer-facing numbers.
 
 ### Step 5: Test
-- Assign Medic class to a player
-- Test ability keys 1-4
-- Verify network synchronization
+- Assign via `GameSessionManager` default class or `networkPlayer.RequestClass(PlayerClassType.Medic)`
+- Press 1–4; watch `AbilityCooldownRemaining` and the `DamageBoost` status on a second client
 
 ---
 
 ## Example 2: Adding New Equipment - "Grappling Hook"
 
-### Step 1: Create GrapplingHook.cs in Assets/Scripts/Equipment/
+Equipment is still a local `MonoBehaviour` (networking it is Phase 2). The pattern is unchanged:
+
 ```csharp
 using UnityEngine;
 
@@ -120,205 +125,97 @@ namespace Ouroboros.Equipment
 {
     public class GrapplingHook : BaseEquipment
     {
-        [Header("Grappling Hook Settings")]
         [SerializeField] private float maxGrappleDistance = 30f;
-        [SerializeField] private float grappleSpeed = 15f;
         [SerializeField] private LayerMask grappleableLayers;
-        
+
         protected override void Awake()
         {
             base.Awake();
-            
             equipmentName = "Grappling Hook";
             description = "Launch a hook to quickly reach high locations";
             slotType = EquipmentSlotType.Gadget;
             cooldown = 8f;
         }
-        
+
         protected override void OnUse()
         {
-            // Raycast to find grapple point
-            Ray ray = Camera.main.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
-            RaycastHit hit;
-            
-            if (Physics.Raycast(ray, out hit, maxGrappleDistance, grappleableLayers))
+            var player = GetComponent<Network.NetworkPlayer>();
+            if (player == null) return;
+
+            if (Physics.Raycast(player.EyePosition, player.AimDirection, out RaycastHit hit, maxGrappleDistance, grappleableLayers))
             {
-                StartGrapple(hit.point);
+                Debug.Log($"[GrapplingHook] Grappling to {hit.point}");
+                // Move the player toward hit.point (e.g. via PlayerController.Teleport over several ticks)
             }
-            else
-            {
-                Debug.Log("[GrapplingHook] No valid grapple point");
-            }
-        }
-        
-        private void StartGrapple(Vector3 targetPoint)
-        {
-            Debug.Log($"[GrapplingHook] Grappling to {targetPoint}");
-            // Implementation: Move player toward point
         }
     }
 }
 ```
-
-### Step 2: Create EquipmentData ScriptableObject
-1. Right-click → Create → Ouroboros → Equipment Data
-2. Name: "GrapplingHookData"
-3. Configure:
-   - Equipment Name: "Grappling Hook"
-   - Slot Type: Gadget
-   - Cooldown: 8
-   - Range: 30
-
-### Step 3: Equip to Player
-```csharp
-// In player setup code
-var grapplingHook = gameObject.AddComponent<GrapplingHook>();
-equipmentLoadout.EquipItem(grapplingHook);
-```
-
-### Step 4: Test
-- Press E key to use gadget
-- Verify cooldown works
-- Test in multiplayer
+Equip with `equipmentLoadout.EquipItem(gameObject.AddComponent<GrapplingHook>())`; **E** uses the Gadget slot.
+Use `player.AimDirection` rather than `Camera.main` so the server resolves the same ray as the client.
 
 ---
 
 ## Example 3: Adding New AI - "Sniper Guard"
 
-### Step 1: Update AIAgentType enum (if needed)
-```csharp
-public enum AIAgentType
-{
-    Guard,
-    Patrol,
-    Elite,
-    Boss,
-    Civilian,
-    Sniper  // Add new type
-}
-```
+`AIAgentType.Sniper` already exists. Snipers hold position, aim for a moment, then fire a high-damage hitscan.
 
-### Step 2: Create SniperGuard.cs in Assets/Scripts/AI/
 ```csharp
+using Fusion;
 using UnityEngine;
 
 namespace Ouroboros.AI
 {
     public class SniperGuard : BaseAIAgent
     {
-        [Header("Sniper Settings")]
-        [SerializeField] private float optimalRange = 25f;
+        [Header("Sniper")]
         [SerializeField] private float aimTime = 1.5f;
-        [SerializeField] private Transform sniperPosition;
-        
-        private float currentAimTime = 0f;
-        private bool isAiming = false;
-        
+
+        [Networked] private TickTimer AimTimer { get; set; }
+
         protected override void OnInitialize()
         {
             agentType = AIAgentType.Sniper;
-            detectionRange = 40f;  // Long range detection
-            attackRange = 30f;
-            damage = 50f;  // High damage per shot
-            
-            // Snipers stay in position
-            currentState = AIBehaviorState.Idle;
+            detectionRange = 40f;
+            attackRange = 35f;
+            damage = 50f;
+            attackCooldown = 3f;
+            TransitionToState(AIBehaviorState.Idle);
         }
-        
-        protected override void UpdateIdleBehavior(float deltaTime)
+
+        public override void UpdateBehavior(float deltaTime)
         {
-            // Scan for targets
-            ScanForTargets();
-        }
-        
-        protected override void UpdateCombatBehavior(float deltaTime)
-        {
-            if (currentTarget == null)
+            if (CurrentTargetPlayer == null || !CurrentTargetPlayer.IsActiveInMatch)
             {
+                AimTimer = TickTimer.None;
                 TransitionToState(AIBehaviorState.Idle);
                 return;
             }
-            
-            float distance = Vector3.Distance(transform.position, currentTarget.position);
-            
-            if (distance <= attackRange)
+
+            TransitionToState(AIBehaviorState.Combat);
+            FaceTowards(CurrentTargetPlayer.transform.position, 180f);
+
+            if (!AimTimer.IsRunning) AimTimer = TickTimer.CreateFromSeconds(Runner, aimTime);
+            if (AimTimer.Expired(Runner) && TryAttackTarget())
             {
-                // Aim at target
-                if (!isAiming)
-                {
-                    StartAiming();
-                }
-                
-                currentAimTime += deltaTime;
-                
-                if (currentAimTime >= aimTime)
-                {
-                    FireShot();
-                    currentAimTime = 0f;
-                    isAiming = false;
-                }
+                AimTimer = TickTimer.None;   // re-aim before the next shot
             }
-        }
-        
-        private void ScanForTargets()
-        {
-            // Implementation: Look for players in range
-            Collider[] hits = Physics.OverlapSphere(transform.position, detectionRange);
-            
-            foreach (var hit in hits)
-            {
-                var player = hit.GetComponent<Network.NetworkPlayer>();
-                if (player != null && player.IsAlive)
-                {
-                    SetTarget(player.transform);
-                    break;
-                }
-            }
-        }
-        
-        private void StartAiming()
-        {
-            isAiming = true;
-            Debug.Log("[SniperGuard] Aiming at target");
-        }
-        
-        private void FireShot()
-        {
-            Debug.Log($"[SniperGuard] Firing shot - {damage} damage");
-            // Implementation: Raycast and apply damage
         }
     }
 }
 ```
-
-### Step 3: Create Prefab
-1. Create GameObject with SniperGuard component
-2. Add NavMeshAgent
-3. Configure visuals and animations
-4. Save as prefab
-
-### Step 4: Spawn in Game
-```csharp
-// In level setup or game mode
-var sniperPrefab = Resources.Load<GameObject>("AI/SniperGuard");
-var sniper = Instantiate(sniperPrefab, spawnPosition, Quaternion.identity);
-sniper.GetComponent<SniperGuard>().Initialize();
-```
+Prefab: `NetworkObject` + `NetworkTransform` + `NavMeshAgent` + `SniperGuard`. Spawn with
+`Runner.Spawn(sniperPrefab, pos, rot)` on the state authority; perception and `IDamageable` come from the base.
 
 ---
 
 ## Example 4: Creating a Custom Game Mode - "Bank Heist"
 
-### Step 1: Create BankHeistConfig ScriptableObject
-1. Right-click → Create → Ouroboros → Game Mode Config
-2. Name: "BankHeistMode"
-3. Configure:
-   - Mode Name: "Bank Heist"
-   - Match Duration: 1200 (20 minutes)
-   - Objectives To Complete: 5
-   - Custom rules
+### Step 1: GameModeConfig asset
+Create → Ouroboros → Game Mode Config; e.g. `matchDuration = 1200`, `objectivesToComplete = 5`,
+`requireAllObjectivesForExtraction = true`.
 
-### Step 2: Create BankHeistGameMode.cs (optional - if different logic needed)
+### Step 2: BankHeistGameMode.cs (only if different logic is needed)
 ```csharp
 using UnityEngine;
 using Fusion;
@@ -327,217 +224,105 @@ namespace Ouroboros.GameMode
 {
     public class BankHeistGameMode : ExtractionHeistGameMode
     {
-        [Header("Bank Heist Specific")]
-        [SerializeField] private int vaultObjectivePoints = 500;
         [SerializeField] private float alarmTriggeredPenalty = 0.5f;
-        
-        private bool alarmTriggered = false;
-        
+
+        [Networked] public NetworkBool AlarmTriggered { get; set; }
+
         public void TriggerAlarm()
         {
-            if (!Object.HasStateAuthority) return;
-            
-            if (!alarmTriggered)
-            {
-                alarmTriggered = true;
-                RPC_AlarmTriggered();
-                
-                // Reduce extraction time
-                // Spawn more AI
-            }
+            if (!Object.HasStateAuthority || AlarmTriggered) return;
+            AlarmTriggered = true;
+            RPC_AlarmTriggered();
         }
-        
+
         [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
         private void RPC_AlarmTriggered()
         {
             Debug.Log("[BankHeist] ALARM TRIGGERED! Security reinforcements incoming!");
         }
-        
+
         public override void AwardTeamScore(Core.TeamID team, int points)
         {
-            // Reduce points if alarm was triggered
-            if (alarmTriggered)
-            {
-                points = Mathf.RoundToInt(points * alarmTriggeredPenalty);
-            }
-            
+            if (AlarmTriggered) points = Mathf.RoundToInt(points * alarmTriggeredPenalty);
             base.AwardTeamScore(team, points);
         }
     }
 }
 ```
-
-### Step 3: Setup Scene
-1. Add BankHeistGameMode to scene
-2. Assign BankHeistConfig ScriptableObject
-3. Place objectives (vault, safe deposit boxes, etc.)
-4. Configure extraction points
-5. Setup AI spawners
+`AwardTeamScore` and `DetermineWinner` are virtual for exactly this purpose.
 
 ---
 
-## Example 5: Adding a Behavior Tree for AI
+## Example 5: Building a Behavior Tree
 
-### Creating a Patrol and Attack Behavior
+`GuardAI` is the reference. Compact trees use the delegate nodes:
+
 ```csharp
-using UnityEngine;
-using Ouroboros.AI;
+root = new SelectorNode(
+    new SequenceNode(
+        new ConditionFunc(() => CurrentTargetPlayer != null && CurrentTargetPlayer.IsActiveInMatch),
+        new ActionFunc(Fight)
+    ),
+    new SequenceNode(
+        new ConditionFunc(() => HasLastKnownPosition),
+        new ActionFunc(DoInvestigate)
+    ),
+    new ActionFunc(DoPatrol)
+);
+```
+Leaves return `Running` while busy, `Success` when done, `Failure` to fall through. Class-based nodes
+inherit `ConditionNode`/`ActionNode`; read agent state through the public accessors
+(`CurrentTarget`, `NavAgent`, `LastKnownTargetPosition`), not the protected fields.
 
-public class PatrolAttackAI : BaseAIAgent
+---
+
+## Example 6: A New Interactable - "Alarm Panel"
+
+```csharp
+using Fusion;
+using UnityEngine;
+
+namespace Ouroboros.Interaction
 {
-    [SerializeField] private Transform[] patrolPoints;
-    private int currentPatrolIndex = 0;
-    
-    private BehaviorNode rootNode;
-    
-    protected override void OnInitialize()
+    public class AlarmPanel : NetworkBehaviour, IHackable, ISecurityDevice
     {
-        BuildBehaviorTree();
-    }
-    
-    private void BuildBehaviorTree()
-    {
-        // Build tree: Check for enemy → Attack OR Patrol
-        rootNode = new SelectorNode(
-            new SequenceNode(
-                new HasTargetCondition(this),
-                new AttackTargetAction(this)
-            ),
-            new PatrolAction(this, patrolPoints)
-        );
-    }
-    
-    protected override void UpdateIdleBehavior(float deltaTime)
-    {
-        rootNode?.Evaluate();
-    }
-    
-    // Condition: Check if target exists
-    private class HasTargetCondition : ConditionNode
-    {
-        private BaseAIAgent agent;
-        
-        public HasTargetCondition(BaseAIAgent agent)
+        [Networked] private TickTimer DisabledTimer { get; set; }
+        public bool IsDisabled => DisabledTimer.IsRunning && !DisabledTimer.Expired(Runner);
+
+        public void Disable(float duration)
         {
-            this.agent = agent;
+            if (!Object.HasStateAuthority) return;
+            DisabledTimer = TickTimer.CreateFromSeconds(Runner, duration);
         }
-        
-        protected override bool CheckCondition()
-        {
-            return agent.currentTarget != null;
-        }
-    }
-    
-    // Action: Attack target
-    private class AttackTargetAction : ActionNode
-    {
-        private BaseAIAgent agent;
-        
-        public AttackTargetAction(BaseAIAgent agent)
-        {
-            this.agent = agent;
-        }
-        
-        protected override NodeState ExecuteAction()
-        {
-            if (agent.currentTarget == null)
-                return NodeState.Failure;
-            
-            // Move toward and attack
-            agent.navAgent.SetDestination(agent.currentTarget.position);
-            return NodeState.Running;
-        }
-    }
-    
-    // Action: Patrol waypoints
-    private class PatrolAction : ActionNode
-    {
-        private BaseAIAgent agent;
-        private Transform[] waypoints;
-        private int currentIndex = 0;
-        
-        public PatrolAction(BaseAIAgent agent, Transform[] waypoints)
-        {
-            this.agent = agent;
-            this.waypoints = waypoints;
-        }
-        
-        protected override NodeState ExecuteAction()
-        {
-            if (waypoints == null || waypoints.Length == 0)
-                return NodeState.Failure;
-            
-            Transform target = waypoints[currentIndex];
-            agent.navAgent.SetDestination(target.position);
-            
-            if (Vector3.Distance(agent.transform.position, target.position) < 1f)
-            {
-                currentIndex = (currentIndex + 1) % waypoints.Length;
-            }
-            
-            return NodeState.Running;
-        }
+
+        public void OnHacked(Core.TeamID byTeam, float duration) => Disable(duration);
     }
 }
 ```
+It is now automatically a valid target for System Hack, Disable Camera, EMP Blast and Sabotage.
 
 ---
 
 ## Best Practices
 
-### When Adding New Content:
-
-1. **Follow Naming Conventions**
-   - Classes: PascalCase
-   - Files: Match class names
-   - Namespaces: Ouroboros.{System}
-
-2. **Use ScriptableObjects**
-   - Create data assets for balance
-   - Easy testing and iteration
-   - Designer-friendly
-
-3. **Network Considerations**
-   - Use [Networked] for synced properties
-   - RPCs for actions
-   - Check HasStateAuthority for authority-only code
-
-4. **Maintain Modularity**
-   - Keep systems decoupled
-   - Use interfaces
-   - Avoid hard dependencies
-
-5. **Test Thoroughly**
-   - Test locally first
-   - Test with network simulation
-   - Test edge cases
-
-6. **Document Your Work**
-   - Add XML comments
-   - Update ARCHITECTURE.md
-   - Create example usage
+1. **Authority** — guard every `[Networked]` write with `Object.HasStateAuthority`
+2. **Timing** — `TickTimer` only; no `Invoke`, coroutines, or `Time.time` in gameplay code
+3. **Zones** — scan `NetworkPlayer.All` / `BaseAIAgent.All` in `FixedUpdateNetwork`, not trigger callbacks
+4. **Late joiners** — anything they must see is replicated state, not an RPC
+5. **Tunables** — `GameModeConfig` for rules, `DefineAbility` for class numbers
+6. **Superseded code** — comment it out with a `// [v0.1]` marker beside the replacement
 
 ## Common Pitfalls to Avoid
 
-1. ❌ Don't modify core base classes for specific features
-2. ❌ Don't create tight coupling between systems
-3. ❌ Don't bypass the equipment loadout system
-4. ❌ Don't forget network synchronization
-5. ❌ Don't hardcode values - use ScriptableObjects
-6. ❌ Don't skip testing with multiple clients
+1. ❌ Reading `UnityEngine.Input` inside `FixedUpdateNetwork`
+2. ❌ Writing networked properties in an `RpcTargets.All` RPC
+3. ❌ Keeping a second copy of health/stamina on a class component
+4. ❌ `FindObjectOfType` in per-tick code (use the static `Instance`s and registries)
+5. ❌ Forgetting `NetworkTransform` on anything that moves
 
 ## Testing Checklist
-
-When adding new content, verify:
-- ✅ Works in single player
-- ✅ Synchronizes across network
-- ✅ Handles disconnection gracefully
-- ✅ No console errors or warnings
-- ✅ Performance is acceptable
-- ✅ Works with all class types
-- ✅ Balances with existing content
-- ✅ Documentation is updated
-
----
-
-This guide provides practical examples for extending the Ouroboros game architecture. Follow these patterns for consistent, maintainable code.
+- ✅ Works as host and as a joining client
+- ✅ Late joiner sees classes, statuses and door states
+- ✅ No writes from non-authority peers (Fusion logs them)
+- ✅ Cooldowns and stamina gate correctly
+- ✅ Documentation updated

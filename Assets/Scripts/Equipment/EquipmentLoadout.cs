@@ -40,7 +40,8 @@ namespace Ouroboros.Equipment
             
             EquipmentSlotType slot = equipment.SlotType;
             
-            // Unequip current item in slot if exists
+            // Unequip current item in slot if exists (v0.2: tolerate slots added to the enum later)
+            if (!equippedItems.ContainsKey(slot)) equippedItems[slot] = null;
             if (equippedItems[slot] != null)
             {
                 UnequipItem(slot);
@@ -107,7 +108,11 @@ namespace Ouroboros.Equipment
         /// </summary>
         public void ClearAllEquipment()
         {
-            foreach (var slot in equippedItems.Keys)
+            // [v0.1] foreach (var slot in equippedItems.Keys) { UnequipItem(slot); }
+            // [v0.1] BUG: UnequipItem writes equippedItems[slot] while the key collection is being enumerated,
+            // [v0.1] which throws InvalidOperationException on Unity's Mono runtime.
+            var slots = new List<EquipmentSlotType>(equippedItems.Keys);
+            foreach (var slot in slots)
             {
                 UnequipItem(slot);
             }
