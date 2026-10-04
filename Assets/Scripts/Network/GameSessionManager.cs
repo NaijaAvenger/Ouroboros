@@ -46,7 +46,10 @@ namespace Ouroboros.Network
         [SerializeField] private bool rotateDefaultClass = true;
 
         [Header("Local Input")]
+        [Tooltip("Mouse look multiplier (Input System deltas are pre-scaled to match the legacy axes).")]
         [SerializeField] private float mouseSensitivity = 2f;
+        [Tooltip("Gamepad right-stick look speed in degrees per second at full deflection.")]
+        [SerializeField] private float gamepadLookSpeed = 180f;
         [SerializeField] private float pitchLimit = 89f;
 
         private NetworkRunner runner;
@@ -248,26 +251,26 @@ namespace Ouroboros.Network
         // Local input
         // ------------------------------------------------------------------
 
+        // [v0.2] This method polled UnityEngine.Input directly (legacy Input Manager only).
+        // [v0.3] All device reads go through Core.LocalInputSource: Input System first (keyboard, mouse,
+        //        gamepad), legacy Input Manager only as a fallback.
         private void SampleLocalInput()
         {
-            if (Cursor.lockState == CursorLockMode.Locked)
+            if (Cursor.lockState == CursorLockMode.Locked || Core.LocalInputSource.LastDeviceWasGamepad)
             {
-                accumulatedYaw += Input.GetAxis("Mouse X") * mouseSensitivity;
-                accumulatedPitch -= Input.GetAxis("Mouse Y") * mouseSensitivity;
+                Vector2 look = Core.LocalInputSource.LookDelta(mouseSensitivity, gamepadLookSpeed, Time.unscaledDeltaTime);
+                accumulatedYaw += look.x;
+                accumulatedPitch -= look.y;
                 accumulatedPitch = Mathf.Clamp(accumulatedPitch, -pitchLimit, pitchLimit);
             }
 
-            if (Input.GetKeyDown(KeyCode.Space))    pressedSinceLastTick |= 1 << (int)Core.InputButtons.Jump;
-            if (Input.GetKeyDown(KeyCode.Alpha1))   pressedSinceLastTick |= 1 << (int)Core.InputButtons.Ability1;
-            if (Input.GetKeyDown(KeyCode.Alpha2))   pressedSinceLastTick |= 1 << (int)Core.InputButtons.Ability2;
-            if (Input.GetKeyDown(KeyCode.Alpha3))   pressedSinceLastTick |= 1 << (int)Core.InputButtons.Ability3;
-            if (Input.GetKeyDown(KeyCode.Alpha4))   pressedSinceLastTick |= 1 << (int)Core.InputButtons.Ability4;
-            if (Input.GetMouseButtonDown(0))        pressedSinceLastTick |= 1 << (int)Core.InputButtons.Primary;
-            if (Input.GetMouseButtonDown(1))        pressedSinceLastTick |= 1 << (int)Core.InputButtons.Secondary;
-            if (Input.GetKeyDown(KeyCode.Q))        pressedSinceLastTick |= 1 << (int)Core.InputButtons.Utility;
-            if (Input.GetKeyDown(KeyCode.E))        pressedSinceLastTick |= 1 << (int)Core.InputButtons.Gadget;
+            // Edge-triggered buttons are latched here (Update runs more often than OnInput) so no press is lost.
+            for (int b = 0; b <= (int)Core.InputButtons.Gadget; b++)
+            {
+                if (Core.LocalInputSource.Pressed((Core.InputButtons)b)) pressedSinceLastTick |= 1 << b;
+            }
 
-            if (Input.GetKeyDown(KeyCode.Escape))
+            if (Core.LocalInputSource.CursorTogglePressed())
             {
                 Cursor.lockState = Cursor.lockState == CursorLockMode.Locked ? CursorLockMode.None : CursorLockMode.Locked;
                 Cursor.visible = Cursor.lockState != CursorLockMode.Locked;
@@ -287,22 +290,17 @@ namespace Ouroboros.Network
         {
             var data = new Core.NetworkInputData
             {
-                Move = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical")),
+                Move = Core.LocalInputSource.Move(),
                 Yaw = accumulatedYaw,
                 Pitch = accumulatedPitch
             };
 
-            data.Buttons.Set((int)Core.InputButtons.Jump,      Input.GetKey(KeyCode.Space) || WasPressed(Core.InputButtons.Jump));
-            data.Buttons.Set((int)Core.InputButtons.Sprint,    Input.GetKey(KeyCode.LeftShift));
-            data.Buttons.Set((int)Core.InputButtons.Interact,  Input.GetKey(KeyCode.F));
-            data.Buttons.Set((int)Core.InputButtons.Ability1,  Input.GetKey(KeyCode.Alpha1) || WasPressed(Core.InputButtons.Ability1));
-            data.Buttons.Set((int)Core.InputButtons.Ability2,  Input.GetKey(KeyCode.Alpha2) || WasPressed(Core.InputButtons.Ability2));
-            data.Buttons.Set((int)Core.InputButtons.Ability3,  Input.GetKey(KeyCode.Alpha3) || WasPressed(Core.InputButtons.Ability3));
-            data.Buttons.Set((int)Core.InputButtons.Ability4,  Input.GetKey(KeyCode.Alpha4) || WasPressed(Core.InputButtons.Ability4));
-            data.Buttons.Set((int)Core.InputButtons.Primary,   Input.GetMouseButton(0) || WasPressed(Core.InputButtons.Primary));
-            data.Buttons.Set((int)Core.InputButtons.Secondary, Input.GetMouseButton(1) || WasPressed(Core.InputButtons.Secondary));
-            data.Buttons.Set((int)Core.InputButtons.Utility,   Input.GetKey(KeyCode.Q) || WasPressed(Core.InputButtons.Utility));
-            data.Buttons.Set((int)Core.InputButtons.Gadget,    Input.GetKey(KeyCode.E) || WasPressed(Core.InputButtons.Gadget));
+            // [v0.2] data.Buttons.Set(..., Input.GetKey(KeyCode.X) || WasPressed(...)) per button (legacy only)
+            for (int b = 0; b <= (int)Core.InputButtons.Gadget; b++)
+            {
+                var button = (Core.InputButtons)b;
+                data.Buttons.Set(b, Core.LocalInputSource.Held(button) || WasPressed(button));
+            }
 
             pressedSinceLastTick = 0;
             input.Set(data);
