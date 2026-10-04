@@ -10,6 +10,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
 #endif
 using Fusion;
+using Fusion.Editor;
 
 namespace Ouroboros.EditorTools
 {
@@ -46,23 +47,46 @@ namespace Ouroboros.EditorTools
             EnsureFolders();
 
             var config = CreateOrLoadConfig();
-            var playerPrefab = CreatePlayerPrefab();
-            var lootDropPrefab = CreateLootDropPrefab();
+            CreatePlayerPrefab();
+            CreateLootDropPrefab();
             var trapPrefab = CreateTrapPrefab();
             var registry = CreateClassAssets(trapPrefab);
-            var projectilePrefab = CreateProjectilePrefab();
-            var equipment = CreateEquipmentAssets(projectilePrefab);
-            AssignStartingEquipment(registry, equipment);
+            CreateProjectilePrefab();
             var panelSettings = CreatePanelSettings();
             var feedback = CreateFeedbackLibrary();
+
+            // Let Fusion's importer label + bake the prefabs, then take FRESH references: the objects returned by
+            // SaveAsPrefabAsset can be replaced during that re-import, which previously left scene fields empty.
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            var playerPrefab = LoadNetworkObject(PlayerPrefabPath);
+            var lootDropPrefab = LoadNetworkObject(LootDropPrefabPath);
+            var projectilePrefab = LoadNetworkObject(ProjectilePrefabPath);
+            var trapPrefabFresh = LoadNetworkObject(TrapPrefabPath);
+
+            var equipment = CreateEquipmentAssets(projectilePrefab);
+            AssignStartingEquipment(registry, equipment);
+            foreach (var cls in registry.classes)
+            {
+                if (cls != null && cls.classType == Core.PlayerClassType.Saboteur && cls.trapPrefab == null) { cls.trapPrefab = trapPrefabFresh; EditorUtility.SetDirty(cls); }
+            }
 
             BuildScene(config, playerPrefab, lootDropPrefab, registry, panelSettings, feedback, equipment);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
+            NetworkProjectConfigUtilities.RebuildPrefabTable();
 
-            Debug.Log("[Ouroboros] Dev scene created at " + ScenePath +
-                      ". Press Play to host; run a second instance (ParrelSync / build) to join.");
+            Debug.Log("[Ouroboros] Dev scene ready at " + ScenePath +
+                      ". Press Play to host; run a second instance (ParrelSync / build) to join. Re-running this menu updates references without wiping the scene.");
+        }
+
+        private static NetworkObject LoadNetworkObject(string path)
+        {
+            var go = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            var no = go != null ? go.GetComponent<NetworkObject>() : null;
+            if (no == null) Debug.LogError($"[Ouroboros] Could not load NetworkObject prefab at {path}");
+            return no;
         }
 
         [MenuItem("Ouroboros/Setup/Create Prefabs Only")]
@@ -101,6 +125,7 @@ namespace Ouroboros.EditorTools
             cfg.matchDuration = 300f;
             cfg.preMatchCountdown = 5f;
             cfg.minPlayersToStart = 1;
+            cfg.autoStart = false; // show the lobby / class picker until the host presses "Start match now"
             cfg.extractionPointActivationDelay = 30f;
             cfg.extractionWindowDuration = 60f;
             cfg.extractionTime = 6f;
@@ -150,9 +175,9 @@ namespace Ouroboros.EditorTools
             SetReference(presentation, "modelRenderer", model.GetComponent<Renderer>());
             go.AddComponent<Player.PlayerFeedback>();
 
-            var prefab = PrefabUtility.SaveAsPrefabAsset(go, PlayerPrefabPath);
+            PrefabUtility.SaveAsPrefabAsset(go, PlayerPrefabPath);
             Object.DestroyImmediate(go);
-            return prefab.GetComponent<NetworkObject>();
+            return LoadNetworkObject(PlayerPrefabPath);
         }
 
         /// <summary>Adds components introduced after the prefab was first generated (idempotent).</summary>
@@ -186,7 +211,7 @@ namespace Ouroboros.EditorTools
 
             if (changed) PrefabUtility.SaveAsPrefabAsset(root, PlayerPrefabPath);
             PrefabUtility.UnloadPrefabContents(root);
-            return AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefabPath).GetComponent<NetworkObject>();
+            return LoadNetworkObject(PlayerPrefabPath);
         }
 
         // ------------------------------------------------------------------
@@ -278,9 +303,9 @@ namespace Ouroboros.EditorTools
             go.AddComponent<NetworkTransform>();
             go.AddComponent<Equipment.Projectile>();
 
-            var prefab = PrefabUtility.SaveAsPrefabAsset(go, ProjectilePrefabPath);
+            PrefabUtility.SaveAsPrefabAsset(go, ProjectilePrefabPath);
             Object.DestroyImmediate(go);
-            return prefab.GetComponent<NetworkObject>();
+            return LoadNetworkObject(ProjectilePrefabPath);
         }
 
         private static Data.EquipmentRegistry CreateEquipmentAssets(NetworkObject projectilePrefab)
@@ -433,9 +458,9 @@ namespace Ouroboros.EditorTools
             go.AddComponent<NetworkTransform>();
             go.AddComponent<GameMode.LootDrop>();
 
-            var prefab = PrefabUtility.SaveAsPrefabAsset(go, LootDropPrefabPath);
+            PrefabUtility.SaveAsPrefabAsset(go, LootDropPrefabPath);
             Object.DestroyImmediate(go);
-            return prefab.GetComponent<NetworkObject>();
+            return LoadNetworkObject(LootDropPrefabPath);
         }
 
         private static NetworkObject CreateTrapPrefab()
@@ -453,24 +478,100 @@ namespace Ouroboros.EditorTools
             go.AddComponent<NetworkTransform>();
             go.AddComponent<Interaction.ProximityTrap>();
 
-            var prefab = PrefabUtility.SaveAsPrefabAsset(go, TrapPrefabPath);
+            PrefabUtility.SaveAsPrefabAsset(go, TrapPrefabPath);
             Object.DestroyImmediate(go);
-            return prefab.GetComponent<NetworkObject>();
+            return LoadNetworkObject(TrapPrefabPath);
         }
 
         // ------------------------------------------------------------------
 
+        /// <summary>
+        /// Creates the DevArena scene on first run; on later runs opens it and only adds what is missing and
+        /// re-applies asset references, so hand-made edits (and hand-assigned prefabs) survive.
+        /// </summary>
         private static void BuildScene(Data.GameModeConfig config, NetworkObject playerPrefab, NetworkObject lootDropPrefab,
             Data.ClassRegistry registry, PanelSettings panelSettings, Data.FeedbackLibrary feedback, Data.EquipmentRegistry equipment)
         {
-            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            bool exists = File.Exists(ScenePath);
+            Scene scene = exists
+                ? EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single)
+                : EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
+            if (!exists || Object.FindFirstObjectByType<Player.TeamSpawnPoint>() == null)
+            {
+                BuildLevel();
+            }
+
+            // Managers (scene NetworkObject)
+            var teamManager = Object.FindFirstObjectByType<Network.TeamManager>();
+            GameObject managers = teamManager != null ? teamManager.gameObject : new GameObject("GameManagers");
+            if (managers.GetComponent<NetworkObject>() == null) managers.AddComponent<NetworkObject>();
+            if (teamManager == null) managers.AddComponent<Network.TeamManager>();
+            var gameMode = managers.GetComponent<GameMode.ExtractionHeistGameMode>() ?? managers.AddComponent<GameMode.ExtractionHeistGameMode>();
+            SetReference(gameMode, "config", config);
+            SetReference(gameMode, "lootDropPrefabObject", lootDropPrefab);
+
+            // Session
+            var session = Object.FindFirstObjectByType<Network.GameSessionManager>();
+            if (session == null) session = new GameObject("GameSessionManager").AddComponent<Network.GameSessionManager>();
+            SetReference(session, "playerPrefabObject", playerPrefab);
+            SetReference(session, "classRegistry", registry);
+            SetReference(session, "feedbackLibrary", feedback);
+            SetReference(session, "equipmentRegistry", equipment);
+            var devHud = session.GetComponent<UI.DevHUD>();
+            if (devHud == null) { devHud = session.gameObject.AddComponent<UI.DevHUD>(); SetBool(devHud, "visible", false); }
+
+            // Spectator camera: renders the arena until the local player spawns (and again if they despawn)
+            var spectator = Object.FindFirstObjectByType<Player.SpectatorCamera>();
+            if (spectator == null)
+            {
+                var camGo = new GameObject("SpectatorCamera");
+                camGo.tag = "MainCamera";
+                camGo.transform.position = new Vector3(0f, 45f, -60f);
+                camGo.transform.rotation = Quaternion.Euler(35f, 0f, 0f);
+                camGo.AddComponent<Camera>();
+                camGo.AddComponent<AudioListener>();
+                spectator = camGo.AddComponent<Player.SpectatorCamera>();
+            }
+
+            // HUD (UI Toolkit)
+            var hud = Object.FindFirstObjectByType<UI.HeistHUD>();
+            GameObject hudGo = hud != null ? hud.gameObject : new GameObject("HUD");
+            var doc = hudGo.GetComponent<UIDocument>() ?? hudGo.AddComponent<UIDocument>();
+            doc.panelSettings = panelSettings;
+            if (hud == null) hudGo.AddComponent<UI.HeistHUD>();
+            if (hudGo.GetComponent<UI.ClassPickerUI>() == null) hudGo.AddComponent<UI.ClassPickerUI>();
+            if (hudGo.GetComponent<UI.MatchFeedback>() == null) hudGo.AddComponent<UI.MatchFeedback>();
+
+            // Event system so UI Toolkit buttons receive pointer input (Input System module when available)
+            if (Object.FindFirstObjectByType<EventSystem>() == null)
+            {
+                var esGo = new GameObject("EventSystem");
+                esGo.AddComponent<EventSystem>();
+#if ENABLE_INPUT_SYSTEM
+                esGo.AddComponent<InputSystemUIInputModule>();
+#else
+                esGo.AddComponent<StandaloneInputModule>();
+#endif
+            }
+
+            Directory.CreateDirectory(Path.GetDirectoryName(ScenePath));
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, ScenePath);
+            AddToBuildSettings(ScenePath);
+        }
+
+        private static void BuildLevel()
+        {
             // Lighting
-            var lightGo = new GameObject("Directional Light");
-            var light = lightGo.AddComponent<Light>();
-            light.type = LightType.Directional;
-            light.intensity = 1.1f;
-            lightGo.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+            if (Object.FindFirstObjectByType<Light>() == null)
+            {
+                var lightGo = new GameObject("Directional Light");
+                var light = lightGo.AddComponent<Light>();
+                light.type = LightType.Directional;
+                light.intensity = 1.1f;
+                lightGo.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+            }
 
             // Ground + cover
             var ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
@@ -494,41 +595,6 @@ namespace Ouroboros.EditorTools
                 block.isStatic = true;
                 Tint(block, new Color(0.45f, 0.45f, 0.5f));
             }
-
-            // Managers (scene NetworkObject)
-            var managers = new GameObject("GameManagers");
-            managers.AddComponent<NetworkObject>();
-            managers.AddComponent<Network.TeamManager>();
-            var gameMode = managers.AddComponent<GameMode.ExtractionHeistGameMode>();
-            SetReference(gameMode, "config", config);
-            SetReference(gameMode, "lootDropPrefabObject", lootDropPrefab);
-
-            // Session
-            var sessionGo = new GameObject("GameSessionManager");
-            var session = sessionGo.AddComponent<Network.GameSessionManager>();
-            SetReference(session, "playerPrefabObject", playerPrefab);
-            SetReference(session, "classRegistry", registry);
-            SetReference(session, "feedbackLibrary", feedback);
-            SetReference(session, "equipmentRegistry", equipment);
-            var devHud = sessionGo.AddComponent<UI.DevHUD>();
-            SetBool(devHud, "visible", false); // F1 brings the debug overlay back
-
-            // HUD (UI Toolkit)
-            var hudGo = new GameObject("HUD");
-            var doc = hudGo.AddComponent<UIDocument>();
-            doc.panelSettings = panelSettings;
-            hudGo.AddComponent<UI.HeistHUD>();
-            hudGo.AddComponent<UI.ClassPickerUI>();
-            hudGo.AddComponent<UI.MatchFeedback>();
-
-            // Event system so UI Toolkit buttons receive pointer input (Input System module when available)
-            var esGo = new GameObject("EventSystem");
-            esGo.AddComponent<EventSystem>();
-#if ENABLE_INPUT_SYSTEM
-            esGo.AddComponent<InputSystemUIInputModule>();
-#else
-            esGo.AddComponent<StandaloneInputModule>();
-#endif
 
             // Spawn points: one per team in each corner, facing the centre
             var spawns = new GameObject("SpawnPoints");
@@ -583,10 +649,6 @@ namespace Ouroboros.EditorTools
                 SetFloat(obj, "interactRadius", 3.5f);
                 SetFloat(obj, "captureTime", 6f);
             }
-
-            Directory.CreateDirectory(Path.GetDirectoryName(ScenePath));
-            EditorSceneManager.SaveScene(scene, ScenePath);
-            AddToBuildSettings(ScenePath);
         }
 
         private static void AddToBuildSettings(string scenePath)

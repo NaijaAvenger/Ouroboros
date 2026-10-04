@@ -82,6 +82,18 @@ Watch the **DevHUD** (F1) and console:
 - [ ] Lobby: `< >` cyclers swap Primary / Secondary; selection replicates; starting ammo matches the item
 - [ ] Light Armor reduces damage taken; Stim Rig raises speed
 
+## 7d. Expected flow and troubleshooting
+**Expected flow on Play (dev config):** spectator camera orbits the arena → session starts → your player spawns → the
+**class picker** appears with the cursor free (state *Waiting for players*) → host presses **Start match now** (or the
+match auto-starts if `autoStart` is on in the config) → 5 s countdown → picker closes, cursor locks, first-person camera.
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Straight into the arena from a high camera, cursor visible, mouse doesn't look | No local player spawned, so nothing locked the cursor or took over the camera. Console shows `No player prefab` or a Fusion spawn error. | Select `GameSessionManager`: **Player Prefab Object** must reference `Assets/Ouroboros/Prefabs/Player.prefab`. Re-run *Ouroboros > Setup > Create Dev Scene* (it now re-applies references without wiping the scene). |
+| The prefab field empties after a refresh | Older builder versions rebuilt the whole scene on every run, and the Fusion `NetworkPrefabRef` field errors when the prefab isn't baked/labelled. | Use the direct **Player Prefab Object** field; run *Tools > Fusion > Rebuild Prefab Table* if the `NetworkPrefabRef` field shows an error. |
+| Cursor stays free after the picker closes | Editor released the lock (Esc / focus). | Click in the Game view: the session manager re-locks on primary fire whenever a local player exists and no picker is open. |
+| No class picker, match already running | `autoStart` is on and `minPlayersToStart` is reached instantly. | Set `autoStart = false` on `Assets/Ouroboros/DevGameModeConfig.asset` (new configs default to off) to hold the lobby until Start. |
+
 ## 8. Exit criteria
 - Steps 5 and 6 pass with no non-authority write warnings in the console.
 - Section 3's table updated with any further fixes.

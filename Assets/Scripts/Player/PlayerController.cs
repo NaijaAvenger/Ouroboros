@@ -85,6 +85,13 @@ namespace Ouroboros.Player
             }
 
             if (currentClass == null) currentClass = networkPlayer.CurrentClass;
+
+            if (Object.HasInputAuthority) Network.GameSessionManager.NotifyLocalPlayer(true);
+        }
+
+        public override void Despawned(NetworkRunner runner, bool hasState)
+        {
+            if (Object != null && Object.HasInputAuthority) Network.GameSessionManager.NotifyLocalPlayer(false);
         }
 
         public override void FixedUpdateNetwork()

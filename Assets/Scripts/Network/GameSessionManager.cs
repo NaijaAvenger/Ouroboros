@@ -31,10 +31,11 @@ namespace Ouroboros.Network
         [SerializeField] private bool autoStartOnPlay = true;
         [SerializeField] private NetworkRunner runnerPrefab;
 
-        [Header("Prefabs")]
-        [SerializeField] private NetworkPrefabRef playerPrefab;
-        [Tooltip("Fallback used when playerPrefab is unset: a direct prefab reference (the Phase 0 scene builder fills this).")]
+        [Header("Player Prefab")]
+        [Tooltip("Assign Assets/Ouroboros/Prefabs/Player.prefab here (direct reference; the scene builder fills it). Used when the NetworkPrefabRef below is empty.")]
         [SerializeField] private NetworkObject playerPrefabObject;
+        [Tooltip("Optional Fusion prefab reference. If Fusion shows an error here, re-run Tools > Fusion > Rebuild Prefab Table or just use the field above.")]
+        [SerializeField] private NetworkPrefabRef playerPrefab;
 
         [Header("Feedback (optional)")]
         [Tooltip("Audio/VFX library used by PlayerFeedback and MatchFeedback when they have no override.")]
@@ -52,6 +53,10 @@ namespace Ouroboros.Network
         [SerializeField] private Core.PlayerClassType defaultClass = Core.PlayerClassType.Agent;
         [Tooltip("Cycle through classes for successive joins so a dev lobby exercises every class.")]
         [SerializeField] private bool rotateDefaultClass = true;
+
+        [Header("Spectator")]
+        [Tooltip("Scene camera shown while there is no local player (lobby before spawn, after despawn). Auto-found by SpectatorCamera if unset.")]
+        [SerializeField] private Player.SpectatorCamera spectatorCamera;
 
         [Header("Local Input")]
         [Tooltip("Mouse look multiplier (Input System deltas are pre-scaled to match the legacy axes).")]
@@ -106,6 +111,30 @@ namespace Ouroboros.Network
         {
             if (runner == null || !runner.IsRunning || runner.LocalPlayer == default) return;
             SampleLocalInput();
+            UpdateCursorLock();
+        }
+
+        /// <summary>
+        /// Re-locks the cursor when the player clicks into the game while playing (the editor releases the lock on
+        /// Esc / focus loss). Never locks while the class picker owns the cursor or there is no local player.
+        /// </summary>
+        private void UpdateCursorLock()
+        {
+            if (Cursor.lockState == CursorLockMode.Locked) return;
+            if (UI.ClassPickerUI.IsShown) return;
+            if (!runner.TryGetPlayerObject(runner.LocalPlayer, out NetworkObject local) || local == null) return;
+            if (Core.LocalInputSource.Pressed(Core.InputButtons.Primary))
+            {
+                Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible = false;
+            }
+        }
+
+        /// <summary>Called by PlayerController when the local player's object spawns / despawns.</summary>
+        public static void NotifyLocalPlayer(bool present)
+        {
+            var cam = Instance != null && Instance.spectatorCamera != null ? Instance.spectatorCamera : Player.SpectatorCamera.Instance;
+            if (cam != null) cam.SetActiveView(!present);
         }
 
         // ------------------------------------------------------------------
@@ -179,7 +208,8 @@ namespace Ouroboros.Network
         {
             if (!playerPrefab.IsValid && playerPrefabObject == null)
             {
-                Debug.LogError("[GameSessionManager] Player prefab not assigned (set playerPrefab or playerPrefabObject)");
+                Debug.LogError("[GameSessionManager] No player prefab: assign Assets/Ouroboros/Prefabs/Player.prefab to 'Player Prefab Object' " +
+                               "on the GameSessionManager (or re-run Ouroboros > Setup > Create Dev Scene). Nothing will spawn.");
                 return;
             }
 

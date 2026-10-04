@@ -31,6 +31,9 @@ namespace Ouroboros.UI
 
         private float nextRefresh;
         private bool shown;
+
+        /// <summary>True while a picker owns the cursor (GameSessionManager won't re-lock it).</summary>
+        public static bool IsShown { get; private set; }
         private Network.NetworkPlayer local;
 
         private static readonly Color PanelBg = new Color(0f, 0f, 0f, 0.75f);
@@ -60,6 +63,7 @@ namespace Ouroboros.UI
             root?.RemoveFromHierarchy();
             if (shown) SetCursorLocked(true);
             shown = false;
+            IsShown = false;
         }
 
         private void Build()
@@ -174,6 +178,7 @@ namespace Ouroboros.UI
             if (shouldShow != shown)
             {
                 shown = shouldShow;
+                IsShown = shown;
                 root.style.display = shown ? DisplayStyle.Flex : DisplayStyle.None;
                 SetCursorLocked(!shown);
                 if (shown)
