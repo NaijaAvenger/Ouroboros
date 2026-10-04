@@ -22,8 +22,13 @@ namespace Ouroboros.UI
         [SerializeField] private int feedMaxEntries = 6;
         [SerializeField] private float bannerDuration = 3f;
 
+        private const string RootName = "heist-hud";
+
         private UIDocument document;
         private VisualElement root;
+        private VisualElement damageFlash;
+        private float damageFlashAlpha;
+        private Network.NetworkPlayer damageSubscribed;
 
         // Top
         private Label stateLabel, timerLabel, bannerLabel;
@@ -62,15 +67,18 @@ namespace Ouroboros.UI
         private void OnEnable()
         {
             document = GetComponent<UIDocument>();
-            root = document.rootVisualElement;
-            if (root == null)
+            var panelRoot = document.rootVisualElement;
+            if (panelRoot == null)
             {
                 Debug.LogWarning("[HeistHUD] UIDocument has no PanelSettings; run Ouroboros > Setup > Create Dev Scene.");
                 enabled = false;
                 return;
             }
 
-            root.Clear();
+            // [v0.3] root.Clear() replaced: the HUD owns a named child so other panels (ClassPickerUI) can share the document
+            panelRoot.Q(RootName)?.RemoveFromHierarchy();
+            root = new VisualElement { name = RootName };
+            panelRoot.Add(root);
             Build();
 
             GameMode.ExtractionHeistGameMode.StateChanged += OnStateChanged;
@@ -87,6 +95,8 @@ namespace Ouroboros.UI
             GameMode.ExtractionHeistGameMode.TeamExtractedEvent -= OnTeamExtracted;
             GameMode.LootObjective.Completed -= OnObjectiveCompleted;
             Network.NetworkPlayer.PlayerKilled -= OnPlayerKilled;
+            if (damageSubscribed != null) { damageSubscribed.Damaged -= OnLocalDamaged; damageSubscribed = null; }
+            root?.RemoveFromHierarchy();
         }
 
         private void Update()
@@ -101,6 +111,13 @@ namespace Ouroboros.UI
             if (bannerLabel.resolvedStyle.display == DisplayStyle.Flex && Time.unscaledTime > bannerUntil)
             {
                 bannerLabel.style.display = DisplayStyle.None;
+            }
+
+            if (damageFlashAlpha > 0f)
+            {
+                damageFlashAlpha = Mathf.Max(0f, damageFlashAlpha - Time.unscaledDeltaTime * 1.5f);
+                damageFlash.style.opacity = damageFlashAlpha;
+                damageFlash.style.display = damageFlashAlpha > 0f ? DisplayStyle.Flex : DisplayStyle.None;
             }
         }
 
@@ -229,6 +246,11 @@ namespace Ouroboros.UI
             zonePanel.Add(zoneHint);
             root.Add(zonePanel);
 
+            // Damage flash (red vignette-ish full-screen tint)
+            damageFlash = Overlay(new Color(0.8f, 0f, 0f, 0.35f));
+            damageFlash.style.opacity = 0f;
+            root.Add(damageFlash);
+
             // Death overlay
             deathOverlay = Overlay(new Color(0.3f, 0f, 0f, 0.45f));
             deathTitle = Text("YOU DIED", 48, Color.white, bold: true);
@@ -315,6 +337,12 @@ namespace Ouroboros.UI
         private void Refresh()
         {
             if (local == null || local.Object == null) local = FindLocal();
+            if (local != damageSubscribed)
+            {
+                if (damageSubscribed != null) damageSubscribed.Damaged -= OnLocalDamaged;
+                damageSubscribed = local;
+                if (damageSubscribed != null) damageSubscribed.Damaged += OnLocalDamaged;
+            }
 
             RefreshMatch();
             RefreshTeams();
@@ -563,6 +591,11 @@ namespace Ouroboros.UI
             string killerName = killer != null ? killer.DisplayName.ToString() : "Environment";
             Color color = killer != null ? Player.TeamSpawnPoint.TeamColor(killer.Team) : Color.gray;
             AddFeed($"{killerName}  ✕  {victim.DisplayName}", color);
+        }
+
+        private void OnLocalDamaged(Network.NetworkPlayer who, float amount)
+        {
+            damageFlashAlpha = Mathf.Clamp01(Mathf.Max(damageFlashAlpha, 0.35f + amount / 100f));
         }
 
         private void ShowBanner(string text)

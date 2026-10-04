@@ -5,6 +5,10 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
+using UnityEngine.EventSystems;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem.UI;
+#endif
 using Fusion;
 
 namespace Ouroboros.EditorTools
@@ -31,6 +35,7 @@ namespace Ouroboros.EditorTools
         private const string UIDir = Root + "/UI";
         private const string ThemePath = UIDir + "/HeistRuntimeTheme.tss";
         private const string PanelSettingsPath = UIDir + "/HeistPanelSettings.asset";
+        private const string FeedbackPath = Root + "/FeedbackLibrary.asset";
 
         [MenuItem("Ouroboros/Setup/Create Dev Scene (Phase 0)")]
         public static void CreateDevScene()
@@ -43,8 +48,9 @@ namespace Ouroboros.EditorTools
             var trapPrefab = CreateTrapPrefab();
             var registry = CreateClassAssets(trapPrefab);
             var panelSettings = CreatePanelSettings();
+            var feedback = CreateFeedbackLibrary();
 
-            BuildScene(config, playerPrefab, lootDropPrefab, registry, panelSettings);
+            BuildScene(config, playerPrefab, lootDropPrefab, registry, panelSettings, feedback);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -135,6 +141,7 @@ namespace Ouroboros.EditorTools
 
             var presentation = go.AddComponent<Player.PlayerPresentation>();
             SetReference(presentation, "modelRenderer", model.GetComponent<Renderer>());
+            go.AddComponent<Player.PlayerFeedback>();
 
             var prefab = PrefabUtility.SaveAsPrefabAsset(go, PlayerPrefabPath);
             Object.DestroyImmediate(go);
@@ -152,6 +159,11 @@ namespace Ouroboros.EditorTools
                 var presentation = root.AddComponent<Player.PlayerPresentation>();
                 var model = root.transform.Find("Model");
                 if (model != null) SetReference(presentation, "modelRenderer", model.GetComponent<Renderer>());
+                changed = true;
+            }
+            if (root.GetComponent<Player.PlayerFeedback>() == null)
+            {
+                root.AddComponent<Player.PlayerFeedback>();
                 changed = true;
             }
 
@@ -232,6 +244,15 @@ namespace Ouroboros.EditorTools
             return data;
         }
 
+        private static Data.FeedbackLibrary CreateFeedbackLibrary()
+        {
+            var lib = AssetDatabase.LoadAssetAtPath<Data.FeedbackLibrary>(FeedbackPath);
+            if (lib != null) return lib;
+            lib = ScriptableObject.CreateInstance<Data.FeedbackLibrary>();
+            AssetDatabase.CreateAsset(lib, FeedbackPath); // clips/prefabs left empty: assign your assets here
+            return lib;
+        }
+
         // ------------------------------------------------------------------
         // UI Toolkit assets
 
@@ -299,7 +320,7 @@ namespace Ouroboros.EditorTools
         // ------------------------------------------------------------------
 
         private static void BuildScene(Data.GameModeConfig config, NetworkObject playerPrefab, NetworkObject lootDropPrefab,
-            Data.ClassRegistry registry, PanelSettings panelSettings)
+            Data.ClassRegistry registry, PanelSettings panelSettings, Data.FeedbackLibrary feedback)
         {
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
@@ -346,6 +367,7 @@ namespace Ouroboros.EditorTools
             var session = sessionGo.AddComponent<Network.GameSessionManager>();
             SetReference(session, "playerPrefabObject", playerPrefab);
             SetReference(session, "classRegistry", registry);
+            SetReference(session, "feedbackLibrary", feedback);
             var devHud = sessionGo.AddComponent<UI.DevHUD>();
             SetBool(devHud, "visible", false); // F1 brings the debug overlay back
 
@@ -354,6 +376,17 @@ namespace Ouroboros.EditorTools
             var doc = hudGo.AddComponent<UIDocument>();
             doc.panelSettings = panelSettings;
             hudGo.AddComponent<UI.HeistHUD>();
+            hudGo.AddComponent<UI.ClassPickerUI>();
+            hudGo.AddComponent<UI.MatchFeedback>();
+
+            // Event system so UI Toolkit buttons receive pointer input (Input System module when available)
+            var esGo = new GameObject("EventSystem");
+            esGo.AddComponent<EventSystem>();
+#if ENABLE_INPUT_SYSTEM
+            esGo.AddComponent<InputSystemUIInputModule>();
+#else
+            esGo.AddComponent<StandaloneInputModule>();
+#endif
 
             // Spawn points: one per team in each corner, facing the centre
             var spawns = new GameObject("SpawnPoints");

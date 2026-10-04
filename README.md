@@ -27,7 +27,10 @@ A modular multiplayer extraction heist game built with **Photon Fusion 2**, feat
 - ✅ **AI** — server-authoritative agents, perception, behavior trees, a working guard
 - ✅ **HUD** — UI Toolkit HUD: vitals, cooldowns, status, loot, timers, scoreboard, zone prompts, kill feed, death/end screens
 - ✅ **Presentation hooks** — team colours, status tints, stealth visibility, data-driven class stats (`ClassData` + `ClassRegistry`)
-- ⬜ **VFX / audio / animation** — hook into `PlayerPresentation` and the static events (Phase 1, remaining)
+- ✅ **Input System first** — rebindable keyboard/mouse/gamepad actions, legacy fallback
+- ✅ **Lobby class picker** and pre-match ability lock
+- ✅ **Feedback hooks** — `FeedbackLibrary` audio/VFX slots wired to every gameplay event (assets not included)
+- ⬜ **Animation / art** — presentation is placeholder capsules
 - ⬜ **Weapons** — equipment slots exist; networked weapons are Phase 2
 
 ### Player Classes
@@ -84,7 +87,7 @@ Assets/Scripts/
 Scoring: objectives, kills, first extraction per team, each member extracted, and banked loot (`GameModeConfig`).
 
 ## Controls
-Input goes through the **Input System** package (keyboard, mouse, gamepad) when it is enabled; the legacy Input Manager is only a fallback.
+Input goes through the **Input System** package (keyboard, mouse, gamepad) when it is enabled; the legacy Input Manager is only a fallback. Bindings are rebindable at runtime (`HeistInputActions.StartRebind`) and persist in PlayerPrefs.
 
 | Action | Keyboard / Mouse | Gamepad |
 |--------|------------------|---------|

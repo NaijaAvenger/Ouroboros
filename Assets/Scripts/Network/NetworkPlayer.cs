@@ -73,6 +73,12 @@ namespace Ouroboros.Network
         public static event Action<NetworkPlayer, PlayerRef> PlayerKilled;
         /// <summary>Fired on every peer when any player extracts (v0.3).</summary>
         public static event Action<NetworkPlayer> PlayerExtracted;
+        /// <summary>Fired on every peer when a player successfully uses an ability (player, slot) (v0.3).</summary>
+        public static event Action<NetworkPlayer, int> AbilityUsed;
+        /// <summary>Fired on every peer when this player's replicated health drops (player, amount lost) (v0.3).</summary>
+        public event Action<NetworkPlayer, float> Damaged;
+
+        private float lastRenderedHealth = -1f;
 
         public Core.BasePlayerClass CurrentClass => currentClass;
         public bool IsLocalPlayer => Object != null && Object.HasInputAuthority;
@@ -175,6 +181,13 @@ namespace Ouroboros.Network
                         break;
                     case nameof(Status):
                         StatusChanged?.Invoke(this, Status);
+                        break;
+                    case nameof(Health):
+                        if (lastRenderedHealth >= 0f && Health < lastRenderedHealth)
+                        {
+                            Damaged?.Invoke(this, lastRenderedHealth - Health);
+                        }
+                        lastRenderedHealth = Health;
                         break;
                 }
             }
@@ -292,7 +305,20 @@ namespace Ouroboros.Network
         {
             if (currentClass == null || !IsActiveInMatch) return false;
             if (HasStatus(Core.StatusFlags.EMPDisabled)) return false;
-            return currentClass.UseAbility(abilityIndex);
+
+            // v0.3: abilities are locked until the match is live unless the config allows them
+            var gm = GameMode.ExtractionHeistGameMode.Instance;
+            if (gm != null && gm.Object != null && !gm.IsMatchLive && !gm.Config.allowAbilitiesBeforeMatch) return false;
+
+            bool used = currentClass.UseAbility(abilityIndex);
+            if (used) RPC_OnAbilityUsed(abilityIndex);
+            return used;
+        }
+
+        [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+        private void RPC_OnAbilityUsed(int slot)
+        {
+            AbilityUsed?.Invoke(this, slot);
         }
 
         public bool IsAbilityReady(int slot)

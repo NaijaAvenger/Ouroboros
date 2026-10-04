@@ -7,14 +7,15 @@ namespace Ouroboros.Core
 {
     /// <summary>
     /// Device-level input for the local player. Prefers the <b>Input System</b> package (keyboard, mouse
-    /// and gamepad) whenever it is enabled in Player Settings ("Input System Package" or "Both"); falls
-    /// back to the legacy Input Manager only when that is the sole active handler.
+    /// and gamepad, through the rebindable <see cref="HeistInputActions"/>) whenever it is enabled in
+    /// Player Settings ("Input System Package" or "Both"); falls back to the legacy Input Manager only
+    /// when that is the sole active handler.
     ///
     /// This is the only place that reads devices. <c>GameSessionManager</c> turns these samples into
     /// <see cref="NetworkInputData"/>; nothing else should touch <c>UnityEngine.Input</c> or
     /// <c>UnityEngine.InputSystem</c> directly.
     ///
-    /// Gamepad map: left stick move · right stick look · A jump · X interact · L3 sprint ·
+    /// Default gamepad map: left stick move · right stick look · A jump · X interact · L3 sprint ·
     /// D-pad abilities 1-4 · RT primary · LT secondary · LB utility · RB gadget · Start cursor · Select debug HUD.
     /// </summary>
     public static class LocalInputSource
@@ -31,29 +32,26 @@ namespace Ouroboros.Core
         /// <summary>True when the most recent meaningful input came from a gamepad (drives HUD hints).</summary>
         public static bool LastDeviceWasGamepad { get; private set; }
 
+#if ENABLE_INPUT_SYSTEM
+        private static HeistInputActions Actions => HeistInputActions.Instance;
+
+        private static void NoteDevice(InputAction action)
+        {
+            var control = action.activeControl;
+            if (control == null) return;
+            LastDeviceWasGamepad = control.device is Gamepad;
+        }
+#endif
+
         // ------------------------------------------------------------------
         // Axes
 
         public static Vector2 Move()
         {
 #if ENABLE_INPUT_SYSTEM
-            Vector2 v = Vector2.zero;
-            var kb = Keyboard.current;
-            if (kb != null)
-            {
-                if (kb.dKey.isPressed || kb.rightArrowKey.isPressed) v.x += 1f;
-                if (kb.aKey.isPressed || kb.leftArrowKey.isPressed)  v.x -= 1f;
-                if (kb.wKey.isPressed || kb.upArrowKey.isPressed)    v.y += 1f;
-                if (kb.sKey.isPressed || kb.downArrowKey.isPressed)  v.y -= 1f;
-            }
-            if (v.sqrMagnitude > 0f) LastDeviceWasGamepad = false;
-
-            var pad = Gamepad.current;
-            if (pad != null)
-            {
-                Vector2 stick = pad.leftStick.ReadValue();
-                if (stick.sqrMagnitude > 0.01f) { v += stick; LastDeviceWasGamepad = true; }
-            }
+            // [v0.3] previously polled Keyboard.current / Gamepad.current directly; now action-based (rebindable)
+            Vector2 v = Actions.Move.ReadValue<Vector2>();
+            if (v.sqrMagnitude > 0.0001f) NoteDevice(Actions.Move);
             return Vector2.ClampMagnitude(v, 1f);
 #elif ENABLE_LEGACY_INPUT_MANAGER
             return Vector2.ClampMagnitude(new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical")), 1f);
@@ -70,21 +68,15 @@ namespace Ouroboros.Core
         {
 #if ENABLE_INPUT_SYSTEM
             Vector2 look = Vector2.zero;
-            var mouse = Mouse.current;
-            if (mouse != null)
+
+            Vector2 mouse = Actions.LookMouse.ReadValue<Vector2>() * MouseDeltaScale * mouseSensitivity;
+            if (mouse.sqrMagnitude > 0f) { look += mouse; LastDeviceWasGamepad = false; }
+
+            Vector2 stick = Actions.LookStick.ReadValue<Vector2>();
+            if (stick.sqrMagnitude > 0.01f)
             {
-                Vector2 d = mouse.delta.ReadValue() * MouseDeltaScale * mouseSensitivity;
-                if (d.sqrMagnitude > 0f) { look += d; LastDeviceWasGamepad = false; }
-            }
-            var pad = Gamepad.current;
-            if (pad != null)
-            {
-                Vector2 stick = pad.rightStick.ReadValue();
-                if (stick.sqrMagnitude > 0.01f)
-                {
-                    look += stick * stickDegreesPerSecond * deltaTime;
-                    LastDeviceWasGamepad = true;
-                }
+                look += stick * stickDegreesPerSecond * deltaTime;
+                LastDeviceWasGamepad = true;
             }
             return look;
 #elif ENABLE_LEGACY_INPUT_MANAGER
@@ -101,13 +93,11 @@ namespace Ouroboros.Core
         public static bool Held(InputButtons button)
         {
 #if ENABLE_INPUT_SYSTEM
-            var kb = Keyboard.current;
-            var mouse = Mouse.current;
-            var pad = Gamepad.current;
-            bool k = kb != null && KeyControl(kb, mouse, button) is { isPressed: true };
-            bool g = pad != null && PadControl(pad, button) is { isPressed: true };
-            if (g) LastDeviceWasGamepad = true; else if (k) LastDeviceWasGamepad = false;
-            return k || g;
+            var action = Actions.Get(button);
+            if (action == null) return false;
+            bool held = action.IsPressed();
+            if (held) NoteDevice(action);
+            return held;
 #elif ENABLE_LEGACY_INPUT_MANAGER
             return LegacyHeld(button);
 #else
@@ -119,13 +109,11 @@ namespace Ouroboros.Core
         public static bool Pressed(InputButtons button)
         {
 #if ENABLE_INPUT_SYSTEM
-            var kb = Keyboard.current;
-            var mouse = Mouse.current;
-            var pad = Gamepad.current;
-            bool k = kb != null && KeyControl(kb, mouse, button) is { wasPressedThisFrame: true };
-            bool g = pad != null && PadControl(pad, button) is { wasPressedThisFrame: true };
-            if (g) LastDeviceWasGamepad = true; else if (k) LastDeviceWasGamepad = false;
-            return k || g;
+            var action = Actions.Get(button);
+            if (action == null) return false;
+            bool pressed = action.WasPressedThisFrame();
+            if (pressed) NoteDevice(action);
+            return pressed;
 #elif ENABLE_LEGACY_INPUT_MANAGER
             return LegacyPressed(button);
 #else
@@ -137,8 +125,7 @@ namespace Ouroboros.Core
         public static bool CursorTogglePressed()
         {
 #if ENABLE_INPUT_SYSTEM
-            return (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
-                || (Gamepad.current != null && Gamepad.current.startButton.wasPressedThisFrame);
+            return Actions.CursorToggle.WasPressedThisFrame();
 #elif ENABLE_LEGACY_INPUT_MANAGER
             return Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.JoystickButton7);
 #else
@@ -150,8 +137,7 @@ namespace Ouroboros.Core
         public static bool DebugHudTogglePressed()
         {
 #if ENABLE_INPUT_SYSTEM
-            return (Keyboard.current != null && Keyboard.current.f1Key.wasPressedThisFrame)
-                || (Gamepad.current != null && Gamepad.current.selectButton.wasPressedThisFrame);
+            return Actions.DebugHudToggle.WasPressedThisFrame();
 #elif ENABLE_LEGACY_INPUT_MANAGER
             return Input.GetKeyDown(KeyCode.F1) || Input.GetKeyDown(KeyCode.JoystickButton6);
 #else
@@ -162,10 +148,19 @@ namespace Ouroboros.Core
         // ------------------------------------------------------------------
         // HUD hints
 
-        /// <summary>Short label for a button on the device last used (e.g. "F" or "X").</summary>
+        /// <summary>Short label for a button on the device last used (e.g. "F" or "X"). Reflects rebinds.</summary>
         public static string Hint(InputButtons button)
         {
-            if (LastDeviceWasGamepad)
+#if ENABLE_INPUT_SYSTEM
+            string s = Actions.DisplayString(button, LastDeviceWasGamepad);
+            if (!string.IsNullOrEmpty(s) && s != "?") return s;
+#endif
+            return DefaultHint(button, LastDeviceWasGamepad);
+        }
+
+        public static string DefaultHint(InputButtons button, bool gamepad)
+        {
+            if (gamepad)
             {
                 switch (button)
                 {
@@ -200,48 +195,9 @@ namespace Ouroboros.Core
         }
 
         // ------------------------------------------------------------------
-        // Mappings
-
-#if ENABLE_INPUT_SYSTEM
-        private static UnityEngine.InputSystem.Controls.ButtonControl KeyControl(Keyboard kb, Mouse mouse, InputButtons button)
-        {
-            switch (button)
-            {
-                case InputButtons.Jump:      return kb.spaceKey;
-                case InputButtons.Sprint:    return kb.leftShiftKey;
-                case InputButtons.Interact:  return kb.fKey;
-                case InputButtons.Ability1:  return kb.digit1Key;
-                case InputButtons.Ability2:  return kb.digit2Key;
-                case InputButtons.Ability3:  return kb.digit3Key;
-                case InputButtons.Ability4:  return kb.digit4Key;
-                case InputButtons.Primary:   return mouse != null ? mouse.leftButton : null;
-                case InputButtons.Secondary: return mouse != null ? mouse.rightButton : null;
-                case InputButtons.Utility:   return kb.qKey;
-                case InputButtons.Gadget:    return kb.eKey;
-            }
-            return null;
-        }
-
-        private static UnityEngine.InputSystem.Controls.ButtonControl PadControl(Gamepad pad, InputButtons button)
-        {
-            switch (button)
-            {
-                case InputButtons.Jump:      return pad.buttonSouth;
-                case InputButtons.Sprint:    return pad.leftStickButton;
-                case InputButtons.Interact:  return pad.buttonWest;
-                case InputButtons.Ability1:  return pad.dpad.up;
-                case InputButtons.Ability2:  return pad.dpad.right;
-                case InputButtons.Ability3:  return pad.dpad.down;
-                case InputButtons.Ability4:  return pad.dpad.left;
-                case InputButtons.Primary:   return pad.rightTrigger;
-                case InputButtons.Secondary: return pad.leftTrigger;
-                case InputButtons.Utility:   return pad.leftShoulder;
-                case InputButtons.Gadget:    return pad.rightShoulder;
-            }
-            return null;
-        }
-#elif ENABLE_LEGACY_INPUT_MANAGER
         // Legacy fallback: keyboard/mouse plus the standard Xbox button indices (Windows layout).
+
+#if !ENABLE_INPUT_SYSTEM && ENABLE_LEGACY_INPUT_MANAGER
         private static bool LegacyHeld(InputButtons button)
         {
             switch (button)

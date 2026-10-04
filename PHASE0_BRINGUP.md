@@ -69,6 +69,10 @@ Watch the **DevHUD** (F1) and console:
 - [ ] Other players are tinted by team; your own capsule is hidden; Saboteur stealth hides them from enemies
 - [ ] Death shows the red overlay with countdown; extraction shows the green overlay; match end shows the table
 - [ ] `ClassData` edits (e.g. Hacker max health in `Assets/Ouroboros/Classes/Hacker.asset`) take effect on next spawn on every peer
+- [ ] Pre-match: the class picker appears with the cursor free; clicking a card (or pressing 1-4 / D-pad) changes `ClassType` on the host; "Start match now" shows on the host only
+- [ ] Abilities do nothing before the countdown ends (config `allowAbilitiesBeforeMatch` off)
+- [ ] Taking damage flashes the screen red; assigning clips in `Assets/Ouroboros/FeedbackLibrary.asset` plays them on the matching events
+- [ ] Gamepad: left stick moves, right stick looks, D-pad fires abilities; HUD key hints switch to gamepad labels
 
 ## 8. Exit criteria
 - Steps 5 and 6 pass with no non-authority write warnings in the console.

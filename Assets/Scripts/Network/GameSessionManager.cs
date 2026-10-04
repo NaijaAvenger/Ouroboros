@@ -36,6 +36,10 @@ namespace Ouroboros.Network
         [Tooltip("Fallback used when playerPrefab is unset: a direct prefab reference (the Phase 0 scene builder fills this).")]
         [SerializeField] private NetworkObject playerPrefabObject;
 
+        [Header("Feedback (optional)")]
+        [Tooltip("Audio/VFX library used by PlayerFeedback and MatchFeedback when they have no override.")]
+        [SerializeField] private Data.FeedbackLibrary feedbackLibrary;
+
         [Header("Class Data (optional)")]
         [Tooltip("Designer stats / ability numbers / class prefabs. Published to every peer as ClassRegistry.Active.")]
         [SerializeField] private Data.ClassRegistry classRegistry;
@@ -63,6 +67,7 @@ namespace Ouroboros.Network
         private int pressedSinceLastTick;
 
         public NetworkRunner Runner => runner;
+        public static Data.FeedbackLibrary FeedbackLibrary { get; private set; }
         public bool IsSessionRunning => runner != null && runner.IsRunning;
         public IReadOnlyDictionary<PlayerRef, NetworkObject> SpawnedPlayers => spawnedPlayers;
 
@@ -76,6 +81,7 @@ namespace Ouroboros.Network
             Instance = this;
             spawnPoints = new TeamSpawnPointCache();
             if (classRegistry != null) Data.ClassRegistry.Active = classRegistry;
+            FeedbackLibrary = feedbackLibrary;
         }
 
         private void OnDestroy()

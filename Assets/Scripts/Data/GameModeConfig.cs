@@ -28,6 +28,8 @@ namespace Ouroboros.Data
         public bool autoStart = true;
         [Tooltip("(v0.2) Allow class changes from the lobby / class picker after spawn (pre-match only).")]
         public bool allowClassChangeBeforeMatch = true;
+        [Tooltip("(v0.3) Allow abilities while waiting / counting down. Off by default so nobody pre-places traps.")]
+        public bool allowAbilitiesBeforeMatch = false;
 
         [Header("Team Configuration")]
         public int numberOfTeams = 4;

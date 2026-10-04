@@ -91,7 +91,11 @@ Still requires a machine with Unity + Fusion:
 
 - **Input System first** (`Core/LocalInputSource.cs`): keyboard, mouse and gamepad through `UnityEngine.InputSystem` when enabled, legacy Input Manager otherwise; HUD hints follow the last-used device.
 
-Still open in Phase 1: audio, real VFX/animation on the presentation hooks, a lobby class picker UI (`NetworkPlayer.RequestClass` exists), rebindable actions (an `InputActionAsset` can replace the direct device polling in `LocalInputSource` without touching callers).
+- **Rebindable actions** (`Core/HeistInputActions.cs`): the Input System actions are built in code (Keyboard and Gamepad binding groups), read by `LocalInputSource`, rebindable at runtime via `StartRebind` with overrides persisted in PlayerPrefs; HUD hints use the live binding display strings.
+- **Class picker** (`UI/ClassPickerUI.cs`): pre-match overlay with one card per class (stats and abilities from `ClassData`), click or press the ability key / D-pad to request a class; the state authority gets a "Start match now" button. Abilities are locked until the match is live (`GameModeConfig.allowAbilitiesBeforeMatch`).
+- **Feedback hooks**: `Data/FeedbackLibrary` (optional clips and VFX prefabs), `Player/PlayerFeedback` (ability use, hurt, death, respawn, extraction, shield/stealth, loot gain, spatialised for remote players) and `UI/MatchFeedback` (match start / extraction / objective / kill-confirm, 2D). New replicated events: `NetworkPlayer.AbilityUsed` and per-player `Damaged`; the HUD flashes red on damage.
+
+Still open in Phase 1: actual audio/VFX assets in the FeedbackLibrary, a controls/rebind screen (API is ready), animations.
 
 ### Phase 2 — Weapons & equipment
 - Networked `BaseEquipment` with tick-timer cooldowns and server-side execution (currently local `Time.time`).

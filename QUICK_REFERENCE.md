@@ -37,7 +37,9 @@
 ### Data / Player / Equipment / UI
 - `Data/GameModeConfig.cs` (all match rules), `ClassData.cs`, `ClassRegistry.cs`, `EquipmentData.cs`
 - `Player/PlayerController.cs`, `Player/TeamSpawnPoint.cs`, `Player/PlayerPresentation.cs`
-- `UI/HeistHUD.cs` (UI Toolkit HUD), `UI/DevHUD.cs` (F1 debug overlay)
+- `UI/HeistHUD.cs` (UI Toolkit HUD), `UI/ClassPickerUI.cs` (pre-match picker), `UI/MatchFeedback.cs`, `UI/DevHUD.cs` (F1 debug overlay)
+- `Core/LocalInputSource.cs` (only device reader), `Core/HeistInputActions.cs` (rebindable Input System actions)
+- `Data/FeedbackLibrary.cs`, `Player/PlayerFeedback.cs` (audio/VFX hooks)
 - `Assets/Editor/OuroborosDevSceneBuilder.cs` — menu *Ouroboros > Setup > Create Dev Scene*
 - `Equipment/BaseEquipment.cs`, `EquipmentLoadout.cs`, `BaseTech.cs`
 
