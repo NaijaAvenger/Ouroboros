@@ -71,7 +71,20 @@ namespace Ouroboros.EditorTools
                 if (cls != null && cls.classType == Core.PlayerClassType.Saboteur && cls.trapPrefab == null) { cls.trapPrefab = trapPrefabFresh; EditorUtility.SetDirty(cls); }
             }
 
-            BuildScene(config, playerPrefab, lootDropPrefab, registry, panelSettings, feedback, equipment);
+            // Second save/refresh, then re-load EVERY asset by path. Object references held across an
+            // AssetDatabase refresh can go stale (the config reference did), which serializes as null.
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            var configFresh = AssetDatabase.LoadAssetAtPath<Data.GameModeConfig>(ConfigPath);
+            var registryFresh = AssetDatabase.LoadAssetAtPath<Data.ClassRegistry>(RegistryPath);
+            var equipmentFresh = AssetDatabase.LoadAssetAtPath<Data.EquipmentRegistry>(EquipRegistryPath);
+            var panelFresh = AssetDatabase.LoadAssetAtPath<PanelSettings>(PanelSettingsPath);
+            var feedbackFresh = AssetDatabase.LoadAssetAtPath<Data.FeedbackLibrary>(FeedbackPath);
+            playerPrefab = LoadNetworkObject(PlayerPrefabPath);
+            lootDropPrefab = LoadNetworkObject(LootDropPrefabPath);
+            if (configFresh == null) Debug.LogError($"[Ouroboros] Could not load {ConfigPath} (is the asset's script reference intact?)");
+
+            BuildScene(configFresh, playerPrefab, lootDropPrefab, registryFresh, panelFresh, feedbackFresh, equipmentFresh);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -563,11 +576,16 @@ namespace Ouroboros.EditorTools
 #endif
             }
 
+            Debug.Log("[Ouroboros] --- references before scene save ---");
+            VerifyReference(gameMode, "config");
+            VerifyReference(session, "playerPrefabObject");
+
             Directory.CreateDirectory(Path.GetDirectoryName(ScenePath));
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ScenePath);
             AddToBuildSettings(ScenePath);
 
+            Debug.Log("[Ouroboros] --- references after scene save ---");
             VerifyReference(session, "playerPrefabObject");
             VerifyReference(session, "classRegistry");
             VerifyReference(session, "equipmentRegistry");
@@ -695,11 +713,16 @@ namespace Ouroboros.EditorTools
 
         private static void SetReference(Object target, string field, Object value)
         {
+            if (value == null)
+            {
+                Debug.LogError($"[Ouroboros] Tried to assign a NULL value to '{field}' on {target.GetType().Name} (asset failed to load or reference went stale).");
+            }
             var so = new SerializedObject(target);
             var prop = so.FindProperty(field);
-            if (prop == null) { Debug.LogWarning($"[Ouroboros] Field '{field}' not found on {target.GetType().Name}"); return; }
+            if (prop == null) { Debug.LogError($"[Ouroboros] Field '{field}' not found on {target.GetType().Name}"); return; }
             prop.objectReferenceValue = value;
             so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(target);
         }
 
         private static void SetFloat(Object target, string field, float value)
