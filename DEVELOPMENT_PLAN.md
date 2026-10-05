@@ -121,9 +121,16 @@ Still open in Phase 2: `Hitbox`/`HitboxRoot` on the player prefab for full lag c
 
 Still open in Phase 3: guard NavMesh baking is manual (needs the AI Navigation package), alarm-driven music/VFX, objective variety beyond these three types.
 
-### Phase 4 — AI
-- AI spawner + pooling; `SniperGuard`, `Elite`; squad coordination via shared blackboard; alarm-driven aggression tiers.
-- NavMesh links for doors; `BreachableDoor` carves the NavMesh.
+### Phase 4 — AI (implemented in v0.6, awaiting in-engine validation)
+- **AIBlackboard** (`AI/AIBlackboard.cs`): server-side shared memory of sightings (guards, cameras, snipers, getting shot) and gunfire noise (per-weapon `noiseRadius`), with expiry and scoring. Idle guards investigate the best point of interest; at Suspicious+ nearby guards adopt a teammate's live sighting as their own target (squad hand-off).
+- **Alarm-tier aggression** in `GuardAI`: movement speed, give-up time, hearing range and patrol tempo scale with the alarm tier.
+- **EliteGuard**: armoured, 3-round bursts, holds a preferred distance and strafes, spawned in waves once the alarm is at least Alert.
+- **SniperGuard**: stationary overwatch on raised posts; paints the target (`Revealed`) while aiming, then one heavy shot; scans toward blackboard points of interest.
+- **NavMesh-carving doors**: `BreachableDoor` toggles a `NavMeshObstacle` so guards path through only once it is hacked or breached.
+- `GuardAI` leaves are `protected virtual` so new guard types override just what they need (see `EliteGuard`).
+- Builder adds elite / sniper prefabs, two sniper posts and a breachable door in a wall; still needs the NavMesh baked (AI Navigation package).
+
+Still open in Phase 4: object pooling for guards, animation hooks, cover-seeking.
 
 ### Phase 5 — Meta
 - Lobby scene with class picker (`NetworkPlayer.RequestClass` is in place), session browser, late-join handling, host migration.

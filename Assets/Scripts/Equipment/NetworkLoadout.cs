@@ -269,6 +269,8 @@ namespace Ouroboros.Equipment
         public void NotifyFired(int slot, Vector3 point, bool hit)
         {
             if (!Object.HasStateAuthority) return;
+            var data = GetData(slot);
+            if (data != null && data.noiseRadius > 0f) AI.AIBlackboard.ReportNoise(transform.position, data.noiseRadius); // v0.6
             RPC_WeaponFired(slot, point, hit);
         }
 

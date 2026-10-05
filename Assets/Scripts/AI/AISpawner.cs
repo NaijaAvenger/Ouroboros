@@ -10,12 +10,17 @@ namespace Ouroboros.AI
     /// </summary>
     public class AISpawner : NetworkBehaviour
     {
-        [Header("Prefab")]
+        [Header("Prefabs")]
         [SerializeField] private NetworkObject guardPrefab;
+        [Tooltip("(v0.6) Spawned instead of regular guards in waves once the alarm is at least Alert.")]
+        [SerializeField] private NetworkObject elitePrefab;
+        [Tooltip("(v0.6) One per sniper post at match start.")]
+        [SerializeField] private NetworkObject sniperPrefab;
 
         [Header("Placement")]
         [SerializeField] private Transform[] spawnPoints;
         [SerializeField] private Transform[] patrolPoints;
+        [SerializeField] private Transform[] sniperPosts;
 
         [Header("Population")]
         [SerializeField] private int initialGuards = 3;
@@ -42,7 +47,16 @@ namespace Ouroboros.AI
             if (!InitialSpawned)
             {
                 InitialSpawned = true;
-                for (int i = 0; i < initialGuards; i++) SpawnGuard(i);
+                AIBlackboard.Clear();
+                for (int i = 0; i < initialGuards; i++) SpawnGuard(i, guardPrefab);
+                if (sniperPrefab != null && sniperPosts != null)
+                {
+                    foreach (var post in sniperPosts)
+                    {
+                        if (post == null) continue;
+                        Runner.Spawn(sniperPrefab, post.position, post.rotation, null);
+                    }
+                }
                 WaveTimer = TickTimer.CreateFromSeconds(Runner, waveIntervalSeconds);
                 return;
             }
@@ -58,19 +72,20 @@ namespace Ouroboros.AI
                 if (alarm.Lockdown) wanted = reinforcementsPerWave;
                 else if (replaceLossesWhenAlert && alarm.Tier >= 2 && mine.Count < initialGuards) wanted = 1;
 
-                for (int i = 0; i < wanted && mine.Count < maxAlive; i++) SpawnGuard(mine.Count + i);
+                var prefab = alarm.Tier >= 2 && elitePrefab != null ? elitePrefab : guardPrefab;
+                for (int i = 0; i < wanted && mine.Count < maxAlive; i++) SpawnGuard(mine.Count + i, prefab);
                 if (wanted > 0) RPC_Reinforcements(Mathf.Min(wanted, Mathf.Max(0, maxAlive - mine.Count)));
             }
         }
 
-        private void SpawnGuard(int index)
+        private void SpawnGuard(int index, NetworkObject prefab)
         {
-            if (spawnPoints == null || spawnPoints.Length == 0) return;
+            if (spawnPoints == null || spawnPoints.Length == 0 || prefab == null) return;
             var point = spawnPoints[index % spawnPoints.Length];
             if (point == null) return;
 
             var patrol = patrolPoints;
-            var obj = Runner.Spawn(guardPrefab, point.position, point.rotation, null, (runner, o) =>
+            var obj = Runner.Spawn(prefab, point.position, point.rotation, null, (runner, o) =>
             {
                 var guard = o.GetComponent<GuardAI>();
                 if (guard != null) guard.SetPatrolPoints(patrol, startIndex: index);

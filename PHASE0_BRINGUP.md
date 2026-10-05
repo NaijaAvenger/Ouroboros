@@ -91,6 +91,15 @@ Watch the **DevHUD** (F1) and console:
 - [ ] Hold F on the case: "CARRYING CASE" status, you move slower; die → it drops; extract with it → banked with the 1.5× multiplier
 - [ ] Carrying lots of loot slows you (25% at 1500)
 
+## 7c3. Phase 4 validation (v0.6)
+- [ ] Re-run the setup menu: `EliteGuard.prefab`, `SniperGuard.prefab`, two `SniperPost` platforms and a `BreachableDoor` in a wall south of Vault 3 exist; the spawner has elite / sniper refs
+- [ ] Bake the NavMesh (AI Navigation package) — then guards walk and the door carves a hole while closed
+- [ ] Fire an unsuppressed weapon near guards: they converge on the shot (noise); the suppressed SMG draws them far less
+- [ ] A camera spotting you sends a nearby guard to investigate even if it never saw you
+- [ ] Alarm Alert: waves bring red-tinted elites that strafe and fire bursts; they take ~30% less damage
+- [ ] Snipers on the posts: you get a REVEALED chip while they aim, then a heavy hit; break line of sight to escape
+- [ ] Demolitions Breaching Charge (or Hacker System Hack) on the door: visual disappears, guards path through
+
 ## 7d. Expected flow and troubleshooting
 **Expected flow on Play (dev config):** spectator camera orbits the arena → session starts → your player spawns → the
 **class picker** appears with the cursor free (state *Waiting for players*) → host presses **Start match now** (or the

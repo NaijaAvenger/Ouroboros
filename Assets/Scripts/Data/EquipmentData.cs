@@ -61,6 +61,8 @@ namespace Ouroboros.Data
         public int pelletCount = 1;
         [Tooltip("Layers a hitscan ray can hit. Leave as Everything to use the default raycast layers.")]
         public LayerMask hitMask = ~0;
+        [Tooltip("(v0.6) How far guards hear this weapon. Suppressed weapons: small values.")]
+        public float noiseRadius = 25f;
 
         [Header("Projectile (v0.4, kind = ProjectileWeapon)")]
         public Fusion.NetworkObject projectilePrefab;

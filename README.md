@@ -24,7 +24,7 @@ A modular multiplayer extraction heist game built with **Photon Fusion 2**, feat
 - ✅ **Objectives & loot** — hold-to-crack vaults, contested capture, loot drops
 - ✅ **Extraction zones** — contested pause, reusable points, whole-team option
 - ✅ **Interactables** — hackable/breachable doors, security cameras, proximity traps
-- ✅ **AI** — server-authoritative agents, perception, behavior trees, a working guard
+- ✅ **AI** — server-authoritative agents, perception, behavior trees, shared blackboard, alarm-tier aggression; Guard, Elite and Sniper types; doors that carve the NavMesh
 - ✅ **HUD** — UI Toolkit HUD: vitals, cooldowns, status, loot, timers, scoreboard, zone prompts, kill feed, death/end screens
 - ✅ **Presentation hooks** — team colours, status tints, stealth visibility, data-driven class stats (`ClassData` + `ClassRegistry`)
 - ✅ **Input System first** — rebindable keyboard/mouse/gamepad actions, legacy fallback

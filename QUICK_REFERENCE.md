@@ -32,7 +32,7 @@
 - `BaseAIAgent.cs` - Networked AI base with perception and nav helpers
 - `Perception.cs` - FOV / LOS / reveal-aware visibility
 - `BehaviorTree.cs` - Sequence, Selector, Inverter, Condition/Action (+ delegate variants)
-- `GuardAI.cs` - Patrol / investigate / fight
+- `GuardAI.cs` - Patrol / investigate / fight (extensible: `EliteGuard.cs`, `SniperGuard.cs`), `AIBlackboard.cs` shared sightings + noise, `AISpawner.cs`
 
 ### Heist layer (v0.5)
 - `GameMode/AlarmSystem.cs`, `GameMode/LootCase.cs`, `Interaction/HackTerminal.cs`, `AI/AISpawner.cs`

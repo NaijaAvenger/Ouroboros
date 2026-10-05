@@ -41,6 +41,8 @@ namespace Ouroboros.EditorTools
         private const string EquipRegistryPath = EquipDir + "/EquipmentRegistry.asset";
         private const string ProjectilePrefabPath = PrefabDir + "/Projectile.prefab";
         private const string GuardPrefabPath = PrefabDir + "/Guard.prefab";
+        private const string ElitePrefabPath = PrefabDir + "/EliteGuard.prefab";
+        private const string SniperPrefabPath = PrefabDir + "/SniperGuard.prefab";
         private const string CasePrefabPath = PrefabDir + "/LootCase.prefab";
 
         [MenuItem("Ouroboros/Setup/Create Dev Scene (Phase 0)")]
@@ -55,6 +57,8 @@ namespace Ouroboros.EditorTools
             var registry = CreateClassAssets(trapPrefab);
             CreateProjectilePrefab();
             CreateGuardPrefab();
+            CreateGuardVariant(ElitePrefabPath, "EliteGuard", typeof(AI.EliteGuard), new Color(0.35f, 0.1f, 0.1f), 1.15f);
+            CreateGuardVariant(SniperPrefabPath, "SniperGuard", typeof(AI.SniperGuard), new Color(0.1f, 0.1f, 0.35f), 0.9f);
             CreateCasePrefab();
             var panelSettings = CreatePanelSettings();
             var feedback = CreateFeedbackLibrary();
@@ -87,11 +91,14 @@ namespace Ouroboros.EditorTools
             playerPrefab = LoadNetworkObject(PlayerPrefabPath);
             lootDropPrefab = LoadNetworkObject(LootDropPrefabPath);
             var guardPrefab = LoadNetworkObject(GuardPrefabPath);
+            var elitePrefab = LoadNetworkObject(ElitePrefabPath);
+            var sniperPrefab = LoadNetworkObject(SniperPrefabPath);
             var casePrefab = LoadNetworkObject(CasePrefabPath);
             if (configFresh == null) Debug.LogError($"[Ouroboros] Could not load {ConfigPath} (is the asset's script reference intact?)");
 
             BuildScene(configFresh, playerPrefab, lootDropPrefab, registryFresh, panelFresh, feedbackFresh, equipmentFresh);
             BuildHeistLayer(guardPrefab, casePrefab);
+            BuildAILayer(elitePrefab, sniperPrefab);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -330,6 +337,96 @@ namespace Ouroboros.EditorTools
             return LoadNetworkObject(GuardPrefabPath);
         }
 
+        private static NetworkObject CreateGuardVariant(string path, string name, System.Type aiType, Color color, float scale)
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (existing != null) return existing.GetComponent<NetworkObject>();
+
+            var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            go.name = name;
+            go.transform.localScale = Vector3.one * scale;
+            Tint(go, color);
+            var agent = go.AddComponent<UnityEngine.AI.NavMeshAgent>();
+            agent.height = 2f; agent.radius = 0.4f; agent.baseOffset = 1f; agent.speed = 3.5f;
+            go.AddComponent<NetworkObject>();
+            go.AddComponent<NetworkTransform>();
+            go.AddComponent(aiType);
+
+            PrefabUtility.SaveAsPrefabAsset(go, path);
+            Object.DestroyImmediate(go);
+            return LoadNetworkObject(path);
+        }
+
+        /// <summary>Phase 4 content: elite/sniper prefabs on the spawner, sniper posts, a NavMesh-carving door. Idempotent.</summary>
+        private static void BuildAILayer(NetworkObject elitePrefab, NetworkObject sniperPrefab)
+        {
+            var scene = EditorSceneManager.GetActiveScene();
+            var spawner = Object.FindFirstObjectByType<AI.AISpawner>();
+            if (spawner != null)
+            {
+                SetReference(spawner, "elitePrefab", elitePrefab);
+                SetReference(spawner, "sniperPrefab", sniperPrefab);
+
+                var so = new SerializedObject(spawner);
+                var posts = so.FindProperty("sniperPosts");
+                if (posts != null && posts.arraySize == 0)
+                {
+                    var list = new List<Object>();
+                    foreach (var pos in new[] { new Vector3(30f, 0f, 30f), new Vector3(-30f, 0f, -30f) })
+                    {
+                        // A raised platform so the sniper has line of sight over the cover
+                        var platform = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                        platform.name = "SniperPost";
+                        platform.transform.position = pos + Vector3.up * 2.5f;
+                        platform.transform.localScale = new Vector3(3f, 5f, 3f);
+                        platform.isStatic = true;
+                        Tint(platform, new Color(0.3f, 0.3f, 0.35f));
+                        var post = new GameObject("SniperPostAnchor");
+                        post.transform.SetParent(spawner.transform);
+                        post.transform.position = pos + Vector3.up * 5f;
+                        post.transform.LookAt(new Vector3(0f, 5f, 0f));
+                        list.Add(post.transform);
+                    }
+                    SetReferenceArray(spawner, "sniperPosts", list.ToArray());
+                }
+            }
+
+            // A breachable door in a short wall near Vault 3 (south): carves the NavMesh while closed
+            if (Object.FindFirstObjectByType<Interaction.BreachableDoor>() == null)
+            {
+                var wall = new GameObject("VaultWall");
+                foreach (var x in new[] { -5f, 5f })
+                {
+                    var seg = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    seg.name = "WallSegment";
+                    seg.transform.SetParent(wall.transform);
+                    seg.transform.position = new Vector3(x, 1.5f, -12f);
+                    seg.transform.localScale = new Vector3(6f, 3f, 0.5f);
+                    seg.isStatic = true;
+                    Tint(seg, new Color(0.4f, 0.4f, 0.45f));
+                }
+                var doorGo = new GameObject("BreachableDoor");
+                doorGo.transform.position = new Vector3(0f, 1.5f, -12f);
+                var visual = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                visual.name = "DoorVisual";
+                visual.transform.SetParent(doorGo.transform, false);
+                visual.transform.localScale = new Vector3(4f, 3f, 0.4f);
+                Tint(visual, new Color(0.6f, 0.3f, 0.1f));
+                var obstacle = visual.AddComponent<UnityEngine.AI.NavMeshObstacle>();
+                obstacle.carving = true;
+                obstacle.shape = UnityEngine.AI.NavMeshObstacleShape.Box;
+                obstacle.size = Vector3.one;
+                doorGo.AddComponent<NetworkObject>();
+                var door = doorGo.AddComponent<Interaction.BreachableDoor>();
+                SetReference(door, "doorVisual", visual);
+                SetReference(door, "navObstacle", obstacle);
+            }
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, ScenePath);
+            Debug.Log("[Ouroboros] AI layer ready: elite + sniper prefabs on the spawner, two sniper posts, a breachable door that carves the NavMesh.");
+        }
+
         private static NetworkObject CreateCasePrefab()
         {
             var existing = AssetDatabase.LoadAssetAtPath<GameObject>(CasePrefabPath);
@@ -509,6 +606,7 @@ namespace Ouroboros.EditorTools
             d.equipmentName = name; d.description = description; d.slotType = slot; d.kind = Data.EquipmentKind.HitscanWeapon;
             d.damage = dmg; d.cooldown = cd; d.automatic = auto; d.magazineSize = mag; d.reserveAmmo = reserve; d.reloadTime = reload;
             d.spreadDegrees = spread; d.pelletCount = pellets; d.range = range; d.allowedClasses = allowed;
+            d.noiseRadius = name.Contains("Suppressed") ? 8f : 25f;
             EditorUtility.SetDirty(d);
             return d;
         }

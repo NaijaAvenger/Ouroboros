@@ -51,6 +51,7 @@ namespace Ouroboros.Interaction
                 if (respectStealth && p.HasStatus(Core.StatusFlags.Stealthed)) continue;
                 if (!AI.Perception.CanSee(transform.position, transform.forward, p.EyePosition, range, viewAngle, occluders)) continue;
                 p.ApplyTimedStatus(Core.StatusFlags.Revealed, revealDuration);
+                AI.AIBlackboard.ReportSighting(p.transform.position, p, priority: 0.9f); // v0.6: guards converge on camera spots
                 spotted++;
             }
             if (spotted > 0)

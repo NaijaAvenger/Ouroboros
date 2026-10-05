@@ -177,6 +177,7 @@ namespace Ouroboros.AI
                 {
                     var gm = GameMode.ExtractionHeistGameMode.Instance;
                     GameMode.AlarmSystem.Raise(gm != null ? gm.Config.alarmOnGuardEngaged : 15f, $"{agentType} engaged");
+                    AIBlackboard.ReportSighting(seen.transform.position, seen, priority: 1f); // v0.6: squad knowledge
                 }
             }
             else if (currentTargetPlayer != null)
@@ -190,6 +191,7 @@ namespace Ouroboros.AI
                 {
                     lastKnownTargetPosition = currentTargetPlayer.transform.position;
                     hasLastKnownPosition = true;
+                    AIBlackboard.ReportSighting(lastKnownTargetPosition, currentTargetPlayer, priority: 0.8f);
                     ClearTarget(forgetPosition: false);
                 }
             }
@@ -260,9 +262,10 @@ namespace Ouroboros.AI
 
             if (attacker != null && attacker.IsActiveInMatch)
             {
-                // Getting shot tells you where the shooter is.
+                // Getting shot tells you (and the squad) where the shooter is.
                 lastKnownTargetPosition = attacker.transform.position;
                 hasLastKnownPosition = true;
+                AIBlackboard.ReportSighting(attacker.transform.position, attacker, priority: 1.1f);
                 if (currentTargetPlayer == null) SetTargetPlayer(attacker);
             }
 
