@@ -93,7 +93,7 @@ Watch the **DevHUD** (F1) and console:
 
 ## 7c3. Phase 4 validation (v0.6)
 - [ ] Re-run the setup menu: `EliteGuard.prefab`, `SniperGuard.prefab`, two `SniperPost` platforms and a `BreachableDoor` in a wall south of Vault 3 exist; the spawner has elite / sniper refs
-- [ ] Bake the NavMesh (AI Navigation package) — then guards walk and the door carves a hole while closed
+- [ ] Install **AI Navigation** (Package Manager > Unity Registry) and re-run the setup menu: it adds a NavMeshSurface to Ground and bakes automatically (or bake by hand); then guards walk and the door carves a hole while closed
 - [ ] Fire an unsuppressed weapon near guards: they converge on the shot (noise); the suppressed SMG draws them far less
 - [ ] A camera spotting you sends a nearby guard to investigate even if it never saw you
 - [ ] Alarm Alert: waves bring red-tinted elites that strafe and fire bursts; they take ~30% less damage

@@ -422,9 +422,37 @@ namespace Ouroboros.EditorTools
                 SetReference(door, "navObstacle", obstacle);
             }
 
+            TryBakeNavMesh();
+
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ScenePath);
             Debug.Log("[Ouroboros] AI layer ready: elite + sniper prefabs on the spawner, two sniper posts, a breachable door that carves the NavMesh.");
+        }
+
+        /// <summary>
+        /// Adds a NavMeshSurface to the Ground and bakes it when the AI Navigation package is installed.
+        /// Resolved by reflection so this script compiles without the package; logs the install step otherwise.
+        /// </summary>
+        private static void TryBakeNavMesh()
+        {
+            var surfaceType = System.Type.GetType("Unity.AI.Navigation.NavMeshSurface, Unity.AI.Navigation");
+            if (surfaceType == null)
+            {
+                Debug.LogWarning("[Ouroboros] AI Navigation package not installed, so no NavMesh was baked and guards will not walk. " +
+                                 "Window > Package Manager > Unity Registry > 'AI Navigation' > Install, then re-run this menu (it bakes automatically).");
+                return;
+            }
+
+            var ground = GameObject.Find("Ground");
+            if (ground == null) return;
+
+            var surface = ground.GetComponent(surfaceType) ?? ground.AddComponent(surfaceType);
+            var bake = surfaceType.GetMethod("BuildNavMesh");
+            if (bake != null)
+            {
+                bake.Invoke(surface, null);
+                Debug.Log("[Ouroboros] NavMesh baked on 'Ground' (static cover, walls and sniper posts are carved out).");
+            }
         }
 
         private static NetworkObject CreateCasePrefab()
