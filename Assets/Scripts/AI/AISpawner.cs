@@ -38,6 +38,11 @@ namespace Ouroboros.AI
 
         public override void Spawned()
         {
+            // (v0.8) editor-only fallbacks for prefabs the scene builder normally fills (see Core.DevAssetFallback).
+            if (guardPrefab == null) guardPrefab = Core.DevAssetFallback.LoadPrefab(Core.DevAssetFallback.GuardPrefabPath, nameof(AISpawner), nameof(guardPrefab));
+            if (elitePrefab == null) elitePrefab = Core.DevAssetFallback.LoadPrefab(Core.DevAssetFallback.EliteGuardPrefabPath, nameof(AISpawner), nameof(elitePrefab));
+            if (sniperPrefab == null) sniperPrefab = Core.DevAssetFallback.LoadPrefab(Core.DevAssetFallback.SniperGuardPrefabPath, nameof(AISpawner), nameof(sniperPrefab));
+
             Debug.Log($"[AISpawner] ready. authority={Object.HasStateAuthority} guard='{(guardPrefab != null ? guardPrefab.name : "NONE")}' " +
                       $"elite='{(elitePrefab != null ? elitePrefab.name : "none")}' sniper='{(sniperPrefab != null ? sniperPrefab.name : "none")}' " +
                       $"spawnPoints={(spawnPoints != null ? spawnPoints.Length : 0)} patrol={(patrolPoints != null ? patrolPoints.Length : 0)} posts={(sniperPosts != null ? sniperPosts.Length : 0)}");

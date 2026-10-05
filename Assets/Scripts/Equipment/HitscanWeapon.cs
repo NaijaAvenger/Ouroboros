@@ -12,6 +12,21 @@ namespace Ouroboros.Equipment
     /// </summary>
     public class HitscanWeapon : BaseEquipment
     {
+        private NetworkRunner hitboxRunner;
+        private HitboxManager hitboxManager;
+
+        /// <summary>True when the current runner carries a HitboxManager, without touching Runner.LagCompensation.</summary>
+        private bool HasHitboxManager()
+        {
+            var runner = Runner;
+            if (runner != hitboxRunner)
+            {
+                hitboxRunner = runner;
+                hitboxManager = runner != null ? runner.GetComponent<HitboxManager>() : null;
+            }
+            return hitboxManager != null;
+        }
+
         /// <summary>Start the ray this far ahead of the eyes so the shooter's own capsule is skipped.</summary>
         private const float MuzzleOffset = 0.6f;
 
@@ -38,9 +53,12 @@ namespace Ouroboros.Equipment
                 Vector3 hitPoint = origin + dir * range;
                 bool didHit;
 
-                // Lag-compensated when the runner provides it (Host/Server with hitboxes enabled); plain physics otherwise.
+                // Lag-compensated when the runner has a HitboxManager (Lag Compensation enabled in NetworkProjectConfig);
+                // plain physics otherwise.
                 // [v0.4] previously called Runner.LagCompensation unconditionally → NullReferenceException on runners without it.
-                var lagComp = Runner.LagCompensation;
+                // [v0.8] var lagComp = Runner.LagCompensation;  ← the getter itself logs "[Fusion] Failed to find HitboxManager"
+                //        on every shot when lag compensation is off, so probe for the component first (cached per runner).
+                var lagComp = HasHitboxManager() ? Runner.LagCompensation : null;
                 if (lagComp != null)
                 {
                     didHit = lagComp.Raycast(origin, dir, range, owner.Object.InputAuthority, out LagCompensatedHit hit, mask,

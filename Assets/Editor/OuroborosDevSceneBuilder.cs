@@ -46,16 +46,65 @@ namespace Ouroboros.EditorTools
         private const string CasePrefabPath = PrefabDir + "/LootCase.prefab";
         private const string IDCardPrefabPath = PrefabDir + "/IDCard.prefab";
 
+        private const string PendingBuildKey = "Ouroboros.DevSceneBuilder.PendingSceneBuild";
+
+        // (v0.8) Every asset loaded or created during a run, keyed by path. When a re-load by path comes back
+        // null (it did for LootDrop.prefab and FeedbackLibrary.asset right after AssetDatabase.Refresh), the
+        // object from earlier in the same run is used instead of writing an empty reference into the scene.
+        private static readonly Dictionary<string, Object> s_loaded = new Dictionary<string, Object>();
+
         [MenuItem("Ouroboros/Setup/Create Dev Scene (Phase 0)")]
         public static void CreateDevScene()
         {
             EnsureFolders();
+            s_loaded.Clear();
+            CreateAssetsStep();
 
+            // [v0.7] The scene was built right here, after a second SaveAssets()/Refresh(). Loading assets by path
+            // immediately after that Refresh intermittently returned null, so the scene build is now deferred to the
+            // next editor update (and survives a domain reload via SessionState + [InitializeOnLoadMethod]).
+            SessionState.SetBool(PendingBuildKey, true);
+            EditorApplication.delayCall += RunPendingSceneBuild;
+            Debug.Log("[Ouroboros] Assets ready; building the DevArena scene on the next editor update...");
+        }
+
+        /// <summary>Re-opens DevArena and re-applies every asset reference without recreating assets.</summary>
+        [MenuItem("Ouroboros/Setup/Rebuild Scene References")]
+        public static void RebuildSceneReferences()
+        {
+            EnsureFolders();
+            s_loaded.Clear();
+            BuildSceneStep();
+        }
+
+        [InitializeOnLoadMethod]
+        private static void ResumeAfterReload()
+        {
+            if (SessionState.GetBool(PendingBuildKey, false)) EditorApplication.delayCall += RunPendingSceneBuild;
+        }
+
+        private static void RunPendingSceneBuild()
+        {
+            if (!SessionState.GetBool(PendingBuildKey, false)) return;
+            if (EditorApplication.isCompiling || EditorApplication.isUpdating)
+            {
+                EditorApplication.delayCall += RunPendingSceneBuild; // editor still importing/compiling: try again
+                return;
+            }
+            SessionState.SetBool(PendingBuildKey, false);
+            BuildSceneStep();
+        }
+
+        /// <summary>Step 1: config, prefabs, class/equipment/UI/feedback assets.</summary>
+        private static void CreateAssetsStep()
+        {
             var config = CreateOrLoadConfig();
+            Remember(ConfigPath, config);
             CreatePlayerPrefab();
             CreateLootDropPrefab();
             var trapPrefab = CreateTrapPrefab();
             var registry = CreateClassAssets(trapPrefab);
+            Remember(RegistryPath, registry);
             CreateProjectilePrefab();
             CreateGuardPrefab();
             CreateGuardVariant(ElitePrefabPath, "EliteGuard", typeof(AI.EliteGuard), new Color(0.35f, 0.1f, 0.1f), 1.15f);
@@ -63,41 +112,45 @@ namespace Ouroboros.EditorTools
             CreateCasePrefab();
             CreateIDCardPrefab();
             var panelSettings = CreatePanelSettings();
+            Remember(PanelSettingsPath, panelSettings);
             var feedback = CreateFeedbackLibrary();
+            Remember(FeedbackPath, feedback);
 
             // Let Fusion's importer label + bake the prefabs, then take FRESH references: the objects returned by
             // SaveAsPrefabAsset can be replaced during that re-import, which previously left scene fields empty.
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            var playerPrefab = LoadNetworkObject(PlayerPrefabPath);
-            var lootDropPrefab = LoadNetworkObject(LootDropPrefabPath);
             var projectilePrefab = LoadNetworkObject(ProjectilePrefabPath);
             var trapPrefabFresh = LoadNetworkObject(TrapPrefabPath);
 
             var equipment = CreateEquipmentAssets(projectilePrefab);
+            Remember(EquipRegistryPath, equipment);
             AssignStartingEquipment(registry, equipment);
             foreach (var cls in registry.classes)
             {
                 if (cls != null && cls.classType == Core.PlayerClassType.Saboteur && cls.trapPrefab == null) { cls.trapPrefab = trapPrefabFresh; EditorUtility.SetDirty(cls); }
             }
 
-            // Second save/refresh, then re-load EVERY asset by path. Object references held across an
-            // AssetDatabase refresh can go stale (the config reference did), which serializes as null.
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            var configFresh = AssetDatabase.LoadAssetAtPath<Data.GameModeConfig>(ConfigPath);
-            var registryFresh = AssetDatabase.LoadAssetAtPath<Data.ClassRegistry>(RegistryPath);
-            var equipmentFresh = AssetDatabase.LoadAssetAtPath<Data.EquipmentRegistry>(EquipRegistryPath);
-            var panelFresh = AssetDatabase.LoadAssetAtPath<PanelSettings>(PanelSettingsPath);
-            var feedbackFresh = AssetDatabase.LoadAssetAtPath<Data.FeedbackLibrary>(FeedbackPath);
-            playerPrefab = LoadNetworkObject(PlayerPrefabPath);
-            lootDropPrefab = LoadNetworkObject(LootDropPrefabPath);
+        }
+
+        /// <summary>Step 2: load every asset by path (with retry + same-run fallback) and build/refresh the scene.</summary>
+        private static void BuildSceneStep()
+        {
+            var configFresh = LoadAsset<Data.GameModeConfig>(ConfigPath);
+            var registryFresh = LoadAsset<Data.ClassRegistry>(RegistryPath);
+            var equipmentFresh = LoadAsset<Data.EquipmentRegistry>(EquipRegistryPath);
+            var panelFresh = LoadAsset<PanelSettings>(PanelSettingsPath);
+            var feedbackFresh = LoadAsset<Data.FeedbackLibrary>(FeedbackPath);
+            var playerPrefab = LoadNetworkObject(PlayerPrefabPath);
+            var lootDropPrefab = LoadNetworkObject(LootDropPrefabPath);
             var guardPrefab = LoadNetworkObject(GuardPrefabPath);
             var elitePrefab = LoadNetworkObject(ElitePrefabPath);
             var sniperPrefab = LoadNetworkObject(SniperPrefabPath);
             var casePrefab = LoadNetworkObject(CasePrefabPath);
             var idCardPrefab = LoadNetworkObject(IDCardPrefabPath);
-            if (configFresh == null) Debug.LogError($"[Ouroboros] Could not load {ConfigPath} (is the asset's script reference intact?)");
+            if (configFresh == null) Debug.LogError($"[Ouroboros] Could not load {ConfigPath}: run Ouroboros > Setup > Create Dev Scene first.");
 
             BuildScene(configFresh, playerPrefab, lootDropPrefab, registryFresh, panelFresh, feedbackFresh, equipmentFresh);
             BuildHeistLayer(guardPrefab, casePrefab);
@@ -112,11 +165,45 @@ namespace Ouroboros.EditorTools
                       ". Press Play to host; run a second instance (ParrelSync / build) to join. Re-running this menu updates references without wiping the scene.");
         }
 
+        private static void Remember(string path, Object asset)
+        {
+            if (asset != null) s_loaded[path] = asset;
+        }
+
+        /// <summary>
+        /// LoadAssetAtPath with two safety nets: a forced synchronous re-import when the first load is null, then
+        /// the object seen earlier this run. Logs which path failed instead of silently returning null.
+        /// </summary>
+        private static T LoadAsset<T>(string path) where T : Object
+        {
+            var asset = AssetDatabase.LoadAssetAtPath<T>(path);
+            if (asset == null && File.Exists(path))
+            {
+                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
+                asset = AssetDatabase.LoadAssetAtPath<T>(path);
+                if (asset == null) asset = AssetDatabase.LoadMainAssetAtPath(path) as T;
+                if (asset != null) Debug.Log($"[Ouroboros] {path} loaded after a forced re-import.");
+            }
+            if (asset == null && s_loaded.TryGetValue(path, out var seen) && seen is T seenT && seenT != null)
+            {
+                Debug.LogWarning($"[Ouroboros] {path} could not be re-loaded by path; using the object created earlier this run.");
+                asset = seenT;
+            }
+            if (asset == null)
+            {
+                Debug.LogError($"[Ouroboros] Could not load {typeof(T).Name} at {path} (file exists: {File.Exists(path)}). " +
+                               "Re-run Ouroboros > Setup > Create Dev Scene, then Rebuild Scene References.");
+            }
+            else s_loaded[path] = asset;
+            return asset;
+        }
+
         private static NetworkObject LoadNetworkObject(string path)
         {
-            var go = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            // [v0.7] var go = AssetDatabase.LoadAssetAtPath<GameObject>(path);  (no retry, no fallback)
+            var go = LoadAsset<GameObject>(path);
             var no = go != null ? go.GetComponent<NetworkObject>() : null;
-            if (no == null) Debug.LogError($"[Ouroboros] Could not load NetworkObject prefab at {path}");
+            if (go != null && no == null) Debug.LogError($"[Ouroboros] Prefab at {path} has no NetworkObject component");
             return no;
         }
 

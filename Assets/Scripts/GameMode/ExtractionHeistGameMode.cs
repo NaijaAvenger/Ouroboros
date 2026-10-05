@@ -96,6 +96,11 @@ namespace Ouroboros.GameMode
             Instance = this;
             changeDetector = GetChangeDetector(ChangeDetector.Source.SimulationState);
 
+            // (v0.8) editor-only fallbacks for references the scene builder normally fills (see Core.DevAssetFallback).
+            if (config == null) config = Core.DevAssetFallback.Load<Data.GameModeConfig>(Core.DevAssetFallback.ConfigPath, nameof(ExtractionHeistGameMode), nameof(config));
+            if (lootDropPrefabObject == null && !lootDropPrefab.IsValid) lootDropPrefabObject = Core.DevAssetFallback.LoadPrefab(Core.DevAssetFallback.LootDropPrefabPath, nameof(ExtractionHeistGameMode), nameof(lootDropPrefabObject));
+            if (idCardPrefabObject == null) idCardPrefabObject = Core.DevAssetFallback.LoadPrefab(Core.DevAssetFallback.IDCardPrefabPath, nameof(ExtractionHeistGameMode), nameof(idCardPrefabObject));
+
             if (config == null)
             {
                 Debug.LogError("[ExtractionHeist] No GameModeConfig assigned on ExtractionHeistGameMode: using built-in defaults " +

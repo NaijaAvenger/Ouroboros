@@ -91,6 +91,13 @@ namespace Ouroboros.Network
             }
             Instance = this;
             spawnPoints = new TeamSpawnPointCache();
+
+            // (v0.8) editor-only fallbacks for references the scene builder normally fills (see Core.DevAssetFallback).
+            if (classRegistry == null) classRegistry = Core.DevAssetFallback.Load<Data.ClassRegistry>(Core.DevAssetFallback.ClassRegistryPath, nameof(GameSessionManager), nameof(classRegistry));
+            if (feedbackLibrary == null) feedbackLibrary = Core.DevAssetFallback.Load<Data.FeedbackLibrary>(Core.DevAssetFallback.FeedbackPath, nameof(GameSessionManager), nameof(feedbackLibrary));
+            if (equipmentRegistry == null) equipmentRegistry = Core.DevAssetFallback.Load<Data.EquipmentRegistry>(Core.DevAssetFallback.EquipmentRegistryPath, nameof(GameSessionManager), nameof(equipmentRegistry));
+            if (playerPrefabObject == null && !playerPrefab.IsValid) playerPrefabObject = Core.DevAssetFallback.LoadPrefab(Core.DevAssetFallback.PlayerPrefabPath, nameof(GameSessionManager), nameof(playerPrefabObject));
+
             if (classRegistry != null) Data.ClassRegistry.Active = classRegistry;
             FeedbackLibrary = feedbackLibrary;
             if (equipmentRegistry != null) Data.EquipmentRegistry.Active = equipmentRegistry;
