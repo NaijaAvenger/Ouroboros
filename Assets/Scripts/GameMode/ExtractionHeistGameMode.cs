@@ -94,6 +94,18 @@ namespace Ouroboros.GameMode
             Instance = this;
             changeDetector = GetChangeDetector(ChangeDetector.Source.SimulationState);
 
+            if (config == null)
+            {
+                Debug.LogError("[ExtractionHeist] No GameModeConfig assigned on ExtractionHeistGameMode: using built-in defaults " +
+                               "(minPlayersToStart = 8, so a solo match never starts). Assign Assets/Ouroboros/DevGameModeConfig.asset " +
+                               "or re-run Ouroboros > Setup > Create Dev Scene.");
+            }
+            else
+            {
+                Debug.Log($"[ExtractionHeist] Config '{config.name}': autoStart={config.autoStart}, minPlayers={config.minPlayersToStart}, " +
+                          $"countdown={config.preMatchCountdown}s, classChangeBeforeMatch={config.allowClassChangeBeforeMatch}");
+            }
+
             if (Object.HasStateAuthority)
             {
                 CurrentState = GameState.WaitingForPlayers;
@@ -164,7 +176,10 @@ namespace Ouroboros.GameMode
         public void NotifyPlayerCountChanged(int playerCount)
         {
             if (!Object.HasStateAuthority) return;
-            if (CurrentState == GameState.WaitingForPlayers && Config.autoStart && playerCount >= Mathf.Max(1, Config.minPlayersToStart))
+            bool canAuto = CurrentState == GameState.WaitingForPlayers && Config.autoStart && playerCount >= Mathf.Max(1, Config.minPlayersToStart);
+            Debug.Log($"[ExtractionHeist] Players: {playerCount}, state: {CurrentState}, autoStart: {Config.autoStart}, need: {Config.minPlayersToStart} → " +
+                      (canAuto ? "starting countdown" : "waiting (use the lobby's Start button)"));
+            if (canAuto)
             {
                 StartMatch();
             }

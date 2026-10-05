@@ -567,6 +567,26 @@ namespace Ouroboros.EditorTools
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ScenePath);
             AddToBuildSettings(ScenePath);
+
+            VerifyReference(session, "playerPrefabObject");
+            VerifyReference(session, "classRegistry");
+            VerifyReference(session, "equipmentRegistry");
+            VerifyReference(gameMode, "config");
+            VerifyReference(doc, "m_PanelSettings");
+        }
+
+        private static void VerifyReference(Object target, string field)
+        {
+            var so = new SerializedObject(target);
+            var prop = so.FindProperty(field);
+            if (prop == null || prop.objectReferenceValue == null)
+            {
+                Debug.LogError($"[Ouroboros] Reference '{field}' on {target.GetType().Name} is EMPTY after setup - assign it in the inspector.");
+            }
+            else
+            {
+                Debug.Log($"[Ouroboros] {target.GetType().Name}.{field} = {prop.objectReferenceValue.name}");
+            }
         }
 
         private static void BuildLevel()

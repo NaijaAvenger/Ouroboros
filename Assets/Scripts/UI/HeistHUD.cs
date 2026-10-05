@@ -82,6 +82,10 @@ namespace Ouroboros.UI
             panelRoot.Add(root);
             Build();
 
+            var ps = document.panelSettings;
+            Debug.Log($"[HeistHUD] Enabled. PanelSettings='{(ps != null ? ps.name : "NONE")}', theme='{(ps != null && ps.themeStyleSheet != null ? ps.themeStyleSheet.name : "NONE")}', " +
+                      $"elements={root.childCount}, screen={Screen.width}x{Screen.height}");
+
             GameMode.ExtractionHeistGameMode.StateChanged += OnStateChanged;
             GameMode.ExtractionHeistGameMode.ExtractionOpened += OnExtractionOpened;
             GameMode.ExtractionHeistGameMode.TeamExtractedEvent += OnTeamExtracted;
@@ -338,9 +342,18 @@ namespace Ouroboros.UI
         // ------------------------------------------------------------------
         // Refresh
 
+        private bool loggedFirstRefresh;
+
         private void Refresh()
         {
             if (local == null || local.Object == null) local = FindLocal();
+            if (!loggedFirstRefresh && local != null)
+            {
+                loggedFirstRefresh = true;
+                var gmLog = GameMode.ExtractionHeistGameMode.Instance;
+                Debug.Log($"[HeistHUD] Local player found: {local.DisplayName} ({local.Team}, {local.ClassType}); game mode state: " +
+                          $"{(gmLog != null && gmLog.Object != null ? gmLog.CurrentState.ToString() : "no game mode")}; panel size={root.resolvedStyle.width}x{root.resolvedStyle.height}");
+            }
             if (local != damageSubscribed)
             {
                 if (damageSubscribed != null) damageSubscribed.Damaged -= OnLocalDamaged;

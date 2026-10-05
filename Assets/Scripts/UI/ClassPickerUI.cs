@@ -31,6 +31,7 @@ namespace Ouroboros.UI
 
         private float nextRefresh;
         private bool shown;
+        private float nextReasonLog;
 
         /// <summary>True while a picker owns the cursor (GameSessionManager won't re-lock it).</summary>
         public static bool IsShown { get; private set; }
@@ -180,10 +181,21 @@ namespace Ouroboros.UI
             var gm = GameMode.ExtractionHeistGameMode.Instance;
             bool shouldShow = local != null && local.Object != null && gm != null && gm.Object != null && gm.AllowClassChange;
 
+            if (!shouldShow && Time.unscaledTime >= nextReasonLog)
+            {
+                nextReasonLog = Time.unscaledTime + 5f;
+                string reason = local == null || local.Object == null ? "no local player yet"
+                              : gm == null || gm.Object == null ? "game mode not spawned"
+                              : !gm.AllowClassChange ? $"state {gm.CurrentState} / classChangeBeforeMatch={gm.Config.allowClassChangeBeforeMatch}"
+                              : "unknown";
+                Debug.Log($"[ClassPickerUI] hidden: {reason}");
+            }
+
             if (shouldShow != shown)
             {
                 shown = shouldShow;
                 IsShown = shown;
+                Debug.Log(shown ? "[ClassPickerUI] shown (cursor released)" : "[ClassPickerUI] hidden (cursor locked)");
                 root.style.display = shown ? DisplayStyle.Flex : DisplayStyle.None;
                 SetCursorLocked(!shown);
                 if (shown)
