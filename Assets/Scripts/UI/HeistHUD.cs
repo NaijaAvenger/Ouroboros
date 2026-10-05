@@ -31,7 +31,8 @@ namespace Ouroboros.UI
         private Network.NetworkPlayer damageSubscribed;
 
         // Top
-        private Label stateLabel, timerLabel, bannerLabel;
+        private Label stateLabel, timerLabel, bannerLabel, alarmLabel;
+        private VisualElement alarmFill;
         // Scoreboard
         private readonly TeamRow[] teamRows = new TeamRow[Core.GameConstants.MAX_TEAMS];
         // Vitals
@@ -145,6 +146,8 @@ namespace Ouroboros.UI
             stateLabel = Text("", 16, Color.white, bold: true);
             timerLabel = Text("", 22, Color.white, bold: true);
             top.Add(stateLabel); top.Add(timerLabel);
+            alarmFill = Bar(top, new Color(0.9f, 0.3f, 0.1f), out alarmLabel);
+            alarmFill.parent.style.width = 240;
             root.Add(top);
 
             // Banner under the timer
@@ -378,6 +381,19 @@ namespace Ouroboros.UI
                 return;
             }
 
+            var alarm = GameMode.AlarmSystem.Instance;
+            if (alarm != null && alarm.Object != null)
+            {
+                alarmFill.parent.style.display = DisplayStyle.Flex;
+                SetBar(alarmFill, alarm.Normalized, 1f);
+                alarmLabel.text = $"ALARM  {GameMode.AlarmSystem.TierName(alarm.Tier)}";
+                alarmFill.style.backgroundColor = alarm.Lockdown ? HealthColor : new Color(0.9f, 0.5f, 0.1f);
+            }
+            else
+            {
+                alarmFill.parent.style.display = DisplayStyle.None;
+            }
+
             switch (gm.CurrentState)
             {
                 case GameMode.ExtractionHeistGameMode.GameState.WaitingForPlayers:
@@ -519,17 +535,52 @@ namespace Ouroboros.UI
                 }
             }
 
-            if (bestObj == null && bestEp == null)
+            // Terminals and cases (v0.5)
+            Interaction.HackTerminal bestTerm = null; float bestTermSq = float.MaxValue;
+            foreach (var t in Interaction.HackTerminal.All)
+            {
+                if (t == null || t.Object == null) continue;
+                float r = t.InteractRadius * 1.6f;
+                float dSq = (t.transform.position - pos).sqrMagnitude;
+                if (dSq <= r * r && dSq < bestTermSq) { bestTerm = t; bestTermSq = dSq; }
+            }
+            GameMode.LootCase bestCase = null; float bestCaseSq = float.MaxValue;
+            foreach (var c in GameMode.LootCase.All)
+            {
+                if (c == null || c.Object == null || c.IsCarried) continue;
+                float r = c.PickupRadius * 1.6f;
+                float dSq = (c.transform.position - pos).sqrMagnitude;
+                if (dSq <= r * r && dSq < bestCaseSq) { bestCase = c; bestCaseSq = dSq; }
+            }
+
+            if (bestObj == null && bestEp == null && bestTerm == null && bestCase == null)
             {
                 zonePanel.style.display = DisplayStyle.None;
                 return;
             }
 
             zonePanel.style.display = DisplayStyle.Flex;
+            string interact = Core.LocalInputSource.Hint(Core.InputButtons.Interact);
+
+            if (bestCase != null && bestCaseSq <= Mathf.Min(bestObjSq, Mathf.Min(bestEpSq, bestTermSq)))
+            {
+                zoneTitle.text = $"{bestCase.CaseName}  (${bestCase.Value})";
+                SetBar(zoneFill, 0f, 1f);
+                zoneHint.text = local.HasStatus(Core.StatusFlags.Encumbered) ? "You already carry a case" : $"Hold {interact} to pick up - carry it to extraction";
+                return;
+            }
+            if (bestTerm != null && bestTermSq <= Mathf.Min(bestObjSq, bestEpSq))
+            {
+                zoneTitle.text = bestTerm.TerminalName;
+                SetBar(zoneFill, bestTerm.ProgressNormalized, 1f);
+                zoneHint.text = !bestTerm.IsReady ? "Rebooting..." : bestTerm.WorkingTeam == Core.TeamID.None
+                    ? $"Hold {interact} to override (Hackers: System Hack)" : $"{TeamName(bestTerm.WorkingTeam)} overriding...";
+                return;
+            }
 
             if (bestObj != null && (bestEp == null || bestObjSq <= bestEpSq))
             {
-                zoneTitle.text = bestObj.ObjectiveName + $"  (${bestObj.LootValue})";
+                zoneTitle.text = bestObj.ObjectiveName + $"  (${bestObj.LootValue})" + (bestObj.Stages > 1 ? $"  stage {Mathf.Min(bestObj.StagesDone + 1, bestObj.Stages)}/{bestObj.Stages}" : "");
                 SetBar(zoneFill, bestObj.ProgressNormalized, 1f);
                 if (!bestObj.IsAvailable) zoneHint.text = "Depleted";
                 else if (!bestObj.IsUnlocked) zoneHint.text = "Locked - needs a Hacker";
@@ -714,6 +765,7 @@ namespace Ouroboros.UI
             if ((status & Core.StatusFlags.Burning) != 0)     parts.Add("BURNING");
             if ((status & Core.StatusFlags.Sprinting) != 0)   parts.Add("sprint");
             if ((status & Core.StatusFlags.Interacting) != 0) parts.Add("interact");
+            if ((status & Core.StatusFlags.Encumbered) != 0)  parts.Add("CARRYING CASE");
             return string.Join("  ", parts);
         }
 

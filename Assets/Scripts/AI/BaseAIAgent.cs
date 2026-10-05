@@ -165,11 +165,19 @@ namespace Ouroboros.AI
         /// <summary>Default perception: look for the nearest visible player; remember where they were last seen.</summary>
         protected virtual void UpdatePerception()
         {
-            var seen = Perception.FindVisiblePlayer(EyePosition, transform.forward, detectionRange, fieldOfView, visionOccluders, faction);
+            var alarm = GameMode.AlarmSystem.Instance;
+            float range = detectionRange * (alarm != null && alarm.Object != null ? alarm.DetectionMultiplier : 1f);
+            var seen = Perception.FindVisiblePlayer(EyePosition, transform.forward, range, fieldOfView, visionOccluders, faction);
 
             if (seen != null)
             {
+                bool newEngagement = currentTargetPlayer == null;
                 SetTargetPlayer(seen);
+                if (newEngagement)
+                {
+                    var gm = GameMode.ExtractionHeistGameMode.Instance;
+                    GameMode.AlarmSystem.Raise(gm != null ? gm.Config.alarmOnGuardEngaged : 15f, $"{agentType} engaged");
+                }
             }
             else if (currentTargetPlayer != null)
             {

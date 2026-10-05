@@ -40,6 +40,8 @@ namespace Ouroboros.EditorTools
         private const string EquipDir = Root + "/Equipment";
         private const string EquipRegistryPath = EquipDir + "/EquipmentRegistry.asset";
         private const string ProjectilePrefabPath = PrefabDir + "/Projectile.prefab";
+        private const string GuardPrefabPath = PrefabDir + "/Guard.prefab";
+        private const string CasePrefabPath = PrefabDir + "/LootCase.prefab";
 
         [MenuItem("Ouroboros/Setup/Create Dev Scene (Phase 0)")]
         public static void CreateDevScene()
@@ -52,6 +54,8 @@ namespace Ouroboros.EditorTools
             var trapPrefab = CreateTrapPrefab();
             var registry = CreateClassAssets(trapPrefab);
             CreateProjectilePrefab();
+            CreateGuardPrefab();
+            CreateCasePrefab();
             var panelSettings = CreatePanelSettings();
             var feedback = CreateFeedbackLibrary();
 
@@ -82,9 +86,12 @@ namespace Ouroboros.EditorTools
             var feedbackFresh = AssetDatabase.LoadAssetAtPath<Data.FeedbackLibrary>(FeedbackPath);
             playerPrefab = LoadNetworkObject(PlayerPrefabPath);
             lootDropPrefab = LoadNetworkObject(LootDropPrefabPath);
+            var guardPrefab = LoadNetworkObject(GuardPrefabPath);
+            var casePrefab = LoadNetworkObject(CasePrefabPath);
             if (configFresh == null) Debug.LogError($"[Ouroboros] Could not load {ConfigPath} (is the asset's script reference intact?)");
 
             BuildScene(configFresh, playerPrefab, lootDropPrefab, registryFresh, panelFresh, feedbackFresh, equipmentFresh);
+            BuildHeistLayer(guardPrefab, casePrefab);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -302,6 +309,130 @@ namespace Ouroboros.EditorTools
 
         // ------------------------------------------------------------------
         // Equipment
+
+        private static NetworkObject CreateGuardPrefab()
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(GuardPrefabPath);
+            if (existing != null) return existing.GetComponent<NetworkObject>();
+
+            var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            go.name = "Guard";
+            go.transform.position = Vector3.up; // capsule pivot at centre; agent base offset handles ground
+            Tint(go, new Color(0.15f, 0.15f, 0.2f));
+            var agent = go.AddComponent<UnityEngine.AI.NavMeshAgent>();
+            agent.height = 2f; agent.radius = 0.4f; agent.baseOffset = 1f; agent.speed = 3.5f;
+            go.AddComponent<NetworkObject>();
+            go.AddComponent<NetworkTransform>();
+            go.AddComponent<AI.GuardAI>();
+
+            PrefabUtility.SaveAsPrefabAsset(go, GuardPrefabPath);
+            Object.DestroyImmediate(go);
+            return LoadNetworkObject(GuardPrefabPath);
+        }
+
+        private static NetworkObject CreateCasePrefab()
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(CasePrefabPath);
+            if (existing != null) return existing.GetComponent<NetworkObject>();
+
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = "LootCase";
+            go.transform.localScale = new Vector3(0.7f, 0.45f, 0.3f);
+            Object.DestroyImmediate(go.GetComponent<Collider>());
+            Tint(go, new Color(0.9f, 0.5f, 0.1f));
+            go.AddComponent<NetworkObject>();
+            go.AddComponent<NetworkTransform>();
+            go.AddComponent<GameMode.LootCase>();
+
+            PrefabUtility.SaveAsPrefabAsset(go, CasePrefabPath);
+            Object.DestroyImmediate(go);
+            return LoadNetworkObject(CasePrefabPath);
+        }
+
+        /// <summary>Phase 3 content: alarm, guards, cameras, terminal, case, multi-stage vault. Idempotent.</summary>
+        private static void BuildHeistLayer(NetworkObject guardPrefab, NetworkObject casePrefab)
+        {
+            var scene = EditorSceneManager.GetActiveScene();
+
+            // Alarm on the managers object
+            var teamManager = Object.FindFirstObjectByType<Network.TeamManager>();
+            if (teamManager != null && teamManager.GetComponent<GameMode.AlarmSystem>() == null)
+            {
+                teamManager.gameObject.AddComponent<GameMode.AlarmSystem>();
+            }
+
+            // Guard spawner with spawn + patrol points
+            if (Object.FindFirstObjectByType<AI.AISpawner>() == null)
+            {
+                var spawnerGo = new GameObject("GuardSpawner");
+                spawnerGo.AddComponent<NetworkObject>();
+                var spawner = spawnerGo.AddComponent<AI.AISpawner>();
+
+                var spawns = new List<Transform>();
+                foreach (var pos in new[] { new Vector3(0f, 0f, 30f), new Vector3(-25f, 0f, -10f), new Vector3(25f, 0f, -10f) })
+                {
+                    var p = new GameObject("GuardSpawn"); p.transform.SetParent(spawnerGo.transform); p.transform.position = pos; spawns.Add(p.transform);
+                }
+                var patrol = new List<Transform>();
+                foreach (var pos in new[] { new Vector3(-20f, 0f, 20f), new Vector3(20f, 0f, 20f), new Vector3(20f, 0f, -20f), new Vector3(-20f, 0f, -20f) })
+                {
+                    var p = new GameObject("PatrolPoint"); p.transform.SetParent(spawnerGo.transform); p.transform.position = pos; patrol.Add(p.transform);
+                }
+
+                SetReference(spawner, "guardPrefab", guardPrefab);
+                SetReferenceArray(spawner, "spawnPoints", spawns.ToArray());
+                SetReferenceArray(spawner, "patrolPoints", patrol.ToArray());
+            }
+
+            // Security cameras on two cover blocks' corners, looking at the centre
+            if (Object.FindFirstObjectByType<Interaction.SecurityCamera>() == null)
+            {
+                foreach (var pos in new[] { new Vector3(14f, 3.5f, 14f), new Vector3(-14f, 3.5f, -14f) })
+                {
+                    var cam = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    cam.name = "SecurityCamera";
+                    cam.transform.position = pos;
+                    cam.transform.localScale = new Vector3(0.4f, 0.4f, 0.8f);
+                    cam.transform.LookAt(new Vector3(0f, 1f, 0f));
+                    Object.DestroyImmediate(cam.GetComponent<Collider>());
+                    Tint(cam, new Color(0.2f, 0.8f, 1f));
+                    cam.AddComponent<NetworkObject>();
+                    cam.AddComponent<Interaction.SecurityCamera>();
+                }
+            }
+
+            // Terminal linked to the outer vaults; vault 1 becomes a two-stage crack
+            var vaults = Object.FindObjectsByType<GameMode.LootObjective>(FindObjectsSortMode.None);
+            if (Object.FindFirstObjectByType<Interaction.HackTerminal>() == null && vaults.Length > 0)
+            {
+                var term = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                term.name = "SecurityTerminal";
+                term.transform.position = new Vector3(-24f, 0.6f, 0f);
+                term.transform.localScale = new Vector3(1f, 1.2f, 0.5f);
+                Tint(term, new Color(0.1f, 0.6f, 0.9f));
+                term.AddComponent<NetworkObject>();
+                var terminal = term.AddComponent<Interaction.HackTerminal>();
+                var linked = new List<Object>();
+                foreach (var v in vaults) if (v.name != "Vault 1") linked.Add(v);
+                SetReferenceArray(terminal, "linkedObjectives", linked.ToArray());
+            }
+            foreach (var v in vaults)
+            {
+                if (v.name == "Vault 1") SetInt(v, "stages", 2);
+            }
+
+            // The case, parked on the far side of the arena
+            if (Object.FindFirstObjectByType<GameMode.LootCase>() == null && casePrefab != null)
+            {
+                var inst = (GameObject)PrefabUtility.InstantiatePrefab(casePrefab.gameObject, scene);
+                inst.transform.position = new Vector3(0f, 0.5f, -34f);
+            }
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, ScenePath);
+            Debug.Log("[Ouroboros] Heist layer ready: alarm, guard spawner, cameras, terminal, case. Guards need a NavMesh to walk: " +
+                      "install AI Navigation (Package Manager), add a NavMeshSurface to 'Ground' and Bake.");
+        }
 
         private static NetworkObject CreateProjectilePrefab()
         {
@@ -721,6 +852,27 @@ namespace Ouroboros.EditorTools
             var prop = so.FindProperty(field);
             if (prop == null) { Debug.LogError($"[Ouroboros] Field '{field}' not found on {target.GetType().Name}"); return; }
             prop.objectReferenceValue = value;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(target);
+        }
+
+        private static void SetReferenceArray(Object target, string field, Object[] values)
+        {
+            var so = new SerializedObject(target);
+            var prop = so.FindProperty(field);
+            if (prop == null) { Debug.LogError($"[Ouroboros] Field '{field}' not found on {target.GetType().Name}"); return; }
+            prop.arraySize = values.Length;
+            for (int i = 0; i < values.Length; i++) prop.GetArrayElementAtIndex(i).objectReferenceValue = values[i];
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(target);
+        }
+
+        private static void SetInt(Object target, string field, int value)
+        {
+            var so = new SerializedObject(target);
+            var prop = so.FindProperty(field);
+            if (prop == null) return;
+            prop.intValue = value;
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(target);
         }

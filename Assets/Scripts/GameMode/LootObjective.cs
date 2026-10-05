@@ -33,6 +33,8 @@ namespace Ouroboros.GameMode
         [Range(0f, 1f)] [SerializeField] private float hackProgressBonus = 0.5f;
         [Tooltip("Only count objective completions once the match is InProgress / Extraction.")]
         [SerializeField] private bool onlyDuringMatch = true;
+        [Tooltip("(v0.5) Number of cracking passes needed. Each intermediate stage resets progress and raises the alarm.")]
+        [SerializeField] private int stages = 1;
 
         [Networked] public NetworkBool IsAvailable { get; set; }
         [Networked] public NetworkBool IsUnlocked { get; set; }
@@ -41,6 +43,7 @@ namespace Ouroboros.GameMode
         [Networked] public NetworkBool IsContested { get; set; }
         [Networked] public TickTimer RespawnTimer { get; set; }
         [Networked] public TickTimer HackUnlockTimer { get; set; }
+        [Networked] public int StagesDone { get; set; }
 
         private readonly List<Network.NetworkPlayer> interacting = new List<Network.NetworkPlayer>();
         private readonly List<Network.NetworkPlayer> present = new List<Network.NetworkPlayer>();
@@ -48,6 +51,7 @@ namespace Ouroboros.GameMode
         public string ObjectiveName => objectiveName;
         public int LootValue => lootValue;
         public float InteractRadius => interactRadius;
+        public int Stages => Mathf.Max(1, stages);
         public float ProgressNormalized => Mathf.Clamp01(Progress / Mathf.Max(0.01f, captureTime));
 
         public override void Spawned()
@@ -183,6 +187,17 @@ namespace Ouroboros.GameMode
         {
             Core.TeamID team = CapturingTeam;
 
+            // v0.5: multi-stage vaults
+            if (StagesDone + 1 < Stages)
+            {
+                StagesDone++;
+                Progress = 0f;
+                IsContested = false;
+                AlarmSystem.Raise(gm != null ? gm.Config.alarmOnObjectiveStage : 10f, objectiveName);
+                RPC_StageDone(team, StagesDone, Stages);
+                return;
+            }
+
             // Split loot between the workers; remainder goes to the first.
             int workers = 0;
             foreach (var p in interacting) if (p.Team == team) workers++;
@@ -197,11 +212,13 @@ namespace Ouroboros.GameMode
             }
 
             gm?.OnObjectiveCompleted(team, this);
+            AlarmSystem.Raise(gm != null ? gm.Config.alarmOnObjectiveCompleted : 20f, objectiveName);
 
             CapturingTeam = Core.TeamID.None;
             Progress = 0f;
             IsContested = false;
             IsAvailable = false;
+            StagesDone = 0;
 
             float respawnTime = respawnTimeOverride > 0f ? respawnTimeOverride : (gm != null ? gm.Config.objectiveRespawnTime : 60f);
             if (respawns && respawnTime > 0f)
@@ -242,6 +259,9 @@ namespace Ouroboros.GameMode
 
         [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
         private void RPC_CaptureCancelled(Core.TeamID team) => Debug.Log($"[Objective:{objectiveName}] {team} capture cancelled");
+
+        [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+        private void RPC_StageDone(Core.TeamID team, int done, int total) => Debug.Log($"[Objective:{objectiveName}] {team} completed stage {done}/{total}");
 
         [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
         private void RPC_Completed(Core.TeamID team, int loot)

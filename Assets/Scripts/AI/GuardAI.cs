@@ -24,6 +24,14 @@ namespace Ouroboros.AI
         private Fusion.TickTimer investigateTimer;
         private Fusion.TickTimer chaseTimer;
 
+        /// <summary>Assigns a patrol route at spawn time (used by AISpawner).</summary>
+        public void SetPatrolPoints(Transform[] points, int startIndex = 0)
+        {
+            patrolPoints = points;
+            patrolIndex = points != null && points.Length > 0 ? Mathf.Abs(startIndex) % points.Length : 0;
+            if (isInitialized) TransitionToState(points != null && points.Length > 0 ? AIBehaviorState.Patrol : AIBehaviorState.Idle);
+        }
+
         protected override void OnInitialize()
         {
             agentType = AIAgentType.Guard;

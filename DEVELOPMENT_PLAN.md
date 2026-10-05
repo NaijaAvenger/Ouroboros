@@ -109,11 +109,17 @@ Still open in Phase 1: actual audio/VFX assets in the FeedbackLibrary, a control
 
 Still open in Phase 2: `Hitbox`/`HitboxRoot` on the player prefab for full lag compensation (PhysX fallback works today), ammo pickups, deployables (`EquipmentKind.Deployable` is a placeholder), weapon viewmodels.
 
-### Phase 3 — Heist depth
-- Alarm system: cameras/guards raise an alarm level that spawns reinforcements and shortens extraction windows.
-- Objective variety (hack terminal, carry-the-case, multi-stage vault) behind the `IHackable`/`IBreachable` seams.
-- Loot weight: carried loot slows movement; encourages mid-match extraction decisions.
-- Shared-mode polish: team assignment via TeamManager RPC so a joining client can request a team.
+### Phase 3 — Heist depth (implemented in v0.5, awaiting in-engine validation)
+- **AlarmSystem** (`GameMode/AlarmSystem.cs`): replicated level 0-100 with decay; tiers Quiet / Suspicious / Alert / Lockdown; raised by cameras spotting players, guards engaging, vault stages and completions, breaches and kills; lowered by hack terminals. Alert scales guard and camera detection range; Lockdown holds the level, lengthens extractions and triggers reinforcement waves. All amounts in `GameModeConfig`.
+- **AISpawner** (`AI/AISpawner.cs`): spawns the initial guards when the match goes live, replaces losses while Alert, and sends waves during Lockdown (capped). Guards get patrol routes from the spawner.
+- **HackTerminal** (`Interaction/HackTerminal.cs`): Hacker's System Hack activates instantly, anyone can hold Interact; unlocks / boosts linked vaults and lowers the alarm; re-arms on a cooldown.
+- **LootCase** (`GameMode/LootCase.cs`): carry-the-case hot potato: hold Interact to pick up, carrier is `Encumbered` (slowed), drops on death, banked with a bonus multiplier when the carrier extracts.
+- **Multi-stage vaults**: `LootObjective.stages`; intermediate stages reset progress and raise the alarm.
+- **Loot weight**: `NetworkPlayer.CarryWeightSpeedMultiplier` slows players by carried loot (and more with a case), applied in prediction.
+- **Shared mode**: `TeamManager.RequestTeamAssignment` RPC so a spawning client without state authority gets a team.
+- HUD: alarm meter + tier, case / terminal prompts, stage counter; builder adds the heist layer (alarm, spawner + routes, cameras, terminal, case, two-stage vault).
+
+Still open in Phase 3: guard NavMesh baking is manual (needs the AI Navigation package), alarm-driven music/VFX, objective variety beyond these three types.
 
 ### Phase 4 — AI
 - AI spawner + pooling; `SniperGuard`, `Elite`; squad coordination via shared blackboard; alarm-driven aggression tiers.

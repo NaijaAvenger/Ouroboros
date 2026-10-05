@@ -158,6 +158,7 @@ namespace Ouroboros.Player
                 ? (canSprint ? currentClass.SprintSpeed : currentClass.MovementSpeed)
                 : defaultMovementSpeed;
             if (networkLoadout != null) speed *= networkLoadout.SpeedMultiplier; // v0.4: armor / accessories
+            speed *= networkPlayer.CarryWeightSpeedMultiplier;                      // v0.5: loot weight / case
 
             if (Object.HasStateAuthority)
             {

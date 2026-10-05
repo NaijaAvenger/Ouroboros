@@ -87,7 +87,9 @@ namespace Ouroboros.Core
         Burning      = 1 << 6,
         Sprinting    = 1 << 7,
         Interacting  = 1 << 8,
-        Extracted    = 1 << 9
+        Extracted    = 1 << 9,
+        /// <summary>Carrying a LootCase (v0.5): slowed, cannot pick up another.</summary>
+        Encumbered   = 1 << 10
     }
 
     /// <summary>

@@ -93,6 +93,21 @@ namespace Ouroboros.Network
             (currentClass != null ? currentClass.OutgoingDamageMultiplier : 1f) * (loadout != null ? loadout.OutgoingDamageMultiplier : 1f);
         public Equipment.NetworkLoadout Loadout => loadout != null ? loadout : (loadout = GetComponent<Equipment.NetworkLoadout>());
 
+        /// <summary>Movement multiplier from carried loot and a carried case (v0.5). Read on every peer (prediction-safe).</summary>
+        public float CarryWeightSpeedMultiplier
+        {
+            get
+            {
+                var gm = GameMode.ExtractionHeistGameMode.Instance;
+                if (gm == null) return 1f;
+                var cfg = gm.Config;
+                float loot = cfg.lootWeightReference > 0 ? Mathf.Clamp01((float)CarriedLoot / cfg.lootWeightReference) : 0f;
+                float m = 1f - cfg.lootWeightMaxSlowdown * loot;
+                if (HasStatus(Core.StatusFlags.Encumbered)) m *= cfg.caseCarrySpeedMultiplier;
+                return Mathf.Clamp(m, 0.3f, 1f);
+            }
+        }
+
         // ---- IAbilityContext / IDamageable ----
         public Core.TeamID Team
         {

@@ -34,6 +34,9 @@
 - `BehaviorTree.cs` - Sequence, Selector, Inverter, Condition/Action (+ delegate variants)
 - `GuardAI.cs` - Patrol / investigate / fight
 
+### Heist layer (v0.5)
+- `GameMode/AlarmSystem.cs`, `GameMode/LootCase.cs`, `Interaction/HackTerminal.cs`, `AI/AISpawner.cs`
+
 ### Equipment (v0.4)
 - `Equipment/NetworkLoadout.cs` (replicated slots/ammo/cooldowns), `EquipmentLoadout.cs` (local components), `BaseEquipment.cs`
 - `Equipment/HitscanWeapon.cs`, `ProjectileWeapon.cs`, `Projectile.cs`, `PassiveGear.cs`

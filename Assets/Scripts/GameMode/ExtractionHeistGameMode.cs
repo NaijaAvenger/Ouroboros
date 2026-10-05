@@ -331,6 +331,7 @@ namespace Ouroboros.GameMode
             {
                 AwardTeamScore(killer.Team, Config.pointsPerKill);
             }
+            AlarmSystem.Raise(Config.alarmOnKill, "gunfire");
 
             int loot = victim.TakeAllLoot();
             if (loot > 0 && Config.dropLootOnDeath && (lootDropPrefab.IsValid || lootDropPrefabObject != null))
@@ -397,20 +398,30 @@ namespace Ouroboros.GameMode
             int bankedLoot = 0;
             int extractedNow = 0;
 
+            int caseLoot = 0;
             foreach (var member in members)
             {
                 if (member == null || !CanExtract(member)) continue;
                 bankedLoot += member.TakeAllLoot();
+                // v0.5: carried cases are banked with their carrier
+                for (int c = LootCase.All.Count - 1; c >= 0; c--)
+                {
+                    var lootCase = LootCase.All[c];
+                    if (lootCase != null && lootCase.Object != null) caseLoot += lootCase.BankFor(member);
+                }
                 member.MarkExtracted();
                 extractedNow++;
             }
 
             if (extractedNow == 0) return;
 
-            TeamLoot.Set(idx, TeamLoot[idx] + bankedLoot);
+            TeamLoot.Set(idx, TeamLoot[idx] + bankedLoot + caseLoot);
             TeamExtractedCount.Set(idx, TeamExtractedCount[idx] + extractedNow);
 
-            int points = extractedNow * Config.pointsPerTeamMemberExtracted + Mathf.RoundToInt(bankedLoot * Config.pointsPerLoot);
+            int points = extractedNow * Config.pointsPerTeamMemberExtracted
+                         + Mathf.RoundToInt(bankedLoot * Config.pointsPerLoot)
+                         + Mathf.RoundToInt(caseLoot * Config.pointsPerCaseLoot);
+            bankedLoot += caseLoot;
             if (!TeamExtracted[idx])
             {
                 // First successful extraction for this team

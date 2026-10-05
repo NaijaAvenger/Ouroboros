@@ -37,9 +37,9 @@ namespace Ouroboros.GameMode
         {
             get
             {
-                if (extractionTime > 0f) return extractionTime;
-                var gm = ExtractionHeistGameMode.Instance;
-                return gm != null ? gm.Config.extractionTime : 10f;
+                float baseTime = extractionTime > 0f ? extractionTime : (ExtractionHeistGameMode.Instance != null ? ExtractionHeistGameMode.Instance.Config.extractionTime : 10f);
+                var alarm = AlarmSystem.Instance;
+                return baseTime * (alarm != null && alarm.Object != null ? alarm.ExtractionTimeMultiplier : 1f); // v0.5: slower under lockdown
             }
         }
 

@@ -109,6 +109,8 @@ namespace Ouroboros.UI
             if (gm.MatchTimeRemaining.HasValue) sb.AppendLine($"Match time left: {gm.MatchTimeRemaining.Value:0}s");
             if (gm.PhaseTimeRemaining.HasValue) sb.AppendLine($"Phase time left: {gm.PhaseTimeRemaining.Value:0}s");
             if (gm.CurrentState == GameMode.ExtractionHeistGameMode.GameState.MatchEnded) sb.AppendLine($"<b>Winner: {gm.WinningTeam}</b>");
+            var alarm = GameMode.AlarmSystem.Instance;
+            if (alarm != null && alarm.Object != null) sb.AppendLine($"Alarm: {alarm.Level:0}/100  tier {alarm.Tier} ({GameMode.AlarmSystem.TierName(alarm.Tier)})  guards alive: {AI.BaseAIAgent.All.Count}");
         }
 
         private void AppendLocalPlayer()

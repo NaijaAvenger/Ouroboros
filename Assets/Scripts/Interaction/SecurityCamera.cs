@@ -42,12 +42,22 @@ namespace Ouroboros.Interaction
             if (!Object.HasStateAuthority || IsDisabled) return;
             if (((int)Runner.Tick) % Core.GameConstants.ZONE_SCAN_INTERVAL_TICKS != 0) return;
 
-            var players = Network.NetworkPlayer.FindPlayersInRadius(transform.position, viewRange, Core.TeamID.None, aliveOnly: true);
+            var alarm = GameMode.AlarmSystem.Instance;
+            float range = viewRange * (alarm != null && alarm.Object != null ? alarm.DetectionMultiplier : 1f);
+            var players = Network.NetworkPlayer.FindPlayersInRadius(transform.position, range, Core.TeamID.None, aliveOnly: true);
+            int spotted = 0;
             foreach (var p in players)
             {
                 if (respectStealth && p.HasStatus(Core.StatusFlags.Stealthed)) continue;
-                if (!AI.Perception.CanSee(transform.position, transform.forward, p.EyePosition, viewRange, viewAngle, occluders)) continue;
+                if (!AI.Perception.CanSee(transform.position, transform.forward, p.EyePosition, range, viewAngle, occluders)) continue;
                 p.ApplyTimedStatus(Core.StatusFlags.Revealed, revealDuration);
+                spotted++;
+            }
+            if (spotted > 0)
+            {
+                var gm = GameMode.ExtractionHeistGameMode.Instance;
+                float perSecond = gm != null ? gm.Config.alarmOnCameraSpotPerSecond : 8f;
+                GameMode.AlarmSystem.Raise(perSecond * Runner.DeltaTime * Core.GameConstants.ZONE_SCAN_INTERVAL_TICKS, name);
             }
         }
 

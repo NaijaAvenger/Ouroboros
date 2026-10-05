@@ -257,6 +257,12 @@ namespace Ouroboros.Network
             r.SetPlayerObject(player, obj);
             spawnedPlayers[player] = obj;
 
+            // Shared mode: the spawner is not the TeamManager's authority, so ask for a team (v0.5)
+            if (team == Core.TeamID.None && teamManager != null && teamManager.Object != null && !teamManager.Object.HasStateAuthority)
+            {
+                teamManager.RequestTeamAssignment();
+            }
+
             Debug.Log($"[GameSessionManager] Spawned {player} on {team} as {classType}");
         }
 

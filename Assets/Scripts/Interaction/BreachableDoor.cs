@@ -52,6 +52,8 @@ namespace Ouroboros.Interaction
         {
             if (!Object.HasStateAuthority || IsBreached) return;
             IsBreached = true;
+            var gm = GameMode.ExtractionHeistGameMode.Instance;
+            GameMode.AlarmSystem.Raise(gm != null ? gm.Config.alarmOnBreach : 30f, name);
             RPC_Breached(byTeam);
         }
 

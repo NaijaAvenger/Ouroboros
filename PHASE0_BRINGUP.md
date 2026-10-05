@@ -82,6 +82,15 @@ Watch the **DevHUD** (F1) and console:
 - [ ] Lobby: `< >` cyclers swap Primary / Secondary; selection replicates; starting ammo matches the item
 - [ ] Light Armor reduces damage taken; Stim Rig raises speed
 
+## 7c2. Phase 3 validation (v0.5)
+- [ ] Re-run the setup menu: `GuardSpawner`, two `SecurityCamera`s, `SecurityTerminal`, the orange `LootCase` and an `AlarmSystem` on `GameManagers` exist; Vault 1 shows "stage 1/2"
+- [ ] Install **AI Navigation** (Package Manager) → add `NavMeshSurface` to `Ground` → Bake, or guards will stand still and only shoot
+- [ ] Match start: 3 guards spawn; walking into a camera cone raises the alarm meter; guards seeing you raise it more
+- [ ] Alarm ≥ 80 → "LOCKDOWN": reinforcement log lines every 20 s, extraction takes 1.5× longer
+- [ ] Hold F at the terminal (or System Hack as Hacker): alarm drops, outer vaults get a progress boost
+- [ ] Hold F on the case: "CARRYING CASE" status, you move slower; die → it drops; extract with it → banked with the 1.5× multiplier
+- [ ] Carrying lots of loot slows you (25% at 1500)
+
 ## 7d. Expected flow and troubleshooting
 **Expected flow on Play (dev config):** spectator camera orbits the arena → session starts → your player spawns → the
 **class picker** appears with the cursor free (state *Waiting for players*) → host presses **Start match now** (or the
