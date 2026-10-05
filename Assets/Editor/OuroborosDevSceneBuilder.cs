@@ -44,6 +44,7 @@ namespace Ouroboros.EditorTools
         private const string ElitePrefabPath = PrefabDir + "/EliteGuard.prefab";
         private const string SniperPrefabPath = PrefabDir + "/SniperGuard.prefab";
         private const string CasePrefabPath = PrefabDir + "/LootCase.prefab";
+        private const string IDCardPrefabPath = PrefabDir + "/IDCard.prefab";
 
         [MenuItem("Ouroboros/Setup/Create Dev Scene (Phase 0)")]
         public static void CreateDevScene()
@@ -60,6 +61,7 @@ namespace Ouroboros.EditorTools
             CreateGuardVariant(ElitePrefabPath, "EliteGuard", typeof(AI.EliteGuard), new Color(0.35f, 0.1f, 0.1f), 1.15f);
             CreateGuardVariant(SniperPrefabPath, "SniperGuard", typeof(AI.SniperGuard), new Color(0.1f, 0.1f, 0.35f), 0.9f);
             CreateCasePrefab();
+            CreateIDCardPrefab();
             var panelSettings = CreatePanelSettings();
             var feedback = CreateFeedbackLibrary();
 
@@ -94,11 +96,13 @@ namespace Ouroboros.EditorTools
             var elitePrefab = LoadNetworkObject(ElitePrefabPath);
             var sniperPrefab = LoadNetworkObject(SniperPrefabPath);
             var casePrefab = LoadNetworkObject(CasePrefabPath);
+            var idCardPrefab = LoadNetworkObject(IDCardPrefabPath);
             if (configFresh == null) Debug.LogError($"[Ouroboros] Could not load {ConfigPath} (is the asset's script reference intact?)");
 
             BuildScene(configFresh, playerPrefab, lootDropPrefab, registryFresh, panelFresh, feedbackFresh, equipmentFresh);
             BuildHeistLayer(guardPrefab, casePrefab);
             BuildAILayer(elitePrefab, sniperPrefab);
+            BuildVaultLayer(idCardPrefab);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -424,6 +428,15 @@ namespace Ouroboros.EditorTools
 
             TryBakeNavMesh();
 
+            var spawnerCheck = Object.FindFirstObjectByType<AI.AISpawner>();
+            if (spawnerCheck != null)
+            {
+                VerifyReference(spawnerCheck, "guardPrefab");
+                VerifyReference(spawnerCheck, "elitePrefab");
+                VerifyReference(spawnerCheck, "sniperPrefab");
+            }
+            else Debug.LogError("[Ouroboros] No AISpawner in the scene - guards cannot spawn.");
+
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ScenePath);
             Debug.Log("[Ouroboros] AI layer ready: elite + sniper prefabs on the spawner, two sniper posts, a breachable door that carves the NavMesh.");
@@ -453,6 +466,195 @@ namespace Ouroboros.EditorTools
                 bake.Invoke(surface, null);
                 Debug.Log("[Ouroboros] NavMesh baked on 'Ground' (static cover, walls and sniper posts are carved out).");
             }
+        }
+
+        private static NetworkObject CreateIDCardPrefab()
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(IDCardPrefabPath);
+            if (existing != null) return existing.GetComponent<NetworkObject>();
+
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = "IDCard";
+            go.transform.localScale = new Vector3(0.35f, 0.05f, 0.22f);
+            Object.DestroyImmediate(go.GetComponent<Collider>());
+            Tint(go, Color.white);
+            go.AddComponent<NetworkObject>();
+            go.AddComponent<NetworkTransform>();
+            go.AddComponent<Interaction.IDCardDrop>();
+
+            PrefabUtility.SaveAsPrefabAsset(go, IDCardPrefabPath);
+            Object.DestroyImmediate(go);
+            return LoadNetworkObject(IDCardPrefabPath);
+        }
+
+        /// <summary>
+        /// Phase 5 content (v0.7): four walled vault rooms, each with a different exterior lock, the loot
+        /// objectives moved inside and gated by their doors, a red keycard, a code note, ID card drops,
+        /// and the keypad UI. Idempotent.
+        /// </summary>
+        private static void BuildVaultLayer(NetworkObject idCardPrefab)
+        {
+            var scene = EditorSceneManager.GetActiveScene();
+
+            var gameMode = Object.FindFirstObjectByType<GameMode.ExtractionHeistGameMode>();
+            if (gameMode != null) SetReference(gameMode, "idCardPrefabObject", idCardPrefab);
+
+            var hud = Object.FindFirstObjectByType<UI.HeistHUD>();
+            if (hud != null && hud.GetComponent<UI.KeypadUI>() == null) hud.gameObject.AddComponent<UI.KeypadUI>();
+
+            if (Object.FindFirstObjectByType<Interaction.VaultDoor>() == null)
+            {
+                var vaults = new List<GameMode.LootObjective>(Object.FindObjectsByType<GameMode.LootObjective>(FindObjectsSortMode.None));
+                vaults.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
+
+                var rooms = new[]
+                {
+                    (name: "North Vault", center: new Vector3(0f, 0f, 28f),  lockType: Interaction.VaultLockType.Keycard,    color: Interaction.KeycardColor.Red),
+                    (name: "East Vault",  center: new Vector3(28f, 0f, 0f),  lockType: Interaction.VaultLockType.PlayerCard, color: Interaction.KeycardColor.None),
+                    (name: "South Vault", center: new Vector3(0f, 0f, -28f), lockType: Interaction.VaultLockType.Passcode,   color: Interaction.KeycardColor.None),
+                    (name: "West Vault",  center: new Vector3(-28f, 0f, 0f), lockType: Interaction.VaultLockType.Lockdown,   color: Interaction.KeycardColor.None),
+                };
+
+                Interaction.VaultDoor passcodeDoor = null;
+                for (int i = 0; i < rooms.Length; i++)
+                {
+                    var r = rooms[i];
+                    var door = CreateVaultRoom(r.name, r.center, r.lockType, r.color);
+                    if (r.lockType == Interaction.VaultLockType.Passcode) passcodeDoor = door;
+
+                    GameMode.LootObjective interior;
+                    if (i < vaults.Count)
+                    {
+                        interior = vaults[i];
+                    }
+                    else
+                    {
+                        var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                        cube.name = "Vault " + (i + 1);
+                        cube.transform.localScale = new Vector3(1.5f, 1.5f, 1.5f);
+                        Tint(cube, new Color(0.95f, 0.75f, 0.2f));
+                        cube.AddComponent<NetworkObject>();
+                        interior = cube.AddComponent<GameMode.LootObjective>();
+                        SetString(interior, "objectiveName", cube.name);
+                        SetFloat(interior, "interactRadius", 3.5f);
+                        SetFloat(interior, "captureTime", 6f);
+                    }
+                    interior.transform.position = r.center + Vector3.up * 0.75f;
+                    SetString(interior, "objectiveName", r.name + " Interior");
+                    SetReference(interior, "gatedBy", door);
+                }
+
+                // Red keycard for the north vault, placed across the map
+                var key = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                key.name = "Keycard (Red)";
+                key.transform.position = new Vector3(20f, 0.4f, -16f);
+                key.transform.localScale = new Vector3(0.5f, 0.06f, 0.3f);
+                Object.DestroyImmediate(key.GetComponent<Collider>());
+                Tint(key, Color.red);
+                key.AddComponent<NetworkObject>();
+                var keycard = key.AddComponent<Interaction.KeycardPickup>();
+                SetEnum(keycard, "color", (int)Interaction.KeycardColor.Red);
+
+                // Code note for the south vault, placed far from it
+                if (passcodeDoor != null)
+                {
+                    var note = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    note.name = "Code Note";
+                    note.transform.position = new Vector3(-16f, 0.9f, 16f);
+                    note.transform.localScale = new Vector3(0.6f, 0.8f, 0.1f);
+                    Object.DestroyImmediate(note.GetComponent<Collider>());
+                    Tint(note, new Color(0.95f, 0.95f, 0.8f));
+                    note.AddComponent<NetworkObject>();
+                    var codeNote = note.AddComponent<Interaction.CodeNote>();
+                    SetReference(codeNote, "door", passcodeDoor);
+                }
+
+                // Move earlier props that now sit inside a room
+                var terminal = Object.FindFirstObjectByType<Interaction.HackTerminal>();
+                if (terminal != null && Vector3.Distance(terminal.transform.position, new Vector3(-24f, 0.6f, 0f)) < 0.5f)
+                    terminal.transform.position = new Vector3(-14f, 0.6f, 14f);
+                var spawner = Object.FindFirstObjectByType<AI.AISpawner>();
+                if (spawner != null)
+                {
+                    foreach (Transform child in spawner.transform)
+                        if (child.name == "GuardSpawn" && Vector3.Distance(child.position, new Vector3(0f, 0f, 30f)) < 0.5f) child.position = new Vector3(0f, 0f, 14f);
+                }
+            }
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, ScenePath);
+            Debug.Log("[Ouroboros] Vault layer ready: North=keycard, East=enemy ID card, South=passcode (note at NW), West=lockdown override.");
+        }
+
+        /// <summary>Walled 10x10 room with a gap + exterior door on the side facing the arena centre.</summary>
+        private static Interaction.VaultDoor CreateVaultRoom(string name, Vector3 center, Interaction.VaultLockType lockType, Interaction.KeycardColor color)
+        {
+            const float size = 10f, height = 3f, thick = 0.5f, gap = 4f;
+            var room = new GameObject(name);
+            room.transform.position = center;
+
+            Vector3 toCenter = (-center).normalized;           // door faces the arena
+            Vector3 side = Vector3.Cross(Vector3.up, toCenter); // along the door wall
+
+            // Three solid walls
+            foreach (var dir in new[] { -toCenter, side, -side })
+            {
+                var wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                wall.name = "Wall";
+                wall.transform.SetParent(room.transform);
+                wall.transform.position = center + dir * (size * 0.5f) + Vector3.up * (height * 0.5f);
+                wall.transform.rotation = Quaternion.LookRotation(dir);
+                wall.transform.localScale = new Vector3(size + thick, height, thick);
+                wall.isStatic = true;
+                Tint(wall, new Color(0.35f, 0.35f, 0.4f));
+            }
+            // Door wall: two segments leaving a gap
+            float segLen = (size - gap) * 0.5f;
+            foreach (float sign in new[] { -1f, 1f })
+            {
+                var seg = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                seg.name = "DoorWall";
+                seg.transform.SetParent(room.transform);
+                seg.transform.position = center + toCenter * (size * 0.5f) + side * sign * (gap * 0.5f + segLen * 0.5f) + Vector3.up * (height * 0.5f);
+                seg.transform.rotation = Quaternion.LookRotation(toCenter);
+                seg.transform.localScale = new Vector3(segLen, height, thick);
+                seg.isStatic = true;
+                Tint(seg, new Color(0.35f, 0.35f, 0.4f));
+            }
+            // Roof slab so the sniper can't pick you off inside
+            var roof = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            roof.name = "Roof";
+            roof.transform.SetParent(room.transform);
+            roof.transform.position = center + Vector3.up * (height + 0.15f);
+            roof.transform.localScale = new Vector3(size + thick, 0.3f, size + thick);
+            roof.isStatic = true;
+            Tint(roof, new Color(0.3f, 0.3f, 0.33f));
+
+            // The door
+            var doorGo = new GameObject(name + " Door");
+            doorGo.transform.SetParent(room.transform);
+            doorGo.transform.position = center + toCenter * (size * 0.5f) + Vector3.up * (height * 0.5f);
+            doorGo.transform.rotation = Quaternion.LookRotation(toCenter);
+            var visual = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            visual.name = "DoorVisual";
+            visual.transform.SetParent(doorGo.transform, false);
+            visual.transform.localScale = new Vector3(gap, height, thick);
+            Tint(visual, lockType == Interaction.VaultLockType.Keycard ? Interaction.KeycardPickup.ToColor(color)
+                       : lockType == Interaction.VaultLockType.PlayerCard ? new Color(0.8f, 0.8f, 0.9f)
+                       : lockType == Interaction.VaultLockType.Passcode ? new Color(0.2f, 0.9f, 0.9f)
+                       : new Color(0.9f, 0.2f, 0.2f));
+            var obstacle = visual.AddComponent<UnityEngine.AI.NavMeshObstacle>();
+            obstacle.carving = true;
+            obstacle.shape = UnityEngine.AI.NavMeshObstacleShape.Box;
+            obstacle.size = Vector3.one;
+            doorGo.AddComponent<NetworkObject>();
+            var door = doorGo.AddComponent<Interaction.VaultDoor>();
+            SetString(door, "vaultName", name);
+            SetEnum(door, "lockType", (int)lockType);
+            SetEnum(door, "keycardColor", (int)color);
+            SetReference(door, "doorVisual", visual);
+            SetReference(door, "navObstacle", obstacle);
+            return door;
         }
 
         private static NetworkObject CreateCasePrefab()

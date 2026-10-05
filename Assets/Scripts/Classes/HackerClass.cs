@@ -30,6 +30,7 @@ namespace Ouroboros.Classes
             maxHealth = 85f;
             movementSpeed = 5.5f;
             sprintSpeed = 7.8f;
+            movement.CanGlide = true; movement.GlideSeconds = 3f;           // v0.7: light frame, glides
 
             DefineAbility(0, "System Hack",    cooldown: 15f, staminaCost: 15f, duration: hackDuration);
             DefineAbility(1, "Disable Camera", cooldown: 20f, staminaCost: 10f);

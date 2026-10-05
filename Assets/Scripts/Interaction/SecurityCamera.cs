@@ -18,8 +18,31 @@ namespace Ouroboros.Interaction
         [SerializeField] private bool respectStealth = true;
 
         [Networked] private TickTimer DisabledTimer { get; set; }
+        [Networked] private NetworkBool Spotting { get; set; }
+
+        private AI.VisionCone cone;
 
         public bool IsDisabled => DisabledTimer.IsRunning && !DisabledTimer.Expired(Runner);
+
+        public override void Spawned()
+        {
+            // Ground cone: the camera is mounted high, so project its range onto the floor beneath it
+            cone = AI.VisionCone.Attach(transform, viewRange, viewAngle, groundOffset: transform.position.y, AI.VisionCone.IdleColor);
+        }
+
+        public override void Despawned(NetworkRunner runner, bool hasState)
+        {
+            if (cone != null) Destroy(cone.gameObject);
+        }
+
+        public override void Render()
+        {
+            if (cone == null) return;
+            var alarm = GameMode.AlarmSystem.Instance;
+            float scale = alarm != null && alarm.Object != null ? alarm.DetectionMultiplier : 1f;
+            cone.Configure(viewRange * scale, viewAngle);
+            cone.SetColor(IsDisabled ? AI.VisionCone.DisabledColor : Spotting ? AI.VisionCone.AlertColor : AI.VisionCone.IdleColor);
+        }
 
         public void Disable(float duration)
         {
@@ -54,6 +77,7 @@ namespace Ouroboros.Interaction
                 AI.AIBlackboard.ReportSighting(p.transform.position, p, priority: 0.9f); // v0.6: guards converge on camera spots
                 spotted++;
             }
+            Spotting = spotted > 0;
             if (spotted > 0)
             {
                 var gm = GameMode.ExtractionHeistGameMode.Instance;

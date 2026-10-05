@@ -453,7 +453,13 @@ namespace Ouroboros.UI
             SetBar(staminaFill, local.Stamina, local.MaxStamina);
             staminaText.text = $"{local.Stamina:0}";
 
-            statusLabel.text = StatusText(local.Status);
+            string keys = "";
+            foreach (Interaction.KeycardColor c in System.Enum.GetValues(typeof(Interaction.KeycardColor)))
+            {
+                if (c != Interaction.KeycardColor.None && local.HasKeycard(c)) keys += $"  [{c} keycard]";
+            }
+            if (local.EnemyCards > 0) keys += $"  [ID cards: {local.EnemyCards}]";
+            statusLabel.text = StatusText(local.Status) + keys;
             lootLabel.text = $"${local.CarriedLoot}";
             kdLabel.text = $"K {local.Kills}  D {local.Deaths}";
             RefreshAmmo();
@@ -553,7 +559,17 @@ namespace Ouroboros.UI
                 if (dSq <= r * r && dSq < bestCaseSq) { bestCase = c; bestCaseSq = dSq; }
             }
 
-            if (bestObj == null && bestEp == null && bestTerm == null && bestCase == null)
+            // Vault doors, keycards, code notes (v0.7)
+            Interaction.VaultDoor bestDoor = null; float bestDoorSq = float.MaxValue;
+            foreach (var d in Interaction.VaultDoor.All)
+            {
+                if (d == null || d.Object == null || d.IsOpen) continue;
+                float r = d.InteractRadius * 1.6f;
+                float dSq = (d.transform.position - pos).sqrMagnitude;
+                if (dSq <= r * r && dSq < bestDoorSq) { bestDoor = d; bestDoorSq = dSq; }
+            }
+
+            if (bestObj == null && bestEp == null && bestTerm == null && bestCase == null && bestDoor == null)
             {
                 zonePanel.style.display = DisplayStyle.None;
                 return;
@@ -561,6 +577,32 @@ namespace Ouroboros.UI
 
             zonePanel.style.display = DisplayStyle.Flex;
             string interact = Core.LocalInputSource.Hint(Core.InputButtons.Interact);
+
+            if (bestDoor != null && bestDoorSq <= Mathf.Min(Mathf.Min(bestObjSq, bestEpSq), Mathf.Min(bestTermSq, bestCaseSq)))
+            {
+                zoneTitle.text = $"{bestDoor.VaultName} - {bestDoor.LockType} lock";
+                switch (bestDoor.LockType)
+                {
+                    case Interaction.VaultLockType.Keycard:
+                        SetBar(zoneFill, local.HasKeycard(bestDoor.RequiredKeycard) ? 1f : 0f, 1f);
+                        zoneHint.text = local.HasKeycard(bestDoor.RequiredKeycard) ? $"Hold {interact} to swipe the {bestDoor.RequiredKeycard} keycard" : $"Needs the {bestDoor.RequiredKeycard} keycard - find it in the facility";
+                        break;
+                    case Interaction.VaultLockType.PlayerCard:
+                        SetBar(zoneFill, Mathf.Clamp01((float)local.EnemyCards / bestDoor.EnemyCardsRequired), 1f);
+                        zoneHint.text = local.EnemyCards >= bestDoor.EnemyCardsRequired ? $"Hold {interact} to swipe an enemy ID card" : $"Needs {bestDoor.EnemyCardsRequired} enemy ID card(s) - loot them from dead rivals (you have {local.EnemyCards})";
+                        break;
+                    case Interaction.VaultLockType.Passcode:
+                        SetBar(zoneFill, bestDoor.TeamKnowsCode(local.Team) ? 1f : 0f, 1f);
+                        zoneHint.text = bestDoor.IsLockedOut ? "Keypad locked out after a wrong code" : bestDoor.TeamKnowsCode(local.Team) ? $"Press {interact} - code {bestDoor.Passcode:0000}" : $"Press {interact} to use the keypad. Wrong code = LOCKDOWN. Find the code note.";
+                        break;
+                    case Interaction.VaultLockType.Lockdown:
+                        float? left = bestDoor.LockdownRemaining;
+                        SetBar(zoneFill, left.HasValue ? 1f - Mathf.Clamp01(left.Value / 45f) : 0f, 1f);
+                        zoneHint.text = left.HasValue ? $"LOCKDOWN - survive {Mathf.CeilToInt(left.Value)}s and the vault opens" : $"Hold {interact} to force the override - this triggers a LOCKDOWN";
+                        break;
+                }
+                return;
+            }
 
             if (bestCase != null && bestCaseSq <= Mathf.Min(bestObjSq, Mathf.Min(bestEpSq, bestTermSq)))
             {
@@ -582,7 +624,8 @@ namespace Ouroboros.UI
             {
                 zoneTitle.text = bestObj.ObjectiveName + $"  (${bestObj.LootValue})" + (bestObj.Stages > 1 ? $"  stage {Mathf.Min(bestObj.StagesDone + 1, bestObj.Stages)}/{bestObj.Stages}" : "");
                 SetBar(zoneFill, bestObj.ProgressNormalized, 1f);
-                if (!bestObj.IsAvailable) zoneHint.text = "Depleted";
+                if (bestObj.IsGated) zoneHint.text = "Open the vault door first";
+                else if (!bestObj.IsAvailable) zoneHint.text = "Depleted";
                 else if (!bestObj.IsUnlocked) zoneHint.text = "Locked - needs a Hacker";
                 else if (bestObj.CapturingTeam == Core.TeamID.None) zoneHint.text = $"Hold {Core.LocalInputSource.Hint(Core.InputButtons.Interact)} to crack";
                 else if (bestObj.IsContested) zoneHint.text = $"{TeamName(bestObj.CapturingTeam)} cracking - CONTESTED";
@@ -766,6 +809,10 @@ namespace Ouroboros.UI
             if ((status & Core.StatusFlags.Sprinting) != 0)   parts.Add("sprint");
             if ((status & Core.StatusFlags.Interacting) != 0) parts.Add("interact");
             if ((status & Core.StatusFlags.Encumbered) != 0)  parts.Add("CARRYING CASE");
+            if ((status & Core.StatusFlags.Sliding) != 0)     parts.Add("slide");
+            if ((status & Core.StatusFlags.Gliding) != 0)     parts.Add("GLIDING");
+            if ((status & Core.StatusFlags.Climbing) != 0)    parts.Add("CLIMBING");
+            if ((status & Core.StatusFlags.Grappling) != 0)   parts.Add("GRAPPLE");
             return string.Join("  ", parts);
         }
 

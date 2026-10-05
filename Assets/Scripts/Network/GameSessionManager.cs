@@ -123,7 +123,7 @@ namespace Ouroboros.Network
         private void UpdateCursorLock()
         {
             if (Cursor.lockState == CursorLockMode.Locked) return;
-            if (UI.ClassPickerUI.IsShown) return;
+            if (UI.ClassPickerUI.IsShown || UI.KeypadUI.IsShown) return;
             if (!runner.TryGetPlayerObject(runner.LocalPlayer, out NetworkObject local) || local == null) return;
             if (Core.LocalInputSource.Pressed(Core.InputButtons.Primary))
             {
@@ -316,12 +316,12 @@ namespace Ouroboros.Network
             }
 
             // Edge-triggered buttons are latched here (Update runs more often than OnInput) so no press is lost.
-            for (int b = 0; b <= (int)Core.InputButtons.Reload; b++)
+            for (int b = 0; b < Core.GameConstants.INPUT_BUTTON_COUNT; b++)
             {
                 if (Core.LocalInputSource.Pressed((Core.InputButtons)b)) pressedSinceLastTick |= 1 << b;
             }
 
-            if (Core.LocalInputSource.CursorTogglePressed())
+            if (!UI.KeypadUI.IsShown && Core.LocalInputSource.CursorTogglePressed())
             {
                 Cursor.lockState = Cursor.lockState == CursorLockMode.Locked ? CursorLockMode.None : CursorLockMode.Locked;
                 Cursor.visible = Cursor.lockState != CursorLockMode.Locked;
@@ -347,10 +347,20 @@ namespace Ouroboros.Network
             };
 
             // [v0.2] data.Buttons.Set(..., Input.GetKey(KeyCode.X) || WasPressed(...)) per button (legacy only)
-            for (int b = 0; b <= (int)Core.InputButtons.Reload; b++)
+            for (int b = 0; b < Core.GameConstants.INPUT_BUTTON_COUNT; b++)
             {
                 var button = (Core.InputButtons)b;
                 data.Buttons.Set(b, Core.LocalInputSource.Held(button) || WasPressed(button));
+            }
+
+            if (UI.KeypadUI.IsShown)
+            {
+                // Typing a code must not fire abilities (1-4) or weapons
+                for (int b = (int)Core.InputButtons.Ability1; b <= (int)Core.InputButtons.Ability4; b++) data.Buttons.Set(b, false);
+                data.Buttons.Set((int)Core.InputButtons.Primary, false);
+                data.Buttons.Set((int)Core.InputButtons.Secondary, false);
+                data.Buttons.Set((int)Core.InputButtons.Interact, false);
+                data.Move = Vector2.zero;
             }
 
             if (swallowPrimaryUntilRelease)

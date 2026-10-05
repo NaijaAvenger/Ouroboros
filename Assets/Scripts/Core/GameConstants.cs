@@ -16,6 +16,8 @@ namespace Ouroboros.Core
         public const int MAX_ABILITY_SLOTS = 4;
         public const int MAX_EQUIPMENT_SLOTS = 6;
         public const int MAX_TECH_SLOTS = 3;
+        /// <summary>Number of entries in <see cref="InputButtons"/> (keep in sync).</summary>
+        public const int INPUT_BUTTON_COUNT = 14;
 
         // ---- v0.2 additions ----
 
@@ -89,7 +91,40 @@ namespace Ouroboros.Core
         Interacting  = 1 << 8,
         Extracted    = 1 << 9,
         /// <summary>Carrying a LootCase (v0.5): slowed, cannot pick up another.</summary>
-        Encumbered   = 1 << 10
+        Encumbered   = 1 << 10,
+        // v0.7 movement tech (set by PlayerController on the state authority; visuals / HUD only)
+        Sliding      = 1 << 11,
+        Gliding      = 1 << 12,
+        Climbing     = 1 << 13,
+        Grappling    = 1 << 14
+    }
+
+    /// <summary>
+    /// Class movement perks (v0.7). Base movement (walk, sprint, slide, jump, mantle) is universal;
+    /// these toggle the class-specific techniques. Defaults come from each class, overridable via ClassData.
+    /// </summary>
+    [System.Serializable]
+    public struct MovementProfile
+    {
+        public bool CanDoubleJump;
+        public bool CanGlide;
+        public float GlideSeconds;
+        public bool CanWallClimb;
+        public float WallClimbSeconds;
+        public bool CanGrapple;
+        public float GrappleRange;
+
+        public static MovementProfile Default => new MovementProfile { GlideSeconds = 2.5f, WallClimbSeconds = 1.5f, GrappleRange = 25f };
+
+        public string Describe()
+        {
+            var parts = new System.Collections.Generic.List<string>();
+            if (CanDoubleJump) parts.Add("Double jump");
+            if (CanGlide) parts.Add($"Glide {GlideSeconds:0.#}s");
+            if (CanWallClimb) parts.Add($"Wall climb {WallClimbSeconds:0.#}s");
+            if (CanGrapple) parts.Add($"Grapple {GrappleRange:0}m");
+            return parts.Count > 0 ? string.Join(" · ", parts) : "Slide · Mantle";
+        }
     }
 
     /// <summary>
@@ -108,6 +143,10 @@ namespace Ouroboros.Core
         Secondary = 8,
         Utility = 9,
         Gadget = 10,
-        Reload = 11
+        Reload = 11,
+        /// <summary>Sprint + Slide = power slide (v0.7).</summary>
+        Slide = 12,
+        /// <summary>Grappling hook for classes that have it (v0.7).</summary>
+        Grapple = 13
     }
 }

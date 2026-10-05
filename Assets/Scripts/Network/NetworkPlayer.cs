@@ -40,6 +40,10 @@ namespace Ouroboros.Network
         [Networked] public float LookYaw { get; set; }
         [Networked] public float LookPitch { get; set; }
         [Networked] public NetworkString<_32> DisplayName { get; set; }
+        /// <summary>Bitmask of <see cref="Interaction.KeycardColor"/> carried (v0.7).</summary>
+        [Networked] public int KeycardMask { get; set; }
+        /// <summary>ID cards looted from dead players of other teams (v0.7).</summary>
+        [Networked] public int EnemyCards { get; set; }
 
         [Networked, Capacity(Core.GameConstants.MAX_ABILITY_SLOTS)]
         public NetworkArray<TickTimer> AbilityCooldowns => default;
@@ -549,6 +553,8 @@ namespace Ouroboros.Network
             BurnTimer = TickTimer.None;
 
             currentClass?.OnOwnerDied();
+            KeycardMask = 0;   // v0.7: keys and looted cards are lost on death (your own ID card drops via the game mode)
+            EnemyCards = 0;
 
             if (killer != null && killer != this)
             {
@@ -627,6 +633,15 @@ namespace Ouroboros.Network
             // [v0.2] if (playerModel != null) playerModel.gameObject.SetActive(false); // now handled by PlayerPresentation
             PlayerExtracted?.Invoke(this);
         }
+
+        // ------------------------------------------------------------------
+        // Vault keys (v0.7)
+
+        public bool HasKeycard(Interaction.KeycardColor color) => (KeycardMask & (int)color) != 0;
+        public void AddKeycard(Interaction.KeycardColor color) { if (Object.HasStateAuthority) KeycardMask |= (int)color; }
+        public void ConsumeKeycard(Interaction.KeycardColor color) { if (Object.HasStateAuthority) KeycardMask &= ~(int)color; }
+        public void AddEnemyCard() { if (Object.HasStateAuthority) EnemyCards++; }
+        public void ConsumeEnemyCards(int count) { if (Object.HasStateAuthority) EnemyCards = Mathf.Max(0, EnemyCards - count); }
 
         // ------------------------------------------------------------------
         // Static helpers

@@ -84,6 +84,9 @@ namespace Ouroboros.AI
         [Networked] protected TickTimer AttackTimer { get; set; }
 
         protected AIBehaviorState currentState;
+        protected VisionCone visionCone;
+        [Tooltip("Draw the detection cone on the ground (every peer).")]
+        [SerializeField] protected bool showVisionCone = true;
         protected Transform currentTarget;
         protected Network.NetworkPlayer currentTargetPlayer;
         protected Vector3 lastKnownTargetPosition;
@@ -127,6 +130,11 @@ namespace Ouroboros.AI
                 IsAlive = true;
                 Initialize();
             }
+
+            if (showVisionCone)
+            {
+                visionCone = VisionCone.Attach(transform, detectionRange, fieldOfView, groundOffset: 1f, VisionCone.IdleColor);
+            }
             else if (navAgent != null)
             {
                 // Proxies are driven by NetworkTransform; the NavMeshAgent must not fight it.
@@ -137,6 +145,23 @@ namespace Ouroboros.AI
         public override void Despawned(NetworkRunner runner, bool hasState)
         {
             All.Remove(this);
+            if (visionCone != null) Destroy(visionCone.gameObject);
+        }
+
+        public override void Render()
+        {
+            if (visionCone == null) return;
+            var alarm = GameMode.AlarmSystem.Instance;
+            float scale = alarm != null && alarm.Object != null ? alarm.DetectionMultiplier : 1f;
+            visionCone.Configure(detectionRange * scale, fieldOfView);
+            visionCone.SetVisible(IsAlive);
+            switch (NetworkedState)
+            {
+                case AIBehaviorState.Combat:        visionCone.SetColor(VisionCone.AlertColor); break;
+                case AIBehaviorState.Alert:
+                case AIBehaviorState.Investigating: visionCone.SetColor(VisionCone.SearchColor); break;
+                default:                            visionCone.SetColor(VisionCone.IdleColor); break;
+            }
         }
 
         public override void FixedUpdateNetwork()

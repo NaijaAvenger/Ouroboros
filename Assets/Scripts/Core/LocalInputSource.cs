@@ -146,6 +146,62 @@ namespace Ouroboros.Core
         }
 
         // ------------------------------------------------------------------
+        // Keypad (v0.7): digits, submit, cancel
+
+        /// <summary>Digit pressed this frame (0-9), or -1.</summary>
+        public static int DigitPressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            var kb = Keyboard.current;
+            if (kb == null) return -1;
+            if (kb.digit0Key.wasPressedThisFrame || kb.numpad0Key.wasPressedThisFrame) return 0;
+            if (kb.digit1Key.wasPressedThisFrame || kb.numpad1Key.wasPressedThisFrame) return 1;
+            if (kb.digit2Key.wasPressedThisFrame || kb.numpad2Key.wasPressedThisFrame) return 2;
+            if (kb.digit3Key.wasPressedThisFrame || kb.numpad3Key.wasPressedThisFrame) return 3;
+            if (kb.digit4Key.wasPressedThisFrame || kb.numpad4Key.wasPressedThisFrame) return 4;
+            if (kb.digit5Key.wasPressedThisFrame || kb.numpad5Key.wasPressedThisFrame) return 5;
+            if (kb.digit6Key.wasPressedThisFrame || kb.numpad6Key.wasPressedThisFrame) return 6;
+            if (kb.digit7Key.wasPressedThisFrame || kb.numpad7Key.wasPressedThisFrame) return 7;
+            if (kb.digit8Key.wasPressedThisFrame || kb.numpad8Key.wasPressedThisFrame) return 8;
+            if (kb.digit9Key.wasPressedThisFrame || kb.numpad9Key.wasPressedThisFrame) return 9;
+            return -1;
+#elif ENABLE_LEGACY_INPUT_MANAGER
+            for (int i = 0; i <= 9; i++)
+            {
+                if (Input.GetKeyDown(KeyCode.Alpha0 + i) || Input.GetKeyDown(KeyCode.Keypad0 + i)) return i;
+            }
+            return -1;
+#else
+            return -1;
+#endif
+        }
+
+        public static bool SubmitPressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            var kb = Keyboard.current;
+            return (kb != null && (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame))
+                || (Gamepad.current != null && Gamepad.current.buttonSouth.wasPressedThisFrame);
+#elif ENABLE_LEGACY_INPUT_MANAGER
+            return Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetKeyDown(KeyCode.JoystickButton0);
+#else
+            return false;
+#endif
+        }
+
+        public static bool CancelPressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            return (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+                || (Gamepad.current != null && Gamepad.current.buttonEast.wasPressedThisFrame);
+#elif ENABLE_LEGACY_INPUT_MANAGER
+            return Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.JoystickButton1);
+#else
+            return false;
+#endif
+        }
+
+        // ------------------------------------------------------------------
         // HUD hints
 
         /// <summary>Short label for a button on the device last used (e.g. "F" or "X"). Reflects rebinds.</summary>
@@ -176,6 +232,8 @@ namespace Ouroboros.Core
                     case InputButtons.Utility:   return "LB";
                     case InputButtons.Gadget:    return "RB";
                     case InputButtons.Reload:    return "Y";
+                    case InputButtons.Slide:     return "B";
+                    case InputButtons.Grapple:   return "R3";
                 }
             }
             switch (button)
@@ -192,6 +250,8 @@ namespace Ouroboros.Core
                 case InputButtons.Utility:   return "Q";
                 case InputButtons.Gadget:    return "E";
                 case InputButtons.Reload:    return "R";
+                case InputButtons.Slide:     return "Ctrl";
+                case InputButtons.Grapple:   return "G";
             }
             return "?";
         }
@@ -216,6 +276,8 @@ namespace Ouroboros.Core
                 case InputButtons.Utility:   return Input.GetKey(KeyCode.Q)         || Input.GetKey(KeyCode.JoystickButton4);
                 case InputButtons.Gadget:    return Input.GetKey(KeyCode.E)         || Input.GetKey(KeyCode.JoystickButton5);
                 case InputButtons.Reload:    return Input.GetKey(KeyCode.R)         || Input.GetKey(KeyCode.JoystickButton3);
+                case InputButtons.Slide:     return Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.JoystickButton1);
+                case InputButtons.Grapple:   return Input.GetKey(KeyCode.G)         || Input.GetKey(KeyCode.JoystickButton9);
             }
             return false;
         }
@@ -236,6 +298,8 @@ namespace Ouroboros.Core
                 case InputButtons.Utility:   return Input.GetKeyDown(KeyCode.Q)         || Input.GetKeyDown(KeyCode.JoystickButton4);
                 case InputButtons.Gadget:    return Input.GetKeyDown(KeyCode.E)         || Input.GetKeyDown(KeyCode.JoystickButton5);
                 case InputButtons.Reload:    return Input.GetKeyDown(KeyCode.R)         || Input.GetKeyDown(KeyCode.JoystickButton3);
+                case InputButtons.Slide:     return Input.GetKeyDown(KeyCode.LeftControl) || Input.GetKeyDown(KeyCode.JoystickButton1);
+                case InputButtons.Grapple:   return Input.GetKeyDown(KeyCode.G)         || Input.GetKeyDown(KeyCode.JoystickButton9);
             }
             return false;
         }

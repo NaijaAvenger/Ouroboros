@@ -149,7 +149,19 @@ namespace Ouroboros.UI
                     if (a != null && !string.IsNullOrEmpty(a.abilityName)) abilities += "\n• " + a.abilityName;
                 }
             }
-            return $"[{key}]  {type}{stats}{abilities}";
+            string perk = "";
+            var compType = Network.NetworkPlayer.ClassComponentType(type);
+            if (compType != null)
+            {
+                // Instantiate a throwaway to read its coded movement perks (ClassData overrides are applied at spawn)
+                var temp = new GameObject("perk-probe") { hideFlags = HideFlags.HideAndDontSave };
+                var cls = (Core.BasePlayerClass)temp.AddComponent(compType);
+                cls.Initialize();
+                if (data != null) cls.ApplyClassData(data);
+                perk = "\nMove: " + cls.Movement.Describe();
+                Destroy(temp);
+            }
+            return $"[{key}]  {type}{stats}{perk}{abilities}";
         }
 
         private void Update()

@@ -35,6 +35,8 @@ namespace Ouroboros.GameMode
         [SerializeField] private bool onlyDuringMatch = true;
         [Tooltip("(v0.5) Number of cracking passes needed. Each intermediate stage resets progress and raises the alarm.")]
         [SerializeField] private int stages = 1;
+        [Tooltip("(v0.7) Exterior vault door that must be open before this interior can be cracked (also blocks hacking through walls).")]
+        [SerializeField] private Interaction.VaultDoor gatedBy;
 
         [Networked] public NetworkBool IsAvailable { get; set; }
         [Networked] public NetworkBool IsUnlocked { get; set; }
@@ -52,6 +54,8 @@ namespace Ouroboros.GameMode
         public int LootValue => lootValue;
         public float InteractRadius => interactRadius;
         public int Stages => Mathf.Max(1, stages);
+        public bool IsGated => gatedBy != null && gatedBy.Object != null && !gatedBy.IsOpen;
+        public Interaction.VaultDoor GatedBy => gatedBy;
         public float ProgressNormalized => Mathf.Clamp01(Progress / Mathf.Max(0.01f, captureTime));
 
         public override void Spawned()
@@ -97,6 +101,12 @@ namespace Ouroboros.GameMode
 
             var gm = ExtractionHeistGameMode.Instance;
             if (onlyDuringMatch && (gm == null || !gm.IsMatchLive))
+            {
+                if (CapturingTeam != Core.TeamID.None) Cancel();
+                return;
+            }
+
+            if (IsGated)
             {
                 if (CapturingTeam != Core.TeamID.None) Cancel();
                 return;
@@ -232,7 +242,7 @@ namespace Ouroboros.GameMode
         // ---- IHackable ----
         public void OnHacked(Core.TeamID byTeam, float duration)
         {
-            if (!Object.HasStateAuthority || !IsAvailable) return;
+            if (!Object.HasStateAuthority || !IsAvailable || IsGated) return;
 
             if (requiresHack && !IsUnlocked)
             {

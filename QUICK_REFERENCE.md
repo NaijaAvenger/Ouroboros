@@ -34,6 +34,9 @@
 - `BehaviorTree.cs` - Sequence, Selector, Inverter, Condition/Action (+ delegate variants)
 - `GuardAI.cs` - Patrol / investigate / fight (extensible: `EliteGuard.cs`, `SniperGuard.cs`), `AIBlackboard.cs` shared sightings + noise, `AISpawner.cs`
 
+### Vaults & movement (v0.7)
+- `Interaction/VaultDoor.cs`, `KeycardPickup.cs`, `CodeNote.cs`, `IDCardDrop.cs`, `UI/KeypadUI.cs`, `AI/VisionCone.cs`; movement tech in `Player/PlayerController.cs` with `Core.MovementProfile`
+
 ### Heist layer (v0.5)
 - `GameMode/AlarmSystem.cs`, `GameMode/LootCase.cs`, `Interaction/HackTerminal.cs`, `AI/AISpawner.cs`
 

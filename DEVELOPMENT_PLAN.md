@@ -132,6 +132,12 @@ Still open in Phase 3: guard NavMesh baking is manual (needs the AI Navigation p
 
 Still open in Phase 4: object pooling for guards, animation hooks, cover-seeking.
 
+### Phase 4b — Vaults, movement tech, visibility (implemented in v0.7, awaiting in-engine validation)
+- **Four-lock vaults** (`Interaction/VaultDoor.cs`): walled rooms whose interior objective is gated by an exterior door. Locks: **Keycard** (find the coloured card, consumed on use), **PlayerCard** (swipe an ID card looted from a dead rival; `IDCardDrop` spawns on every death), **Passcode** (4-digit code revealed to your team by a `CodeNote`; keypad UI; a wrong code slams the facility into lockdown and locks the keypad), **Lockdown** (forcing the override triggers a lockdown you must survive before the door opens). Hacker's System Hack reveals a passcode or shortens an active lockdown. Modelled on Hyenas-style vault runs: open the exterior, then crack the interior.
+- **Movement tech** (`Player/PlayerController.cs`): sprint-slide (Ctrl / B) with camera dip, mantle onto ledges by jumping into them, and class perks via `Core.MovementProfile` (ClassData can override): Agent double jump, Hacker glide (hold Jump), Saboteur wall climb (hold Jump on a wall, drains stamina), Demolitions grappling hook (G / R3). All tick-simulated with networked state for prediction.
+- **Vision cones** (`AI/VisionCone.cs`): translucent ground fans for cameras and guards, re-coloured by state (idle / searching / alert / disabled), scaled with the alarm tier.
+- **Guard spawn diagnostics**: the spawner logs its references and every spawn, places guards on the floor, and the builder verifies the prefab links.
+
 ### Phase 5 — Meta
 - Lobby scene with class picker (`NetworkPlayer.RequestClass` is in place), session browser, late-join handling, host migration.
 - Progression/cosmetics via `ClassData`/`EquipmentData`.

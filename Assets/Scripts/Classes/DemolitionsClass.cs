@@ -36,6 +36,7 @@ namespace Ouroboros.Classes
             maxHealth = 110f;
             movementSpeed = 4.5f;
             sprintSpeed = 6.5f;
+            movement.CanGrapple = true; movement.GrappleRange = 28f;          // v0.7: hook to reach breach points
             currentExplosivesCount = maxExplosives;
 
             DefineAbility(0, "Place Explosive",  cooldown: 2f,  staminaCost: 5f);

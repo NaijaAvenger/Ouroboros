@@ -37,6 +37,17 @@ namespace Ouroboros.Data
         public float stealthMultiplier = 1f;
         public float hackingMultiplier = 1f;
 
+        [Header("Movement Perks (v0.7)")]
+        [Tooltip("When on, these fields replace the class's coded movement perks.")]
+        public bool overrideMovement = false;
+        public bool canDoubleJump;
+        public bool canGlide;
+        public float glideSeconds = 2.5f;
+        public bool canWallClimb;
+        public float wallClimbSeconds = 1.5f;
+        public bool canGrapple;
+        public float grappleRange = 25f;
+
         [Header("Class Prefabs (v0.3)")]
         [Tooltip("Networked prefab the Saboteur spawns for Place Trap. Runtime-added class components cannot hold their own prefab references, so class prefabs live here.")]
         public Fusion.NetworkObject trapPrefab;

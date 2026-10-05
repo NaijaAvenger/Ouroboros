@@ -28,6 +28,8 @@ namespace Ouroboros.GameMode
         [SerializeField] private NetworkPrefabRef lootDropPrefab;
         [Tooltip("Fallback direct prefab reference (filled by the Phase 0 scene builder).")]
         [SerializeField] private NetworkObject lootDropPrefabObject;
+        [Tooltip("(v0.7) Dead players drop their ID card; other teams swipe it at PlayerCard vault doors.")]
+        [SerializeField] private NetworkObject idCardPrefabObject;
 
         [Networked] public TickTimer MatchTimer { get; set; }
         /// <summary>Timer for the current phase (pre-match countdown, extraction window).</summary>
@@ -332,6 +334,13 @@ namespace Ouroboros.GameMode
                 AwardTeamScore(killer.Team, Config.pointsPerKill);
             }
             AlarmSystem.Raise(Config.alarmOnKill, "gunfire");
+
+            if (idCardPrefabObject != null)
+            {
+                var team = victim.Team;
+                Runner.Spawn(idCardPrefabObject, victim.transform.position + Vector3.up * 0.3f + Vector3.right * 0.6f, Quaternion.identity, null,
+                    (runner, obj) => { var card = obj.GetComponent<Interaction.IDCardDrop>(); if (card != null) card.OwnerTeam = team; });
+            }
 
             int loot = victim.TakeAllLoot();
             if (loot > 0 && Config.dropLootOnDeath && (lootDropPrefab.IsValid || lootDropPrefabObject != null))

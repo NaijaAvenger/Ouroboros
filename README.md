@@ -31,6 +31,8 @@ A modular multiplayer extraction heist game built with **Photon Fusion 2**, feat
 - ✅ **Lobby class picker** and pre-match ability lock
 - ✅ **Feedback hooks** — `FeedbackLibrary` audio/VFX slots wired to every gameplay event (assets not included)
 - ⬜ **Animation / art** — presentation is placeholder capsules
+- ✅ **Vaults** — four walled vaults with keycard, enemy-ID-card, passcode (keypad, wrong code = lockdown) and lockdown-override locks gating the interior crack
+- ✅ **Movement tech** — slide, mantle, and per-class double jump / glide / wall climb / grapple
 - ✅ **Heist layer** — alarm tiers with lockdown, guard spawner and reinforcements, hack terminals, carry-the-case, multi-stage vaults, loot weight
 - ✅ **Weapons** — networked loadout (ammo, reload, cooldowns), lag-compensated hitscan, server-simulated projectiles, passive gear, lobby loadout picker
 
@@ -100,6 +102,9 @@ Input goes through the **Input System** package (keyboard, mouse, gamepad) when 
 | Primary / Secondary | LMB / RMB | RT / LT |
 | Utility / Gadget | Q / E | LB / RB |
 | Reload | R | Y |
+| Slide (while sprinting) | Ctrl | B |
+| Grapple (Demolitions) | G | R3 |
+| Glide / wall climb | hold Space | hold A |
 | Cursor lock toggle | Esc | Start |
 | Debug overlay | F1 | Select |
 

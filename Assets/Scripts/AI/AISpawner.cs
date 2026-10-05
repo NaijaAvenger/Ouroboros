@@ -34,13 +34,27 @@ namespace Ouroboros.AI
         [Networked] private TickTimer WaveTimer { get; set; }
 
         private readonly List<BaseAIAgent> mine = new List<BaseAIAgent>();
+        private bool loggedWaiting;
+
+        public override void Spawned()
+        {
+            Debug.Log($"[AISpawner] ready. authority={Object.HasStateAuthority} guard='{(guardPrefab != null ? guardPrefab.name : "NONE")}' " +
+                      $"elite='{(elitePrefab != null ? elitePrefab.name : "none")}' sniper='{(sniperPrefab != null ? sniperPrefab.name : "none")}' " +
+                      $"spawnPoints={(spawnPoints != null ? spawnPoints.Length : 0)} patrol={(patrolPoints != null ? patrolPoints.Length : 0)} posts={(sniperPosts != null ? sniperPosts.Length : 0)}");
+            if (guardPrefab == null) Debug.LogError("[AISpawner] No guard prefab assigned: no enemies will spawn. Re-run Ouroboros > Setup > Create Dev Scene or assign Assets/Ouroboros/Prefabs/Guard.prefab.");
+            if (spawnPoints == null || spawnPoints.Length == 0) Debug.LogError("[AISpawner] No spawn points assigned: no enemies will spawn.");
+        }
 
         public override void FixedUpdateNetwork()
         {
             if (!Object.HasStateAuthority || guardPrefab == null) return;
 
             var gm = GameMode.ExtractionHeistGameMode.Instance;
-            if (gm == null || gm.Object == null || !gm.IsMatchLive) return;
+            if (gm == null || gm.Object == null || !gm.IsMatchLive)
+            {
+                if (!loggedWaiting) { loggedWaiting = true; Debug.Log("[AISpawner] waiting for the match to go live before spawning guards"); }
+                return;
+            }
 
             mine.RemoveAll(a => a == null || a.Object == null || !a.IsAlive);
 
@@ -85,13 +99,16 @@ namespace Ouroboros.AI
             if (point == null) return;
 
             var patrol = patrolPoints;
-            var obj = Runner.Spawn(prefab, point.position, point.rotation, null, (runner, o) =>
+            Vector3 pos = point.position + Vector3.up * 1f; // capsule pivot is its centre; keep feet on the floor
+            var obj = Runner.Spawn(prefab, pos, point.rotation, null, (runner, o) =>
             {
                 var guard = o.GetComponent<GuardAI>();
                 if (guard != null) guard.SetPatrolPoints(patrol, startIndex: index);
             });
             var agent = obj != null ? obj.GetComponent<BaseAIAgent>() : null;
             if (agent != null) mine.Add(agent);
+            if (obj == null) Debug.LogError($"[AISpawner] Runner.Spawn returned null for '{prefab.name}'. Is the prefab in Fusion's prefab table? Tools > Fusion > Rebuild Prefab Table.");
+            else Debug.Log($"[AISpawner] spawned {prefab.name} at {pos} (alive: {mine.Count})");
         }
 
         [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
