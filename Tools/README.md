@@ -37,6 +37,8 @@ line to `Ouroboros.Rules.Tests.csproj`; it must not use Unity or Fusion types.
 3. Compiles the game's editor scripts.
 
 Scripts are picked up by folder, so new files and folders under `Assets/` are checked automatically.
+Third-party packs are skipped: add a new pack's folder to `VendorExcludes` in `typecheck/Directory.Build.props`,
+or the check will try to compile it as game code.
 
 ### What a pass means
 
