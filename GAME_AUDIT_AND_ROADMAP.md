@@ -11,7 +11,7 @@ before M0 started; where M0 has already changed a finding, it is marked **(fixed
 
 | Item | State |
 |------|-------|
-| Merge `claude/vigilant-ramanujan-la3aua` | Done on branch `claude/awesome-darwin-awl360`. Merging that branch into `main` is yours to do |
+| Merge `claude/vigilant-ramanujan-la3aua` | Done, and merged into `main` on 2026-11-18 |
 | Clean compile | Every game script now passes an offline type-check against Fusion 2.1.3, Input System 1.11.2 and Unity reference assemblies (`Tools/typecheck/run.sh`). One error found and fixed: `[Header]` on a property in `NetworkPlayer.cs` |
 | `com.unity.ai.navigation` in the manifest | Done (2.0.8). Unity resolves it on next open |
 | Tests for pure logic | Done. 62 unit tests over winner selection, alarm tiers, loot split, carry weight, constants and the behaviour tree (`dotnet test Tools/tests`) |
@@ -281,15 +281,15 @@ Decision 2 affects the local `ViewMode.cs`: if it is a first/third-person toggle
 
 ## 7. What is needed from you next
 
-1. Point `main` at the current work. On 2026-11-18 `origin/main` was force-moved back to the January scaffold
-   commit (`1b0a87a`), which has no Unity project in it. Nothing is lost: every later commit is on
-   `claude/awesome-darwin-awl360`. Fast-forwarding `main` to that branch restores it.
-2. Push your local project to a branch so `ViewMode.cs` and the Keybinds panel can be reviewed and fixed.
-3. Open the project in Unity 6000.4. Confirm it compiles and that AI Navigation resolved.
-4. Re-run **Ouroboros > Setup > Create Dev Scene**, then work through sections 5, 6 and 7e of `PHASE0_BRINGUP.md`
+1. Push your local project to a branch so `ViewMode.cs` and the Keybinds panel can be reviewed and fixed.
+2. Open the project in Unity 6000.4. Confirm it compiles and that AI Navigation resolved.
+3. Re-run **Ouroboros > Setup > Create Dev Scene**, then work through sections 5, 6 and 7e of `PHASE0_BRINGUP.md`
    and list what breaks. Section 7e is the M1 checklist.
-5. With those results: fix what the playtest finds, then finish M1 (ADS and weapon switching, URP, a
+4. With those results: fix what the playtest finds, then finish M1 (ADS and weapon switching, URP, a
    third-person body) and tune the weapon numbers.
+
+`main` holds M0 (merged 2026-11-18, pull request 2). The M1 slice is on `claude/awesome-darwin-awl360`, which
+has that merge folded back in.
 
 ## Sources
 
