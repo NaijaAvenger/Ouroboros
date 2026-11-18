@@ -14,6 +14,11 @@ namespace Ouroboros.Interaction
 
         public VaultDoor Door => door;
         public float ReadRadius => readRadius;
+        /// <summary>(v0.10) Live registry on this peer.</summary>
+        public static readonly System.Collections.Generic.List<CodeNote> All = new System.Collections.Generic.List<CodeNote>();
+
+        public override void Spawned() { if (!All.Contains(this)) All.Add(this); }
+        public override void Despawned(NetworkRunner runner, bool hasState) { All.Remove(this); }
 
         public override void FixedUpdateNetwork()
         {

@@ -15,7 +15,7 @@ MonoBehaviour:
   equipmentName: Grenade Launcher
   description: Impact-fused grenades. Mind the splash.
   equipmentIcon: {fileID: 0}
-  equipmentPrefab: {fileID: 0}
+  equipmentPrefab: {fileID: 7929076832819372058, guid: 5dc5eef491c97b14d8729be119bdb229, type: 3}
   slotType: 1
   rarity: 0
   kind: 1
@@ -33,6 +33,29 @@ MonoBehaviour:
   hitMask:
     serializedVersion: 2
     m_Bits: 4294967295
+  noiseRadius: 25
+  headshotMultiplier: 1
+  falloffStart: 0
+  falloffEnd: 0
+  falloffMinFraction: 1
+  bloomPerShot: 0
+  bloomMax: 0
+  bloomRecoveryPerSecond: 6
+  recoilPitch: 1.8
+  recoilYaw: 0.4
+  recoilRecoveryPerSecond: 7
+  feelVersion: 2
+  adsZoom: 1
+  adsSpreadMultiplier: 1
+  adsMoveMultiplier: 1
+  adsRecoilMultiplier: 1
+  adsSeconds: 0.15
+  swapSeconds: 0.55
+  adsPosition: {x: 0, y: -0.135, z: 0.36}
+  viewPosition: {x: 0.2, y: -0.2, z: 0.45}
+  handPosition: {x: 0, y: 0.02, z: 0.12}
+  viewEuler: {x: 0, y: -90, z: 0}
+  viewScale: 1
   projectilePrefab: {fileID: 6149160477463540825, guid: 307a97f15e88a734bb76f6e2ceaaec72, type: 3}
   projectileSpeed: 22
   projectileGravity: -9.81

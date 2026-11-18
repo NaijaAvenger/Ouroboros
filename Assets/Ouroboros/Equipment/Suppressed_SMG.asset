@@ -15,7 +15,7 @@ MonoBehaviour:
   equipmentName: Suppressed SMG
   description: Fast and quiet. Made for Saboteurs working up close.
   equipmentIcon: {fileID: 0}
-  equipmentPrefab: {fileID: 0}
+  equipmentPrefab: {fileID: 9066688576670292257, guid: 453880e95634ca74f862402dcc0d3ab3, type: 3}
   slotType: 0
   rarity: 0
   kind: 0
@@ -33,6 +33,29 @@ MonoBehaviour:
   hitMask:
     serializedVersion: 2
     m_Bits: 4294967295
+  noiseRadius: 25
+  headshotMultiplier: 1.4
+  falloffStart: 12
+  falloffEnd: 35
+  falloffMinFraction: 0.5
+  bloomPerShot: 0.22
+  bloomMax: 3
+  bloomRecoveryPerSecond: 8
+  recoilPitch: 0.38
+  recoilYaw: 0.28
+  recoilRecoveryPerSecond: 10
+  feelVersion: 2
+  adsZoom: 1.15
+  adsSpreadMultiplier: 0.55
+  adsMoveMultiplier: 0.85
+  adsRecoilMultiplier: 0.8
+  adsSeconds: 0.12
+  swapSeconds: 0.3
+  adsPosition: {x: 0, y: -0.135, z: 0.36}
+  viewPosition: {x: 0.2, y: -0.2, z: 0.45}
+  handPosition: {x: 0, y: 0.02, z: 0.12}
+  viewEuler: {x: 0, y: -90, z: 0}
+  viewScale: 1
   projectilePrefab: {fileID: 0}
   projectileSpeed: 25
   projectileGravity: 0

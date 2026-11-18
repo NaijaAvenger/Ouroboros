@@ -181,9 +181,10 @@ namespace Ouroboros.Equipment
 
         private static float HealthOf(Combat.IDamageable target)
         {
-            if (target is Network.NetworkPlayer player) return player.Health;
-            if (target is AI.BaseAIAgent agent) return agent.Health;
-            return 0f;
+            // [v0.10] if (target is Network.NetworkPlayer player) return player.Health;
+            // [v0.10] if (target is AI.BaseAIAgent agent) return agent.Health;
+            // [v0.10] return 0f;
+            return target != null ? target.Health : 0f; // (v0.11) part of IDamageable, so turrets count too
         }
 
         // ------------------------------------------------------------------

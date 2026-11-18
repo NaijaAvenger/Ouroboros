@@ -18,9 +18,14 @@ namespace Ouroboros.Interaction
         public static event System.Action<IDCardDrop, Network.NetworkPlayer> PickedUp;
 
         public float PickupRadius => pickupRadius;
+        /// <summary>(v0.10) Live registry on this peer.</summary>
+        public static readonly System.Collections.Generic.List<IDCardDrop> All = new System.Collections.Generic.List<IDCardDrop>();
+
+        public override void Despawned(NetworkRunner runner, bool hasState) { All.Remove(this); }
 
         public override void Spawned()
         {
+            if (!All.Contains(this)) All.Add(this);
             if (Object.HasStateAuthority) LifeTimer = TickTimer.CreateFromSeconds(Runner, lifetime);
             var r = GetComponentInChildren<Renderer>();
             if (r != null)

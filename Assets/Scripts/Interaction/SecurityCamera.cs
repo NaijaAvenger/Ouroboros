@@ -8,8 +8,21 @@ namespace Ouroboros.Interaction
     /// <c>Revealed</c>) so guards and rival teams can see them on the map. Hackers, Saboteurs and EMPs
     /// disable it for a duration.
     /// </summary>
-    public class SecurityCamera : NetworkBehaviour, ISecurityDevice, IHackable
+    // [v0.10] public class SecurityCamera : NetworkBehaviour, ISecurityDevice, IHackable
+    public class SecurityCamera : NetworkBehaviour, ISecurityDevice, IHackable, IQuickHackable
     {
+        [Tooltip("(v0.11) Seconds a quick hack blinds the camera for.")]
+        [SerializeField] private float quickHackBlindSeconds = 20f;
+
+        // ---- IQuickHackable (v0.11) ----
+        public Vector3 HackPoint => transform.position;
+        public float HackSeconds => 1.4f;
+        public string HackPrompt(Network.NetworkPlayer by) => IsOff ? null : "Blind camera";
+        public void CompleteHack(Network.NetworkPlayer by) => Disable(quickHackBlindSeconds);
+
+        /// <summary>(v0.11) Disabled by a hack or EMP, or without power because of a blackout.</summary>
+        public bool IsOff => IsDisabled || PowerNode.IsBlackedOut(transform.position);
+
         [SerializeField] private float viewRange = 15f;
         [SerializeField] private float viewAngle = 70f;
         [SerializeField] private float revealDuration = 2f;
@@ -28,10 +41,12 @@ namespace Ouroboros.Interaction
         {
             // Ground cone: the camera is mounted high, so project its range onto the floor beneath it
             cone = AI.VisionCone.Attach(transform, viewRange, viewAngle, groundOffset: transform.position.y, AI.VisionCone.IdleColor);
+            QuickHack.Register(this); // (v0.11)
         }
 
         public override void Despawned(NetworkRunner runner, bool hasState)
         {
+            QuickHack.Unregister(this);
             if (cone != null) Destroy(cone.gameObject);
         }
 
@@ -41,7 +56,8 @@ namespace Ouroboros.Interaction
             var alarm = GameMode.AlarmSystem.Instance;
             float scale = alarm != null && alarm.Object != null ? alarm.DetectionMultiplier : 1f;
             cone.Configure(viewRange * scale, viewAngle);
-            cone.SetColor(IsDisabled ? AI.VisionCone.DisabledColor : Spotting ? AI.VisionCone.AlertColor : AI.VisionCone.IdleColor);
+            // [v0.10] cone.SetColor(IsDisabled ? AI.VisionCone.DisabledColor : Spotting ? AI.VisionCone.AlertColor : AI.VisionCone.IdleColor);
+            cone.SetColor(IsOff ? AI.VisionCone.DisabledColor : Spotting ? AI.VisionCone.AlertColor : AI.VisionCone.IdleColor);
         }
 
         public void Disable(float duration)
@@ -62,7 +78,9 @@ namespace Ouroboros.Interaction
 
         public override void FixedUpdateNetwork()
         {
-            if (!Object.HasStateAuthority || IsDisabled) return;
+            // [v0.10] if (!Object.HasStateAuthority || IsDisabled) return;
+            if (!Object.HasStateAuthority) return;
+            if (IsOff) { if (Spotting) Spotting = false; return; } // (v0.11) hacked, EMP'd or blacked out
             if (((int)Runner.Tick) % Core.GameConstants.ZONE_SCAN_INTERVAL_TICKS != 0) return;
 
             var alarm = GameMode.AlarmSystem.Instance;

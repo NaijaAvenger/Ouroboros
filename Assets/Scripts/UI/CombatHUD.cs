@@ -86,6 +86,13 @@ namespace Ouroboros.UI
             root.style.left = 0; root.style.top = 0; root.style.right = 0; root.style.bottom = 0;
             root.pickingMode = PickingMode.Ignore;
 
+            // (v0.13) what a status feels like from the inside: blinded, burning, shielded, jammed
+            statusWash = new VisualElement { pickingMode = PickingMode.Ignore };
+            statusWash.style.position = Position.Absolute;
+            statusWash.style.left = 0; statusWash.style.top = 0; statusWash.style.right = 0; statusWash.style.bottom = 0;
+            statusWash.style.opacity = 0f;
+            root.Add(statusWash);
+
             // A zero-size anchor at the screen centre; everything below is positioned relative to it.
             centre = new VisualElement { pickingMode = PickingMode.Ignore };
             centre.style.position = Position.Absolute;
@@ -171,12 +178,15 @@ namespace Ouroboros.UI
             if (root == null) return;
 
             ResolveLocal();
+            // [v0.10] bool playing = local != null && local.Object != null && local.IsActiveInMatch
+            // [v0.10]                && !ClassPickerUI.IsShown && !KeypadUI.IsShown;
             bool playing = local != null && local.Object != null && local.IsActiveInMatch
-                           && !ClassPickerUI.IsShown && !KeypadUI.IsShown;
+                           && !ClassPickerUI.IsShown && !KeypadUI.IsShown && !HackHUD.IsConsoleShown; // (v0.11) the console covers the centre
 
             crosshair.style.display = playing ? DisplayStyle.Flex : DisplayStyle.None;
             if (playing) UpdateCrosshair();
             UpdatePrompt(playing);
+            UpdateStatusWash(playing); // (v0.13)
             UpdateHitMarker();
             UpdateDamageArrows(playing);
         }
@@ -208,7 +218,8 @@ namespace Ouroboros.UI
             var loadout = local.Loadout;
             if (loadout != null && loadout.Object != null)
             {
-                spreadDegrees = loadout.CurrentSpread((int)Equipment.EquipmentSlotType.Primary);
+                // [v0.12] spreadDegrees = loadout.CurrentSpread((int)Equipment.EquipmentSlotType.Primary);
+                spreadDegrees = loadout.CurrentSpread(loadout.ActiveSlot); // (v0.13) the weapon in hand
             }
 
             // Degrees to pixels: the panel's height covers the camera's vertical field of view.
@@ -226,6 +237,36 @@ namespace Ouroboros.UI
             Place(crossBars[1], 0f, d, barThickness, barLength);  // bottom
             Place(crossBars[2], -d, 0f, barLength, barThickness); // left
             Place(crossBars[3], d, 0f, barLength, barThickness);  // right
+
+            // (v0.13) with the sights up the weapon is the aiming aid: fade the bars and keep the centre dot
+            var controller = Player.PlayerController.Local;
+            float aim = controller != null ? controller.AimBlend : 0f;
+            for (int i = 0; i < crossBars.Length; i++) crossBars[i].style.opacity = 1f - aim;
+        }
+
+        private VisualElement statusWash;
+        private float washOpacity;
+
+        /// <summary>
+        /// (v0.13) Tints the whole screen for statuses the local player cannot otherwise see on their own body.
+        /// A flashbang whites the view out; the rest are light washes that fade in and out.
+        /// </summary>
+        private void UpdateStatusWash(bool playing)
+        {
+            float target = 0f;
+            Color colour = Color.white;
+            if (playing)
+            {
+                if (local.HasStatus(Core.StatusFlags.Flashed))          { colour = Color.white; target = 0.92f; }
+                else if (local.HasStatus(Core.StatusFlags.Burning))     { colour = new Color(1f, 0.4f, 0.05f); target = 0.22f + Mathf.Sin(Time.unscaledTime * 9f) * 0.05f; }
+                else if (local.HasStatus(Core.StatusFlags.EMPDisabled)) { colour = new Color(0.3f, 0.55f, 1f); target = 0.18f + (Mathf.Repeat(Time.unscaledTime, 0.35f) < 0.06f ? 0.15f : 0f); }
+                else if (local.HasStatus(Core.StatusFlags.Shielded))    { colour = new Color(0.3f, 0.9f, 1f); target = 0.1f; }
+                else if (local.HasStatus(Core.StatusFlags.DamageBoost)) { colour = new Color(1f, 0.25f, 0.15f); target = 0.08f; }
+                else if (local.HasStatus(Core.StatusFlags.Stealthed))   { colour = new Color(0.25f, 0.3f, 0.5f); target = 0.14f; }
+            }
+            if (target > 0f) statusWash.style.backgroundColor = colour;
+            washOpacity = Mathf.MoveTowards(washOpacity, target, Time.unscaledDeltaTime * (target > washOpacity ? 8f : 1.6f));
+            statusWash.style.opacity = washOpacity;
         }
 
         private void UpdatePrompt(bool playing)
@@ -234,7 +275,8 @@ namespace Ouroboros.UI
             if (playing)
             {
                 var loadout = local.Loadout;
-                int slot = (int)Equipment.EquipmentSlotType.Primary;
+                // [v0.12] int slot = (int)Equipment.EquipmentSlotType.Primary;
+                int slot = loadout != null && loadout.Object != null ? loadout.ActiveSlot : 0; // (v0.13)
                 var data = loadout != null && loadout.Object != null ? loadout.GetData(slot) : null;
                 if (data != null && data.UsesAmmo)
                 {

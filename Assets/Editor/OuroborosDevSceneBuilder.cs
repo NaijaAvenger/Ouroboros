@@ -21,7 +21,9 @@ namespace Ouroboros.EditorTools
     ///
     /// Menu: Ouroboros > Setup > Create Dev Scene (Phase 0)
     /// </summary>
-    public static class OuroborosDevSceneBuilder
+    // [v0.9] public static class OuroborosDevSceneBuilder
+    // (v0.10) partial: the Freeport map lives in OuroborosFreeportBuilder.cs and shares the helpers below.
+    public static partial class OuroborosDevSceneBuilder
     {
         private const string Root = "Assets/Ouroboros";
         private const string PrefabDir = Root + "/Prefabs";
@@ -30,7 +32,12 @@ namespace Ouroboros.EditorTools
         private const string PlayerPrefabPath = PrefabDir + "/Player.prefab";
         private const string LootDropPrefabPath = PrefabDir + "/LootDrop.prefab";
         private const string TrapPrefabPath = PrefabDir + "/ProximityTrap.prefab";
-        private const string ScenePath = SceneDir + "/DevArena.unity";
+        // [v0.9] private const string ScenePath = SceneDir + "/DevArena.unity";
+        private const string DevArenaScenePath = SceneDir + "/DevArena.unity";
+        /// <summary>(v0.10) Scene the build steps read and write. The Freeport builder points it at its own scene while it runs.</summary>
+        private static string ScenePath = DevArenaScenePath;
+        /// <summary>(v0.10) Lays out the static level when a scene has none yet.</summary>
+        private static System.Action s_levelBuilder = BuildLevel;
         private const string ClassDir = Root + "/Classes";
         private const string RegistryPath = ClassDir + "/ClassRegistry.asset";
         private const string UIDir = Root + "/UI";
@@ -131,6 +138,9 @@ namespace Ouroboros.EditorTools
                 if (cls != null && cls.classType == Core.PlayerClassType.Saboteur && cls.trapPrefab == null) { cls.trapPrefab = trapPrefabFresh; EditorUtility.SetDirty(cls); }
             }
 
+            // (v0.12, M4) weapon models, effects and crew pattern assets. Only fills empty slots.
+            ApplyArtAssets();
+
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
         }
@@ -221,7 +231,8 @@ namespace Ouroboros.EditorTools
 
         private static void EnsureFolders()
         {
-            foreach (var dir in new[] { Root, PrefabDir, SceneDir, ClassDir, UIDir, EquipDir })
+            // [v0.11] foreach (var dir in new[] { Root, PrefabDir, SceneDir, ClassDir, UIDir, EquipDir })
+            foreach (var dir in new[] { Root, PrefabDir, SceneDir, ClassDir, UIDir, EquipDir, ArtDir })
             {
                 if (!AssetDatabase.IsValidFolder(dir))
                 {
@@ -235,7 +246,8 @@ namespace Ouroboros.EditorTools
         private static Data.GameModeConfig CreateOrLoadConfig()
         {
             var cfg = AssetDatabase.LoadAssetAtPath<Data.GameModeConfig>(ConfigPath);
-            if (cfg != null) return cfg;
+            // [v0.9] if (cfg != null) return cfg;
+            if (cfg != null) { MigrateConfig(cfg); return cfg; }
 
             cfg = ScriptableObject.CreateInstance<Data.GameModeConfig>();
             cfg.modeName = "Dev Extraction Heist";
@@ -250,8 +262,39 @@ namespace Ouroboros.EditorTools
             cfg.objectiveRespawnTime = 30f;
             cfg.respawnDelay = 5f;
             cfg.maxRespawns = 10;
+            ApplyRunRules(cfg); // (v0.10)
             AssetDatabase.CreateAsset(cfg, ConfigPath);
             return cfg;
+        }
+
+        /// <summary>(v0.10, M2) Brings a config asset made by an earlier version onto the quota-race rules, once.</summary>
+        private static void MigrateConfig(Data.GameModeConfig cfg)
+        {
+            if (cfg.configVersion >= 2) return;
+            ApplyRunRules(cfg);
+            EditorUtility.SetDirty(cfg);
+            Debug.Log("[Ouroboros] DevGameModeConfig migrated to the M2 rules: crews of 3, loot quota, getaway, crew wipes, bots fill empty seats.");
+        }
+
+        /// <summary>Dev values for "The Run": short enough to iterate on, long enough to reach the getaway.</summary>
+        private static void ApplyRunRules(Data.GameModeConfig cfg)
+        {
+            cfg.playersPerTeam = 3;
+            cfg.numberOfTeams = 4;
+            cfg.matchDuration = 480f;            // the getaway starts here if nobody hits the quota first
+            cfg.extractionWindowDuration = 120f; // length of the getaway
+            cfg.lootQuota = 2500;
+            cfg.sideExitPayout = 0.6f;
+            cfg.scoreIsBankedLootOnly = true;
+            cfg.maxCarriedItems = 4;
+            cfg.respawnDelay = 8f;
+            cfg.maxRespawns = -1;                // limited by crew wipes instead
+            cfg.respawnRequiresLivingCrewmate = true;
+            cfg.crewWipeRedeployDelay = 15f;
+            cfg.maxCrewWipes = 1;
+            cfg.fillWithBots = true;
+            cfg.humanAssignment = Data.HumanAssignment.FillCrews;
+            cfg.configVersion = 2;
         }
 
         private static NetworkObject CreatePlayerPrefab()
@@ -425,16 +468,20 @@ namespace Ouroboros.EditorTools
             var list = new List<Data.ClassData>
             {
                 ClassAsset(Core.PlayerClassType.Hacker, "Hacker", 85f, 5.5f, 7.8f,
-                    "Electronic warfare specialist capable of disabling security systems and hacking enemy equipment.",
+                    // [v0.11] "Electronic warfare specialist capable of disabling security systems and hacking enemy equipment.",
+                    "Reads the building like a pattern. Hacks faster and from further than anyone, chains one hack into the next, and sees the network through walls.",
                     ("System Hack", 15f, 15f, 5f), ("Disable Camera", 20f, 10f, 5f), ("EMP Blast", 25f, 25f, 4f), ("Data Mine", 30f, 20f, 5f)),
                 ClassAsset(Core.PlayerClassType.Saboteur, "Saboteur", 90f, 6f, 8.5f,
-                    "Stealth operative skilled in setting traps, sabotaging equipment, and silent elimination.",
+                    // [v0.11] "Stealth operative skilled in setting traps, sabotaging equipment, and silent elimination.",
+                    "Ambush specialist. Lays traps, vanishes, climbs where nobody looks, and is gone before the smoke clears.",
                     ("Place Trap", 6f, 10f, 0f), ("Stealth Mode", 25f, 25f, 10f), ("Sabotage", 18f, 15f, 8f), ("Smoke Bomb", 15f, 10f, 8f)),
                 ClassAsset(Core.PlayerClassType.Demolitions, "Demolitions", 110f, 4.5f, 6.5f,
-                    "Explosives expert capable of breaching reinforced structures and creating area denial zones.",
+                    // [v0.11] "Explosives expert capable of breaching reinforced structures and creating area denial zones.",
+                    "Breacher. Makes doors where there are none, carries the heavy charges, and swings across gaps on a grapple line.",
                     ("Place Explosive", 2f, 5f, 0f), ("Detonate", 4f, 0f, 0f), ("Breaching Charge", 20f, 20f, 0f), ("Incendiary", 18f, 15f, 5f)),
                 ClassAsset(Core.PlayerClassType.Agent, "Agent", 100f, 5.2f, 7.5f,
-                    "Versatile field operative with balanced combat capabilities and tactical support options.",
+                    // [v0.11] "Versatile field operative with balanced combat capabilities and tactical support options.",
+                    "Frontline protector. Takes the first hit behind a shield, lifts the damage of the whole crew, and holds the ground others need.",
                     ("Tactical Shield", 20f, 20f, 8f), ("Damage Boost", 18f, 15f, 6f), ("Recon Drone", 25f, 10f, 6f), ("Flashbang", 12f, 10f, 3f)),
             };
 
@@ -460,7 +507,8 @@ namespace Ouroboros.EditorTools
             if (data != null) return data; // keep designer edits
 
             data = ScriptableObject.CreateInstance<Data.ClassData>();
-            data.className = name;
+            // [v0.11] data.className = name;
+            data.className = Core.ClassUtil.DisplayName(type); // (v0.12, M4) Cipher, Spider, Smith, Shield; the file keeps the old name
             data.description = description;
             data.classType = type;
             data.maxHealth = hp;
@@ -636,6 +684,9 @@ namespace Ouroboros.EditorTools
             if (ground == null) return;
 
             var surface = ground.GetComponent(surfaceType) ?? ground.AddComponent(surfaceType);
+            // (v0.13) decoration lives on the Ignore Raycast layer and must not shape where guards can walk
+            var layerMask = surfaceType.GetProperty("layerMask");
+            if (layerMask != null && layerMask.CanWrite) layerMask.SetValue(surface, (LayerMask)(~(1 << DecorLayer)));
             var bake = surfaceType.GetMethod("BuildNavMesh");
             if (bake != null)
             {
@@ -1025,7 +1076,9 @@ namespace Ouroboros.EditorTools
         /// </summary>
         private static void ApplyWeaponFeel(Data.EquipmentData d)
         {
-            if (d == null || d.feelVersion >= 1) return;
+            // [v0.12] if (d == null || d.feelVersion >= 1) return;
+            if (d == null || d.feelVersion >= 2) return; // (v0.13) version 2 adds handling: aiming and swapping
+            bool needsFeel = d.feelVersion < 1;
 
             void Feel(float head, float falloffStart, float falloffEnd, float falloffMin, float bloom, float bloomMax, float bloomRecovery,
                 float recoilPitch, float recoilYaw, float recoilRecovery)
@@ -1036,7 +1089,7 @@ namespace Ouroboros.EditorTools
                 d.recoilPitch = recoilPitch; d.recoilYaw = recoilYaw; d.recoilRecoveryPerSecond = recoilRecovery;
             }
 
-            switch (d.equipmentName)
+            if (needsFeel) switch (d.equipmentName)
             {
                 // Controllable in bursts, climbs if you hold the trigger.
                 case "Assault Rifle":    Feel(1.5f, 25f, 60f, 0.6f, 0.28f, 2.6f, 7f, 0.55f, 0.22f, 9f); break;
@@ -1052,7 +1105,32 @@ namespace Ouroboros.EditorTools
                     break;
             }
 
-            d.feelVersion = 1;
+            // (v0.13) Handling: zoom, spread and walk speed and kick while aiming (fractions of the hip values),
+            // seconds to bring the sights up, seconds to draw. hipSpread, when given, replaces the hip cone.
+            void Handling(float zoom, float aimSpread, float aimMove, float aimRecoil, float aimSeconds, float swapSeconds, float hipSpread = -1f)
+            {
+                d.adsZoom = zoom; d.adsSpreadMultiplier = aimSpread; d.adsMoveMultiplier = aimMove; d.adsRecoilMultiplier = aimRecoil;
+                d.adsSeconds = aimSeconds; d.swapSeconds = swapSeconds;
+                if (hipSpread >= 0f) d.spreadDegrees = hipSpread;
+            }
+
+            switch (d.equipmentName)
+            {
+                case "Assault Rifle":    Handling(1.3f, 0.35f, 0.7f, 0.7f, 0.18f, 0.45f); break;
+                // Already a hip-fire weapon: aiming helps a little and costs little.
+                case "Suppressed SMG":   Handling(1.15f, 0.55f, 0.85f, 0.8f, 0.12f, 0.3f); break;
+                case "Breacher Shotgun": Handling(1.1f, 0.8f, 0.8f, 0.85f, 0.16f, 0.5f); break;
+                // A scope, not sights: wild from the hip, exact when aimed, slow to bring up and to walk with.
+                case "Marksman Rifle":   Handling(3f, 0.04f, 0.45f, 0.6f, 0.28f, 0.6f, hipSpread: 3.5f); break;
+                // The fast draw is the point of a sidearm.
+                case "Service Pistol":   Handling(1.15f, 0.45f, 0.9f, 0.8f, 0.1f, 0.25f); break;
+                default:
+                    if (d.kind == Data.EquipmentKind.ProjectileWeapon) Handling(1f, 1f, 1f, 1f, 0.15f, 0.55f);
+                    break;
+            }
+
+            // [v0.12] d.feelVersion = 1;
+            d.feelVersion = 2;
             EditorUtility.SetDirty(d);
         }
 
@@ -1189,7 +1267,8 @@ namespace Ouroboros.EditorTools
 
             if (!exists || Object.FindFirstObjectByType<Player.TeamSpawnPoint>() == null)
             {
-                BuildLevel();
+                // [v0.9] BuildLevel();
+                (s_levelBuilder ?? BuildLevel)();
             }
 
             // Managers (scene NetworkObject)
@@ -1462,11 +1541,15 @@ namespace Ouroboros.EditorTools
         {
             var renderer = go.GetComponent<Renderer>();
             if (renderer == null) return;
-            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            if (shader == null) return;
-            var mat = new Material(shader) { color = color };
-            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
-            renderer.sharedMaterial = mat;
+            // [v0.12] every tinted object got its own material, which stopped them batching:
+            // [v0.12] var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            // [v0.12] if (shader == null) return;
+            // [v0.12] var mat = new Material(shader) { color = color };
+            // [v0.12] if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
+            // [v0.12] renderer.sharedMaterial = mat;
+            // (v0.13) one saved material per colour, shared by everything of that colour
+            var mat = SharedMaterial(color);
+            if (mat != null) renderer.sharedMaterial = mat;
         }
     }
 }

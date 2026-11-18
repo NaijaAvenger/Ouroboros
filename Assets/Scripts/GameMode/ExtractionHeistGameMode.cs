@@ -53,6 +53,22 @@ namespace Ouroboros.GameMode
         [Networked, Capacity(Core.GameConstants.MAX_TEAMS)]
         public NetworkArray<int> TeamExtractedCount => default;
 
+        /// <summary>(v0.10) Crew whose haul called the getaway, or None when the match timer did.</summary>
+        [Networked] public Core.TeamID TailTeam { get; set; }
+        /// <summary>(v0.10) Crew carrying the most right now during the getaway: the one everybody is hunting.</summary>
+        [Networked] public Core.TeamID RichestTeam { get; set; }
+        /// <summary>(v0.10) Times each crew has been wiped (all members down at once).</summary>
+        [Networked, Capacity(Core.GameConstants.MAX_TEAMS)]
+        public NetworkArray<int> CrewWipes => default;
+        /// <summary>(v0.10) Crews with no redeploys left.</summary>
+        [Networked, Capacity(Core.GameConstants.MAX_TEAMS)]
+        public NetworkArray<NetworkBool> CrewEliminated => default;
+
+        /// <summary>(v0.10) Fired on every peer when the getaway is called (crew that hit the quota, or None for the timer).</summary>
+        public static event Action<Core.TeamID> GetawayCalled;
+        /// <summary>(v0.10) Fired on every peer when a whole crew goes down (crew, true if it is out for good).</summary>
+        public static event Action<Core.TeamID, bool> CrewWiped;
+
         // [v0.1] private List<ExtractionPoint> extractionPoints = new List<ExtractionPoint>(); // never populated
         private readonly List<ExtractionPoint> extractionPoints = new List<ExtractionPoint>();
         private ChangeDetector changeDetector;
@@ -85,6 +101,10 @@ namespace Ouroboros.GameMode
         }
 
         public bool IsMatchLive => CurrentState == GameState.InProgress || CurrentState == GameState.Extraction;
+        /// <summary>(v0.10) The getaway phase: exits are open, no more respawns, the richest crew is marked.</summary>
+        public bool IsGetaway => CurrentState == GameState.Extraction;
+        /// <summary>(v0.10) True when loot pickups can be spawned (a prefab is assigned).</summary>
+        public bool CanSpawnLoot => lootDropPrefab.IsValid || lootDropPrefabObject != null;
         public bool AllowClassChange => Config.allowClassChangeBeforeMatch && (CurrentState == GameState.WaitingForPlayers || CurrentState == GameState.PreMatch);
         public float? MatchTimeRemaining => MatchTimer.RemainingTime(Runner);
         public float? PhaseTimeRemaining => PhaseTimer.RemainingTime(Runner);
@@ -147,9 +167,15 @@ namespace Ouroboros.GameMode
 
                 case GameState.InProgress:
                     UpdateMatchTimer();
-                    if (!ExtractionOpen && MatchElapsedSeconds >= Config.extractionPointActivationDelay)
+                    if (CurrentState != GameState.InProgress) break; // the timer just started the getaway
+                    if (Config.UseRunRules)
                     {
-                        OpenExtraction();
+                        // (v0.10) no exits until a crew is carrying the quota: that crew calls the getaway for everyone
+                        CheckQuota();
+                    }
+                    else if (!ExtractionOpen && MatchElapsedSeconds >= Config.extractionPointActivationDelay)
+                    {
+                        OpenExtraction(); // [v0.9] rules: exits open on a timer
                     }
                     CheckEarlyEnd();
                     break;
@@ -161,6 +187,7 @@ namespace Ouroboros.GameMode
                     }
                     else
                     {
+                        if (Config.UseRunRules) UpdateRichestCrew(); // (v0.10)
                         CheckEarlyEnd();
                     }
                     break;
@@ -173,6 +200,157 @@ namespace Ouroboros.GameMode
             {
                 EnterExtractionPhase();
             }
+        }
+
+        // ------------------------------------------------------------------
+        // The Run (v0.10): quota race and getaway
+        // ------------------------------------------------------------------
+
+        private readonly int[] carriedScratch = new int[Core.GameConstants.MAX_TEAMS];
+        private readonly bool[] activeScratch = new bool[Core.GameConstants.MAX_TEAMS];
+
+        /// <summary>Value each crew's living members are carrying right now.</summary>
+        private void SumCarried()
+        {
+            for (int i = 0; i < Core.GameConstants.MAX_TEAMS; i++) { carriedScratch[i] = 0; activeScratch[i] = false; }
+            var all = Network.NetworkPlayer.All;
+            for (int i = 0; i < all.Count; i++)
+            {
+                var p = all[i];
+                if (p == null || p.Object == null) continue;
+                int idx = Core.TeamUtil.ToIndex(p.Team);
+                if (idx < 0 || idx >= Core.GameConstants.MAX_TEAMS) continue;
+                activeScratch[idx] = true;
+                if (p.IsActiveInMatch) carriedScratch[idx] += p.CarriedLoot;
+            }
+        }
+
+        /// <summary>Value <paramref name="team"/>'s living members are carrying. Works on every peer.</summary>
+        public int GetTeamCarried(Core.TeamID team)
+        {
+            int total = 0;
+            var all = Network.NetworkPlayer.All;
+            for (int i = 0; i < all.Count; i++)
+            {
+                var p = all[i];
+                if (p != null && p.Object != null && p.Team == team && p.IsActiveInMatch) total += p.CarriedLoot;
+            }
+            return total;
+        }
+
+        private void CheckQuota()
+        {
+            if (((int)Runner.Tick) % 10 != 0) return;
+            SumCarried();
+            for (int step = 0; step < Core.GameConstants.MAX_TEAMS; step++)
+            {
+                int i = Core.MatchRules.RotatedIndex((int)Runner.Tick, step, Core.GameConstants.MAX_TEAMS);
+                if (activeScratch[i] && Core.MatchRules.QuotaReached(carriedScratch[i], Config.lootQuota))
+                {
+                    EnterExtractionPhase(Core.TeamUtil.FromIndex(i));
+                    return;
+                }
+            }
+        }
+
+        /// <summary>During the getaway: keep track of who is richest and keep their carriers lit up.</summary>
+        private void UpdateRichestCrew()
+        {
+            if (((int)Runner.Tick) % 30 != 0) return;
+            SumCarried();
+            int richest = Core.MatchRules.RichestTeam(carriedScratch, activeScratch);
+            RichestTeam = richest >= 0 ? Core.TeamUtil.FromIndex(richest) : Core.TeamID.None;
+            if (richest < 0 || !Config.revealRichestCrew) return;
+
+            var all = Network.NetworkPlayer.All;
+            for (int i = 0; i < all.Count; i++)
+            {
+                var p = all[i];
+                if (p == null || p.Object == null || !p.IsActiveInMatch) continue;
+                if (p.Team == RichestTeam && p.CarriedLoot > 0) p.ApplyTimedStatus(Core.StatusFlags.Revealed, 1.5f);
+            }
+        }
+
+        /// <summary>
+        /// Spawns a loot pickup. <paramref name="itemId"/> is a loot catalog id (0 = loose loot of
+        /// <paramref name="value"/>). Returns false when no pickup prefab is assigned. State authority only.
+        /// </summary>
+        public bool SpawnLoot(Vector3 position, int value, int itemId, float lifetimeSeconds = 0f)
+        {
+            if (!Object.HasStateAuthority || value <= 0 || !CanSpawnLoot) return false;
+            void Init(NetworkRunner runner, NetworkObject obj)
+            {
+                var drop = obj.GetComponent<LootDrop>();
+                if (drop != null) drop.Configure(value, itemId, lifetimeSeconds);
+            }
+            if (lootDropPrefab.IsValid) Runner.Spawn(lootDropPrefab, position, Quaternion.identity, null, Init);
+            else Runner.Spawn(lootDropPrefabObject, position, Quaternion.identity, null, Init);
+            return true;
+        }
+
+        /// <summary>
+        /// Decides when (and whether) a player who just died comes back, and resolves a crew wipe if they were
+        /// the last one standing. Called by <see cref="Network.NetworkPlayer"/> right after <see cref="OnPlayerDied"/>.
+        /// </summary>
+        public void ScheduleRespawn(Network.NetworkPlayer victim)
+        {
+            if (!Object.HasStateAuthority || victim == null) return;
+            if (!CanRespawn(victim)) return;
+
+            int idx = Core.TeamUtil.ToIndex(victim.Team);
+            bool crewRules = Config.respawnRequiresLivingCrewmate && idx >= 0 && idx < Core.GameConstants.MAX_TEAMS;
+            if (!crewRules)
+            {
+                victim.RespawnTimer = TickTimer.CreateFromSeconds(Runner, Config.respawnDelay); // [v0.9] behaviour
+                return;
+            }
+
+            if (CrewEliminated[idx]) return;
+
+            bool crewmateAlive = false;
+            var all = Network.NetworkPlayer.All;
+            for (int i = 0; i < all.Count; i++)
+            {
+                var p = all[i];
+                if (p == null || p == victim || p.Object == null || p.Team != victim.Team) continue;
+                if (p.IsActiveInMatch) { crewmateAlive = true; break; }
+            }
+
+            if (crewmateAlive)
+            {
+                victim.RespawnTimer = TickTimer.CreateFromSeconds(Runner, Config.respawnDelay);
+                return;
+            }
+
+            // The whole crew is down at once: a wipe.
+            var outcome = Core.MatchRules.ResolveCrewWipe(CrewWipes[idx], Config.maxCrewWipes);
+            CrewWipes.Set(idx, CrewWipes[idx] + 1);
+            bool eliminated = outcome == Core.MatchRules.WipeOutcome.Eliminated;
+            if (eliminated) CrewEliminated.Set(idx, true);
+
+            for (int i = 0; i < all.Count; i++)
+            {
+                var p = all[i];
+                if (p == null || p.Object == null || p.Team != victim.Team || p.IsAlive || p.IsExtracted) continue;
+                p.RespawnTimer = eliminated ? TickTimer.None : TickTimer.CreateFromSeconds(Runner, Config.crewWipeRedeployDelay);
+            }
+            RPC_CrewWiped(victim.Team, eliminated);
+        }
+
+        [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+        private void RPC_CrewWiped(Core.TeamID team, NetworkBool eliminated)
+        {
+            Debug.Log($"[ExtractionHeist] {Core.TeamUtil.DisplayName(team)} crew wiped" + (eliminated ? " and is out of the match" : ", redeploying"));
+            CrewWiped?.Invoke(team, eliminated);
+        }
+
+        [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+        private void RPC_GetawayCalled(Core.TeamID byTeam)
+        {
+            Debug.Log(byTeam != Core.TeamID.None
+                ? $"[ExtractionHeist] {Core.TeamUtil.DisplayName(byTeam)} crew hit the quota: the getaway is called"
+                : "[ExtractionHeist] Time is up: the getaway is called");
+            GetawayCalled?.Invoke(byTeam);
         }
 
         // ------------------------------------------------------------------
@@ -202,11 +380,18 @@ namespace Ouroboros.GameMode
             for (int i = 0; i < Core.GameConstants.MAX_TEAMS; i++)
             {
                 TeamScores.Set(i, 0);
+                CrewWipes.Set(i, 0);          // (v0.10)
+                CrewEliminated.Set(i, false); // (v0.10)
                 TeamLoot.Set(i, 0);
                 TeamObjectives.Set(i, 0);
                 TeamExtractedCount.Set(i, 0);
                 TeamExtracted.Set(i, false);
             }
+
+            TailTeam = Core.TeamID.None;
+            RichestTeam = Core.TeamID.None;
+            // (v0.10) empty crew seats are taken by bots so the match is always playable
+            if (Config.fillWithBots) Network.GameSessionManager.Instance?.FillWithBots();
 
             if (Config.preMatchCountdown > 0f)
             {
@@ -238,12 +423,24 @@ namespace Ouroboros.GameMode
             RPC_OnExtractionOpened();
         }
 
-        private void EnterExtractionPhase()
+        // [v0.9] private void EnterExtractionPhase()
+        /// <summary>
+        /// Starts the getaway. <paramref name="calledBy"/> is the crew whose haul triggered it (v0.10), or None
+        /// when the match timer ran out.
+        /// </summary>
+        private void EnterExtractionPhase(Core.TeamID calledBy = Core.TeamID.None)
         {
             CurrentState = GameState.Extraction;
+            TailTeam = calledBy;
+            RichestTeam = calledBy;
             if (!ExtractionOpen) OpenExtraction();
             PhaseTimer = TickTimer.CreateFromSeconds(Runner, Config.extractionWindowDuration);
             RPC_AnnounceExtractionPhase(Config.extractionWindowDuration);
+            if (Config.UseRunRules)
+            {
+                if (Config.lockdownOnGetaway) AlarmSystem.Raise(100f, "getaway");
+                RPC_GetawayCalled(calledBy);
+            }
         }
 
         /// <summary>Ends early once every team with players has either extracted or been wiped.</summary>
@@ -326,7 +523,8 @@ namespace Ouroboros.GameMode
             if (!Object.HasStateAuthority || !Core.TeamUtil.IsValid(team)) return;
             int idx = Core.TeamUtil.ToIndex(team);
             TeamObjectives.Set(idx, TeamObjectives[idx] + 1);
-            AwardTeamScore(team, Config.pointsPerObjective);
+            // [v0.9] AwardTeamScore(team, Config.pointsPerObjective);
+            if (!Config.scoreIsBankedLootOnly) AwardTeamScore(team, Config.pointsPerObjective); // (v0.10) only extracted loot scores
         }
 
         /// <summary>Kill credit and loot drop. Called by <see cref="Network.NetworkPlayer"/> on death.</summary>
@@ -334,7 +532,8 @@ namespace Ouroboros.GameMode
         {
             if (!Object.HasStateAuthority || victim == null) return;
 
-            if (killer != null && killer != victim && killer.Team != victim.Team)
+            // [v0.9] if (killer != null && killer != victim && killer.Team != victim.Team)
+            if (!Config.scoreIsBankedLootOnly && killer != null && killer != victim && killer.Team != victim.Team)
             {
                 AwardTeamScore(killer.Team, Config.pointsPerKill);
             }
@@ -347,19 +546,40 @@ namespace Ouroboros.GameMode
                     (runner, obj) => { var card = obj.GetComponent<Interaction.IDCardDrop>(); if (card != null) card.OwnerTeam = team; });
             }
 
-            int loot = victim.TakeAllLoot();
-            if (loot > 0 && Config.dropLootOnDeath && (lootDropPrefab.IsValid || lootDropPrefabObject != null))
+            // (v0.10) named items fall as separate pickups around the body; whatever is left over is loose loot
+            deathItemScratch.Clear();
+            int loot = victim.TakeAllLoot(deathItemScratch);
+            if (loot > 0 && Config.dropLootOnDeath && CanSpawnLoot)
             {
-                Vector3 pos = victim.transform.position + Vector3.up * 0.5f;
-                void InitDrop(NetworkRunner runner, NetworkObject obj)
+                Vector3 centre = victim.transform.position + Vector3.up * 0.5f;
+                var catalog = Data.LootCatalog.Active;
+                int remaining = loot;
+                for (int i = 0; i < deathItemScratch.Count; i++)
                 {
-                    var drop = obj.GetComponent<LootDrop>();
-                    if (drop != null) drop.Value = loot;
+                    int id = deathItemScratch[i];
+                    int value = Mathf.Min(remaining, catalog.ValueOf(id));
+                    if (id <= 0 || value <= 0) continue;
+                    float angle = (i / (float)Mathf.Max(1, deathItemScratch.Count)) * Mathf.PI * 2f;
+                    SpawnLoot(centre + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 1.2f, value, id);
+                    remaining -= value;
                 }
-                if (lootDropPrefab.IsValid) Runner.Spawn(lootDropPrefab, pos, Quaternion.identity, null, InitDrop);
-                else Runner.Spawn(lootDropPrefabObject, pos, Quaternion.identity, null, InitDrop);
+                if (remaining > 0) SpawnLoot(centre, remaining, 0);
             }
+            // [v0.9] int loot = victim.TakeAllLoot();
+            // [v0.9] if (loot > 0 && Config.dropLootOnDeath && (lootDropPrefab.IsValid || lootDropPrefabObject != null))
+            // [v0.9] {
+            // [v0.9]     Vector3 pos = victim.transform.position + Vector3.up * 0.5f;
+            // [v0.9]     void InitDrop(NetworkRunner runner, NetworkObject obj)
+            // [v0.9]     {
+            // [v0.9]         var drop = obj.GetComponent<LootDrop>();
+            // [v0.9]         if (drop != null) drop.Value = loot;
+            // [v0.9]     }
+            // [v0.9]     if (lootDropPrefab.IsValid) Runner.Spawn(lootDropPrefab, pos, Quaternion.identity, null, InitDrop);
+            // [v0.9]     else Runner.Spawn(lootDropPrefabObject, pos, Quaternion.identity, null, InitDrop);
+            // [v0.9] }
         }
+
+        private readonly List<int> deathItemScratch = new List<int>(Network.NetworkPlayer.MAX_CARRIED_ITEMS);
 
         /// <summary>Whether a dead player is allowed another respawn under the current rules.</summary>
         public bool CanRespawn(Network.NetworkPlayer player)
@@ -368,6 +588,8 @@ namespace Ouroboros.GameMode
             if (!Config.allowRespawning) return false;
             if (CurrentState == GameState.MatchEnded) return false;
             if (CurrentState == GameState.Extraction && !Config.respawnDuringExtractionPhase) return false;
+            int crew = Core.TeamUtil.ToIndex(player.Team);
+            if (crew >= 0 && crew < Core.GameConstants.MAX_TEAMS && CrewEliminated[crew]) return false; // (v0.10)
             if (Config.maxRespawns >= 0 && player.RespawnsUsed >= Config.maxRespawns) return false;
             return true;
         }
@@ -406,6 +628,15 @@ namespace Ouroboros.GameMode
         /// </summary>
         public void OnTeamExtractionCompleted(Core.TeamID team, List<Network.NetworkPlayer> members)
         {
+            OnTeamExtractionCompleted(team, members, 1f);
+        }
+
+        /// <summary>
+        /// (v0.10) As above, through an exit that pays <paramref name="payoutMultiplier"/> of the carried value
+        /// (1 at the central getaway, less at side exits).
+        /// </summary>
+        public void OnTeamExtractionCompleted(Core.TeamID team, List<Network.NetworkPlayer> members, float payoutMultiplier)
+        {
             if (!Object.HasStateAuthority || !Core.TeamUtil.IsValid(team)) return;
 
             int idx = Core.TeamUtil.ToIndex(team);
@@ -429,18 +660,34 @@ namespace Ouroboros.GameMode
 
             if (extractedNow == 0) return;
 
-            TeamLoot.Set(idx, TeamLoot[idx] + bankedLoot + caseLoot);
-            TeamExtractedCount.Set(idx, TeamExtractedCount[idx] + extractedNow);
+            int points;
+            if (Config.scoreIsBankedLootOnly)
+            {
+                // (v0.10) the score is what you got out with: carried value, reduced at side exits
+                bankedLoot = Core.MatchRules.BankedValue(bankedLoot, payoutMultiplier);
+                caseLoot = Core.MatchRules.BankedValue(Mathf.RoundToInt(caseLoot * Config.pointsPerCaseLoot), payoutMultiplier);
+                points = bankedLoot + caseLoot;
+                TeamLoot.Set(idx, TeamLoot[idx] + points);
+                TeamExtractedCount.Set(idx, TeamExtractedCount[idx] + extractedNow);
+                bankedLoot += caseLoot;
+                if (!TeamExtracted[idx]) TeamExtracted.Set(idx, true);
+            }
+            else
+            {
+                // [v0.9] scoring: members, loot, case multiplier and a first-extraction bonus
+                TeamLoot.Set(idx, TeamLoot[idx] + bankedLoot + caseLoot);
+                TeamExtractedCount.Set(idx, TeamExtractedCount[idx] + extractedNow);
 
-            int points = extractedNow * Config.pointsPerTeamMemberExtracted
+                points = extractedNow * Config.pointsPerTeamMemberExtracted
                          + Mathf.RoundToInt(bankedLoot * Config.pointsPerLoot)
                          + Mathf.RoundToInt(caseLoot * Config.pointsPerCaseLoot);
-            bankedLoot += caseLoot;
-            if (!TeamExtracted[idx])
-            {
-                // First successful extraction for this team
-                TeamExtracted.Set(idx, true);
-                points += Config.pointsPerExtraction;
+                bankedLoot += caseLoot;
+                if (!TeamExtracted[idx])
+                {
+                    // First successful extraction for this team
+                    TeamExtracted.Set(idx, true);
+                    points += Config.pointsPerExtraction;
+                }
             }
             AwardTeamScore(team, points);
 

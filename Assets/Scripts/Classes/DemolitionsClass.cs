@@ -29,8 +29,11 @@ namespace Ouroboros.Classes
 
         protected override void OnInitialize()
         {
-            className = "Demolitions";
-            description = "Explosives expert capable of breaching reinforced structures and creating area denial zones.";
+            // [v0.11] className = "Demolitions";
+            // [v0.11] description = "Explosives expert capable of breaching reinforced structures and creating area denial zones.";
+            // (v0.12, M4) the Smith. The enum and file keep the old name; players see this one.
+            className = "Smith";
+            description = "Breacher. Makes doors where there are none, carries the heavy charges, and swings across gaps on a grapple line.";
 
             // Demolitions has high health but slower movement
             maxHealth = 110f;
@@ -56,6 +59,20 @@ namespace Ouroboros.Classes
                 case 3: return IncendiaryGrenade();
             }
             return false;
+        }
+
+        /// <summary>(v0.13) What each ability shows in the world.</summary>
+        public override Core.AbilityVisual GetAbilityVisual(int slot)
+        {
+            var fire = new Color(1f, 0.55f, 0.12f);
+            switch (slot)
+            {
+                case 0: return new Core.AbilityVisual(Core.AbilityVisualKind.PlaceCharge, explosiveRadius, 0f, fire);
+                case 1: return new Core.AbilityVisual(Core.AbilityVisualKind.DetonateCharges, explosiveRadius, 0f, fire);
+                case 2: return new Core.AbilityVisual(Core.AbilityVisualKind.Blast, 2.5f, 0f, fire, 1.5f);
+                case 3: return new Core.AbilityVisual(Core.AbilityVisualKind.Fire, incendiaryRadius, 1.6f, fire, 3f);
+                default: return default;
+            }
         }
 
         private bool PlaceExplosive()

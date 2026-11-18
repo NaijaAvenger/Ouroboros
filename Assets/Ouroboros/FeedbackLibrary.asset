@@ -20,11 +20,17 @@ MonoBehaviour:
   shieldOn: {fileID: 0}
   stealthOn: {fileID: 0}
   lootGained: {fileID: 0}
+  weaponFire: {fileID: 0}
+  reload: {fileID: 0}
+  explosion: {fileID: 0}
   abilityVfx: {fileID: 0}
   hurtVfx: {fileID: 0}
   deathVfx: {fileID: 0}
   respawnVfx: {fileID: 0}
-  extractedVfx: {fileID: 0}
+  extractedVfx: {fileID: 2060212803351811498, guid: 38b99d63cdad9994b89d14c10a8783ce, type: 3}
+  muzzleVfx: {fileID: 0}
+  impactVfx: {fileID: 8163684771574148739, guid: 6dc4191059d6c3a4a820270672bbf567, type: 3}
+  explosionVfx: {fileID: 2433282508537954060, guid: 3ef3ae421f71c5c4e97fe12dc2fc6312, type: 3}
   matchStart: {fileID: 0}
   extractionOpen: {fileID: 0}
   extractionPhase: {fileID: 0}

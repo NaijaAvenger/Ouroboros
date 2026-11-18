@@ -31,8 +31,11 @@ namespace Ouroboros.Classes
 
         protected override void OnInitialize()
         {
-            className = "Saboteur";
-            description = "Stealth operative skilled in setting traps, sabotaging equipment, and silent elimination.";
+            // [v0.11] className = "Saboteur";
+            // [v0.11] description = "Stealth operative skilled in setting traps, sabotaging equipment, and silent elimination.";
+            // (v0.12, M4) the Spider. The enum and file keep the old name; players see this one.
+            className = "Spider";
+            description = "Ambush specialist. Lays traps, vanishes, climbs where nobody looks, and is gone before the smoke clears.";
 
             // Saboteur has balanced stats with high stealth capabilities
             maxHealth = 90f;
@@ -57,6 +60,18 @@ namespace Ouroboros.Classes
                 case 3: return SmokeBomb();
             }
             return false;
+        }
+
+        /// <summary>(v0.13) What each ability shows in the world. The trap is a networked object with its own model.</summary>
+        public override Core.AbilityVisual GetAbilityVisual(int slot)
+        {
+            switch (slot)
+            {
+                case 1: return new Core.AbilityVisual(Core.AbilityVisualKind.Shimmer, 1.2f, 0.6f, new Color(0.6f, 0.7f, 0.9f));
+                case 2: return new Core.AbilityVisual(Core.AbilityVisualKind.Shock, sabotageRange, 0.45f, new Color(1f, 0.85f, 0.2f));
+                case 3: return new Core.AbilityVisual(Core.AbilityVisualKind.Smoke, smokeRadius, smokeDuration, new Color(0.62f, 0.64f, 0.68f));
+                default: return default;
+            }
         }
 
         private bool PlaceTrap()

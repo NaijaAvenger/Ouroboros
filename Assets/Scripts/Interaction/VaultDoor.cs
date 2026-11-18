@@ -179,6 +179,17 @@ namespace Ouroboros.Interaction
             }
         }
 
+        /// <summary>
+        /// (v0.10) Enters the code for a player that has no keypad UI (a bot) and whose crew already knows it.
+        /// Goes through the same validation as a typed code. State authority only.
+        /// </summary>
+        public bool SubmitKnownCode(Network.NetworkPlayer by)
+        {
+            if (!Object.HasStateAuthority || by == null || !TeamKnowsCode(by.Team)) return false;
+            ValidateCode(Passcode, by);
+            return IsOpen;
+        }
+
         [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
         private void RPC_SubmitCode(int code, RpcInfo info = default)
         {

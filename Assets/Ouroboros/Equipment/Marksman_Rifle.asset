@@ -15,7 +15,7 @@ MonoBehaviour:
   equipmentName: Marksman Rifle
   description: Precision over volume.
   equipmentIcon: {fileID: 0}
-  equipmentPrefab: {fileID: 0}
+  equipmentPrefab: {fileID: 7674997808827362360, guid: 53e9d8b88533bc0488bb908b7f0e26ad, type: 3}
   slotType: 0
   rarity: 0
   kind: 0
@@ -28,11 +28,34 @@ MonoBehaviour:
   magazineSize: 8
   reserveAmmo: 32
   reloadTime: 2.2
-  spreadDegrees: 0.2
+  spreadDegrees: 3.5
   pelletCount: 1
   hitMask:
     serializedVersion: 2
     m_Bits: 4294967295
+  noiseRadius: 25
+  headshotMultiplier: 2
+  falloffStart: 60
+  falloffEnd: 140
+  falloffMinFraction: 0.75
+  bloomPerShot: 1.4
+  bloomMax: 2.8
+  bloomRecoveryPerSecond: 3.5
+  recoilPitch: 2.2
+  recoilYaw: 0.3
+  recoilRecoveryPerSecond: 6
+  feelVersion: 2
+  adsZoom: 3
+  adsSpreadMultiplier: 0.04
+  adsMoveMultiplier: 0.45
+  adsRecoilMultiplier: 0.6
+  adsSeconds: 0.28
+  swapSeconds: 0.6
+  adsPosition: {x: 0, y: -0.135, z: 0.36}
+  viewPosition: {x: 0.2, y: -0.2, z: 0.45}
+  handPosition: {x: 0, y: 0.02, z: 0.12}
+  viewEuler: {x: 0, y: -90, z: 0}
+  viewScale: 1
   projectilePrefab: {fileID: 0}
   projectileSpeed: 25
   projectileGravity: 0

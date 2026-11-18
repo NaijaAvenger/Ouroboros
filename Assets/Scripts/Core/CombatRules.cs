@@ -66,6 +66,35 @@ namespace Ouroboros.Core
             return Math.Max(0f, (Math.Max(0f, baseSpread) + Math.Max(0f, bloom)) * Math.Max(0f, stanceMultiplier));
         }
 
+        /// <summary>(v0.13) Spread while aiming down sights: the hip cone scaled by the weapon's aim multiplier.</summary>
+        public static float AimedSpread(float spread, bool aiming, float aimMultiplier)
+        {
+            return aiming ? Math.Max(0f, spread) * Clamp(aimMultiplier, 0f, 1f) : Math.Max(0f, spread);
+        }
+
+        /// <summary>
+        /// (v0.13) Vertical field of view in degrees after zooming by <paramref name="zoom"/> (1 = none). Zoom is
+        /// magnification on screen, so it works on the tangent of the half angle, not on the angle.
+        /// </summary>
+        public static float ZoomedFov(float baseFovDegrees, float zoom)
+        {
+            float fov = Clamp(baseFovDegrees, 1f, 170f);
+            if (zoom <= 1f) return fov;
+            double half = fov * 0.5 * Math.PI / 180.0;
+            return (float)(2.0 * Math.Atan(Math.Tan(half) / zoom) * 180.0 / Math.PI);
+        }
+
+        /// <summary>
+        /// (v0.13) Look-speed multiplier that keeps the same hand movement covering the same distance on screen
+        /// when the field of view narrows from <paramref name="baseFovDegrees"/> to <paramref name="currentFovDegrees"/>.
+        /// </summary>
+        public static float ZoomSensitivity(float baseFovDegrees, float currentFovDegrees)
+        {
+            double b = Math.Tan(Clamp(baseFovDegrees, 1f, 170f) * 0.5 * Math.PI / 180.0);
+            double c = Math.Tan(Clamp(currentFovDegrees, 1f, 170f) * 0.5 * Math.PI / 180.0);
+            return b <= 0.0 ? 1f : Clamp((float)(c / b), 0.05f, 1f);
+        }
+
         /// <summary>
         /// Spread multiplier from what the shooter is doing. Standing still on the ground is 1.
         /// </summary>

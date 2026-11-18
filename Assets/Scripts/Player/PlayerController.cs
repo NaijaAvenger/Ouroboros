@@ -49,6 +49,12 @@ namespace Ouroboros.Player
         [SerializeField] private LayerMask worldMask = ~0;
         [SerializeField] private float cameraStandHeight = 1.6f;
         [SerializeField] private float cameraSlideHeight = 1.0f;
+
+        [Header("Zero gravity (v0.12)")]
+        [SerializeField] private float zeroGAcceleration = 14f;
+        [SerializeField] private float zeroGMaxSpeed = 8f;
+        [Tooltip("Fraction of speed lost per second while floating. Low: you keep drifting.")]
+        [SerializeField] private float zeroGDrag = 0.5f;
         
         private Network.NetworkPlayer networkPlayer;
         private Core.BasePlayerClass currentClass;
@@ -86,10 +92,19 @@ namespace Ouroboros.Player
         [Networked] private NetworkBool GroundedState { get; set; }
         /// <summary>(v0.9) Velocity over the last simulated tick (for spread, AI aim and, later, animation).</summary>
         [Networked] private Vector3 SimVelocity { get; set; }
+        /// <summary>(v0.12) Floating in a zero-gravity zone this tick.</summary>
+        [Networked] private NetworkBool Floating { get; set; }
+        /// <summary>(v0.12) Momentum while floating. Kept between ticks: in zero-g you drift.</summary>
+        [Networked] private Vector3 FloatVelocity { get; set; }
 
         // [v0.1] private Vector3 velocity;
         // [v0.1] private float verticalRotation = 0f;
         private float localPitch;
+
+        private AI.BotBrain bot;
+
+        /// <summary>(v0.10) Hands control of this player to a bot brain. State authority only; see <c>AI.BotBrain</c>.</summary>
+        public void SetBot(AI.BotBrain brain) { bot = brain; }
 
         public Network.NetworkPlayer NetworkPlayer => networkPlayer;
         public bool IsSliding => SlideTimer.IsRunning && !SlideTimer.Expired(Runner);
@@ -99,6 +114,8 @@ namespace Ouroboros.Player
         public bool IsGrounded => characterSync != null ? (bool)GroundedState : (characterController != null && characterController.isGrounded);
         /// <summary>(v0.9) Velocity over the last simulated tick.</summary>
         public Vector3 Velocity => SimVelocity;
+        /// <summary>(v0.12) True while floating in a zero-gravity zone.</summary>
+        public bool IsFloating => Floating;
 
         private Core.MovementProfile Profile => currentClass != null ? currentClass.Movement : Core.MovementProfile.Default;
         
@@ -156,11 +173,13 @@ namespace Ouroboros.Player
             if (currentClass == null) currentClass = networkPlayer.CurrentClass;
 
             if (Object.HasInputAuthority) Network.GameSessionManager.NotifyLocalPlayer(true);
+            if (Object.HasInputAuthority) Local = this; // (v0.13)
         }
 
         public override void Despawned(NetworkRunner runner, bool hasState)
         {
             if (Object != null && Object.HasInputAuthority) Network.GameSessionManager.NotifyLocalPlayer(false);
+            if (Local == this) Local = null; // (v0.13)
         }
         
         public override void FixedUpdateNetwork()
@@ -168,7 +187,25 @@ namespace Ouroboros.Player
             // [v0.1] if (!Object.HasInputAuthority || !networkPlayer.IsAlive) return;   // ran only on the client
             // [v0.1] HandleMovement(); HandleAbilities(); HandleEquipment();           // polled UnityEngine.Input here
 
-            if (!GetInput(out Core.NetworkInputData input)) return;
+            // [v0.9] if (!GetInput(out Core.NetworkInputData input)) return;
+            // (v0.10) a bot has no input authority: its brain supplies the input on the state authority, and
+            //         everything below treats it exactly like a person's.
+            Core.NetworkInputData input;
+            if (bot != null)
+            {
+                if (!Object.HasStateAuthority || !bot.TryGetInput(out input)) return;
+            }
+            else if (!GetInput(out input)) return;
+
+            // (v0.11) jacked into a vault: the player is at the console. Only Interact gets through (it jacks out);
+            //         the number keys go to the sign puzzle, not to abilities.
+            if (networkPlayer.IsJackedIn)
+            {
+                bool interact = input.Buttons.IsSet((int)Core.InputButtons.Interact);
+                input.Move = default;
+                input.Buttons = default;
+                input.Buttons.Set((int)Core.InputButtons.Interact, interact);
+            }
 
             NetworkButtons pressed = input.Buttons.GetPressed(PreviousButtons);
             PreviousButtons = input.Buttons;
@@ -194,6 +231,8 @@ namespace Ouroboros.Player
             {
                 HandleAbilities(pressed);
                 HandleInteract(input.Buttons);
+                // (v0.11) quick hacks (hold Interact while aiming at a device) and deep hacks (press it at a vault)
+                networkPlayer.TickHacking(input.Buttons.IsSet((int)Core.InputButtons.Interact), pressed.IsSet((int)Core.InputButtons.Interact));
                 // [v0.8] HandleEquipment(pressed, input.Buttons);   // ran on the state authority only
             }
         }
@@ -206,6 +245,39 @@ namespace Ouroboros.Player
             var lp = cameraTransform.localPosition;
             lp.y = Mathf.Lerp(lp.y, targetY, Time.deltaTime * 12f);
             cameraTransform.localPosition = lp;
+            UpdateAimView(); // (v0.13)
+        }
+
+        // ------------------------------------------------------------------
+        // Aiming down sights: the owner's view (v0.13)
+
+        /// <summary>The local player's controller, or null. Set while its object is spawned on this peer.</summary>
+        public static PlayerController Local { get; private set; }
+
+        /// <summary>0 from the hip, 1 with the sights fully up. Eased, for the view model and the crosshair.</summary>
+        public float AimBlend { get; private set; }
+
+        /// <summary>Look-speed multiplier for the current zoom, so aiming does not feel faster than hip fire.</summary>
+        public float LookSensitivityScale { get; private set; } = 1f;
+
+        private Camera viewCamera;
+
+        private void UpdateAimView()
+        {
+            if (viewCamera == null) viewCamera = cameraTransform.GetComponentInChildren<Camera>();
+            if (viewCamera == null) return;
+
+            var data = networkLoadout != null && networkLoadout.Object != null ? networkLoadout.ActiveData : null;
+            bool aiming = data != null && networkLoadout.Aiming;
+            float seconds = data != null ? Mathf.Max(0.03f, data.adsSeconds) : 0.18f;
+            AimBlend = Mathf.MoveTowards(AimBlend, aiming ? 1f : 0f, Time.deltaTime / seconds);
+            float eased = AimBlend * AimBlend * (3f - 2f * AimBlend);
+
+            float baseFov = Core.GameSettings.FieldOfView;
+            float aimFov = Core.CombatRules.ZoomedFov(baseFov, data != null ? data.adsZoom : 1f);
+            float fov = Mathf.Lerp(baseFov, aimFov, eased);
+            viewCamera.fieldOfView = fov;
+            LookSensitivityScale = Core.CombatRules.ZoomSensitivity(baseFov, fov) * Mathf.Lerp(1f, Core.GameSettings.AimSensitivity, eased);
         }
 
         /// <summary>Called by the local input collector every frame so the camera doesn't wait for a tick.</summary>
@@ -236,6 +308,21 @@ namespace Ouroboros.Player
 
             // Yaw comes from input so server and client agree on facing.
             transform.rotation = Quaternion.Euler(0f, input.Yaw, 0f);
+
+            // (v0.12) Gravity off here: a different way of moving altogether.
+            if (Interaction.GravityZone.IsZeroGAt(transform.position + Vector3.up))
+            {
+                SimulateZeroG(input);
+                return;
+            }
+            if (Floating)
+            {
+                // Gravity is back (the zone was switched, or we drifted out): fall from wherever we are.
+                Floating = false;
+                VerticalVelocity = FloatVelocity.y;
+                FloatVelocity = Vector3.zero;
+                JumpsUsed = 1;
+            }
 
             float dt = Runner.DeltaTime;
             var profile = Profile;
@@ -283,7 +370,10 @@ namespace Ouroboros.Player
 
             Vector2 axes = Vector2.ClampMagnitude(input.Move, 1f);
             bool wantsSprint = input.Buttons.IsSet((int)Core.InputButtons.Sprint) && axes.y > 0.1f;
-            bool canSprint = wantsSprint && networkPlayer.Stamina > Core.GameConstants.SPRINT_MIN_STAMINA
+            // [v0.12] bool canSprint = wantsSprint && networkPlayer.Stamina > Core.GameConstants.SPRINT_MIN_STAMINA
+            // [v0.12]                  && !networkPlayer.HasStatus(Core.StatusFlags.Flashed);
+            bool aiming = networkLoadout != null && networkLoadout.Aiming; // (v0.13) sights up: no sprint, slower walk
+            bool canSprint = wantsSprint && !aiming && networkPlayer.Stamina > Core.GameConstants.SPRINT_MIN_STAMINA
                              && !networkPlayer.HasStatus(Core.StatusFlags.Flashed);
 
             float speed = currentClass != null
@@ -291,6 +381,7 @@ namespace Ouroboros.Player
                 : defaultMovementSpeed;
             if (networkLoadout != null) speed *= networkLoadout.SpeedMultiplier; // v0.4: armor / accessories
             speed *= networkPlayer.CarryWeightSpeedMultiplier;                      // v0.5: loot weight / case
+            if (networkLoadout != null) speed *= networkLoadout.AimSpeedMultiplier; // v0.13: aiming down sights
 
             // ---- Slide: sprint + Slide while grounded
             bool sliding = IsSliding;
@@ -399,6 +490,55 @@ namespace Ouroboros.Player
             characterController.Move(Vector3.up * VerticalVelocity * dt);
         }
 
+        /// <summary>
+        /// (v0.12) Movement with gravity off. You fly where you look: forward and strafe follow the camera
+        /// (pitch included), Jump thrusts up and Slide thrusts down. Speed is kept between ticks and only bleeds
+        /// off slowly, so stopping takes a counter-thrust. Hitting something kills the speed into it.
+        /// </summary>
+        private void SimulateZeroG(Core.NetworkInputData input)
+        {
+            float dt = Runner.DeltaTime;
+            Vector3 velocity = FloatVelocity;
+
+            if (!Floating)
+            {
+                // Leaving the floor: keep what you were doing, plus a little lift so you actually leave it.
+                Floating = true;
+                velocity = SimVelocity;
+                velocity.y = Mathf.Max(velocity.y, 1.5f);
+                velocity = Vector3.ClampMagnitude(velocity, zeroGMaxSpeed);
+                SlideTimer = TickTimer.None;
+                MantleTimer = TickTimer.None;
+                Grappling = false;
+                SetControllerHeight(standHeight);
+                if (Object.HasStateAuthority)
+                {
+                    networkPlayer.SetStatus(Core.StatusFlags.Sliding, false);
+                    networkPlayer.SetStatus(Core.StatusFlags.Sprinting, false);
+                    networkPlayer.SetStatus(Core.StatusFlags.Gliding, false);
+                    networkPlayer.SetStatus(Core.StatusFlags.Climbing, false);
+                    networkPlayer.SetStatus(Core.StatusFlags.Grappling, false);
+                }
+            }
+
+            Vector2 axes = Vector2.ClampMagnitude(input.Move, 1f);
+            Vector3 look = Quaternion.Euler(input.Pitch, input.Yaw, 0f) * Vector3.forward;
+            float lift = (input.Buttons.IsSet((int)Core.InputButtons.Jump) ? 1f : 0f) - (input.Buttons.IsSet((int)Core.InputButtons.Slide) ? 1f : 0f);
+            Vector3 wish = Vector3.ClampMagnitude(look * axes.y + transform.right * axes.x + Vector3.up * lift, 1f);
+
+            velocity += wish * zeroGAcceleration * dt;
+            velocity *= Mathf.Clamp01(1f - zeroGDrag * dt);
+            velocity = Vector3.ClampMagnitude(velocity, zeroGMaxSpeed * networkPlayer.CarryWeightSpeedMultiplier);
+
+            Vector3 before = transform.position;
+            characterController.Move(velocity * dt);
+            // What we actually moved is the velocity we keep: walls and floors stop the part that ran into them.
+            Vector3 moved = (transform.position - before) / Mathf.Max(0.0001f, dt);
+            FloatVelocity = Vector3.Lerp(velocity, moved, 0.85f);
+            VerticalVelocity = FloatVelocity.y;
+            JumpsUsed = 1;
+        }
+
         private bool WallAhead(out RaycastHit hit)
         {
             Vector3 origin = transform.position + Vector3.up * (standHeight * 0.5f);
@@ -460,14 +600,30 @@ namespace Ouroboros.Player
         private void HandleEquipment(NetworkButtons pressed, NetworkButtons held)
         {
             if (equipmentLoadout == null) return;
-            Dispatch(Equipment.EquipmentSlotType.Primary,   Core.InputButtons.Primary,   pressed, held);
-            Dispatch(Equipment.EquipmentSlotType.Secondary, Core.InputButtons.Secondary, pressed, held);
+            // [v0.12] Left click fired the Primary slot and right click fired the Secondary slot:
+            // [v0.12] Dispatch(Equipment.EquipmentSlotType.Primary,   Core.InputButtons.Primary,   pressed, held);
+            // [v0.12] Dispatch(Equipment.EquipmentSlotType.Secondary, Core.InputButtons.Secondary, pressed, held);
+            // (v0.13) One weapon in hand. The wheel swaps, the fire button fires it, the aim button aims it.
+            if (networkLoadout != null)
+            {
+                if (pressed.IsSet((int)Core.InputButtons.NextWeapon) || pressed.IsSet((int)Core.InputButtons.PrevWeapon))
+                {
+                    networkLoadout.CycleWeapon();
+                }
+                networkLoadout.SetAiming(held.IsSet((int)Core.InputButtons.Secondary));
+                Dispatch((Equipment.EquipmentSlotType)networkLoadout.ActiveSlot, Core.InputButtons.Primary, pressed, held);
+            }
+            else
+            {
+                Dispatch(Equipment.EquipmentSlotType.Primary, Core.InputButtons.Primary, pressed, held);
+            }
             Dispatch(Equipment.EquipmentSlotType.Utility,   Core.InputButtons.Utility,   pressed, held);
             Dispatch(Equipment.EquipmentSlotType.Gadget,    Core.InputButtons.Gadget,    pressed, held);
 
             if (pressed.IsSet((int)Core.InputButtons.Reload) && networkLoadout != null)
             {
-                networkLoadout.ReloadAny();
+                // [v0.12] networkLoadout.ReloadAny();
+                networkLoadout.ReloadActive();
             }
         }
 
@@ -482,6 +638,21 @@ namespace Ouroboros.Player
         public void SetPlayerClass(Core.BasePlayerClass playerClass)
         {
             currentClass = playerClass;
+        }
+
+        /// <summary>
+        /// (v0.11) Throws the player upward (grav lifts). Applied on the state authority; the owning client's
+        /// prediction picks the new vertical velocity up from the next state it receives.
+        /// </summary>
+        public void Launch(float upwardSpeed)
+        {
+            if (!Object.HasStateAuthority || upwardSpeed <= 0f) return;
+            VerticalVelocity = Mathf.Max(VerticalVelocity, upwardSpeed);
+            GroundedState = false;
+            JumpsUsed = 1; // the launch counts as the first jump, so double-jumpers keep one in the air
+            SlideTimer = TickTimer.None;
+            MantleTimer = TickTimer.None;
+            Grappling = false;
         }
 
         /// <summary>
@@ -511,6 +682,8 @@ namespace Ouroboros.Player
             Grappling = false;
             MantleTimer = TickTimer.None;
             SlideTimer = TickTimer.None;
+            Floating = false;                 // (v0.12)
+            FloatVelocity = Vector3.zero;
             GroundedState = false;
             SimVelocity = Vector3.zero;
             if (characterController != null) characterController.enabled = wasEnabled;

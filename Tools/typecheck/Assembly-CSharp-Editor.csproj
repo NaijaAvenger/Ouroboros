@@ -14,6 +14,6 @@
     <Reference Include="$(CacheRoot)unity3d.unityengine.ui/lib/UnityEngine.UI.dll" />
     <Compile Include="EditorStubs.cs" />
     <Compile Include="$(RepoRoot)Assets/**/Editor/**/*.cs"
-             Exclude="$(RepoRoot)Assets/Photon/**;$(RepoRoot)Assets/TextMesh Pro/**" />
+             Exclude="$(VendorExcludes)" />
   </ItemGroup>
 </Project>

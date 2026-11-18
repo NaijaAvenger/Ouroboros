@@ -12,9 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dd4a7c37877836f4ba55066e34996b38, type: 3}
   m_Name: Saboteur
   m_EditorClassIdentifier: Assembly-CSharp::Ouroboros.Data.ClassData
-  className: Saboteur
-  description: Stealth operative skilled in setting traps, sabotaging equipment,
-    and silent elimination.
+  className: Spider
+  description: Ambush specialist. Lays traps, vanishes, climbs where nobody looks, and is gone before the smoke clears.
   classType: 2
   classIcon: {fileID: 0}
   maxHealth: 90

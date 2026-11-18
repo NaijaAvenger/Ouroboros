@@ -52,17 +52,35 @@ namespace Ouroboros.Network
             int[] counts = new int[Core.GameConstants.MAX_TEAMS];
             CountTeams(counts);
 
+            // (v0.10) crew size and count come from the config (three per crew by default), and humans can be
+            //         kept together (FillCrews) instead of always being spread across crews.
+            var cfg = GameMode.ExtractionHeistGameMode.Instance != null ? GameMode.ExtractionHeistGameMode.Instance.Config : null;
+            int crewSize = cfg != null ? cfg.CrewSize : Core.GameConstants.PLAYERS_PER_TEAM;
+            int crewCount = cfg != null ? cfg.CrewCount : Core.GameConstants.MAX_TEAMS;
+            bool fillCrews = cfg != null && cfg.humanAssignment == Data.HumanAssignment.FillCrews;
+
             Core.TeamID selectedTeam = Core.TeamID.None;
 
-            if (Core.TeamUtil.IsValid(preferred) && counts[Core.TeamUtil.ToIndex(preferred)] < Core.GameConstants.PLAYERS_PER_TEAM)
+            if (Core.TeamUtil.IsValid(preferred) && Core.TeamUtil.ToIndex(preferred) < crewCount && counts[Core.TeamUtil.ToIndex(preferred)] < crewSize)
             {
                 selectedTeam = preferred;
             }
+            else if (fillCrews)
+            {
+                for (int i = 0; i < crewCount; i++)
+                {
+                    if (counts[i] < crewSize) { selectedTeam = Core.TeamUtil.FromIndex(i); break; }
+                }
+                if (selectedTeam == Core.TeamID.None)
+                {
+                    Debug.LogWarning("[TeamManager] All crews are full!");
+                    return Core.TeamID.None;
+                }
+            }
             else
             {
-                // Find team with minimum players
                 int minPlayers = int.MaxValue;
-                for (int i = 0; i < Core.GameConstants.MAX_TEAMS; i++)
+                for (int i = 0; i < crewCount; i++)
                 {
                     if (counts[i] < minPlayers)
                     {
@@ -70,14 +88,43 @@ namespace Ouroboros.Network
                         selectedTeam = Core.TeamUtil.FromIndex(i);
                     }
                 }
-
-                // Check if team is full
-                if (minPlayers >= Core.GameConstants.PLAYERS_PER_TEAM)
+                if (minPlayers >= crewSize)
                 {
-                    Debug.LogWarning("[TeamManager] All teams are full!");
+                    Debug.LogWarning("[TeamManager] All crews are full!");
                     return Core.TeamID.None;
                 }
             }
+
+            // [v0.9] int[] counts = new int[Core.GameConstants.MAX_TEAMS];
+            // [v0.9] CountTeams(counts);
+            // [v0.9]
+            // [v0.9] Core.TeamID selectedTeam = Core.TeamID.None;
+            // [v0.9]
+            // [v0.9] if (Core.TeamUtil.IsValid(preferred) && counts[Core.TeamUtil.ToIndex(preferred)] < Core.GameConstants.PLAYERS_PER_TEAM)
+            // [v0.9] {
+            // [v0.9]     selectedTeam = preferred;
+            // [v0.9] }
+            // [v0.9] else
+            // [v0.9] {
+            // [v0.9]     // Find team with minimum players
+            // [v0.9]     int minPlayers = int.MaxValue;
+            // [v0.9]     for (int i = 0; i < Core.GameConstants.MAX_TEAMS; i++)
+            // [v0.9]     {
+            // [v0.9]         if (counts[i] < minPlayers)
+            // [v0.9]         {
+            // [v0.9]             minPlayers = counts[i];
+            // [v0.9]             selectedTeam = Core.TeamUtil.FromIndex(i);
+            // [v0.9]         }
+            // [v0.9]     }
+            // [v0.9]
+            // [v0.9]     // Check if team is full
+            // [v0.9]     if (minPlayers >= Core.GameConstants.PLAYERS_PER_TEAM)
+            // [v0.9]     {
+            // [v0.9]         Debug.LogWarning("[TeamManager] All teams are full!");
+            // [v0.9]         return Core.TeamID.None;
+            // [v0.9]     }
+            // [v0.9] }
+            // [v0.9]
 
             PlayerTeams.Set(player, selectedTeam);
             Debug.Log($"[TeamManager] Assigned player {player} to {selectedTeam}");

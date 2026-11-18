@@ -23,6 +23,92 @@ before M0 started; where M0 has already changed a finding, it is marked **(fixed
 
 The offline type-check is described in `Tools/README.md`, including what a pass does not prove.
 
+### M3 progress (code complete, not yet play-tested)
+
+Compiles against the real Fusion and Input System APIs; the puzzle and progress arithmetic is unit-tested.
+Not run in Unity. The checklist is section 7g of `PHASE0_BRINGUP.md`.
+
+| M3 item | State |
+|---------|-------|
+| Quick hacks for everyone | Done in code. Hold Interact while aiming at a device; a visible tether, a prompt and a progress bar; breaks on lost line of sight or damage |
+| Devices | Done in code. Cameras, doors and rival traps became hackable; new shutter gates, power junctions (blackout), lift pads and sentry turrets (hijack). Twelve are placed on Freeport |
+| Deep hack | Done in code. Vaults are jacked into with one press and cracked by matching eight-mark signs on keys 1 to 4. Answers are checked on the host from a shared seed. Being jacked in also trickles progress, so a vault always opens eventually |
+| Counter-hack | Done in code. A rival jacked into the same vault pushes its progress back and takes it over past zero. An abandoned crack drains instead of resetting |
+| The Cipher | Done in code. The Hacker class is now the hack specialist: longer reach, half the hack time, chaining, easier signs, Remote Hack (instant, aimed, 40 m) and Net Sight (devices through walls) |
+| Bots | Done in code. They jack in and answer on a timer, fight hostile turrets, and may trip devices by accident. They do not quick-hack on purpose |
+| Sign visuals | Placeholder. Plain open and closed bars; the art direction for the glyph language is an M4 decision and needs the cultural review noted in 4.1 |
+
+M3 follow-up (v0.12, code complete, not play-tested): the three items first left out of M3 are now in.
+Zero-gravity zones are hackable volumes where players fly and keep momentum (two on Freeport). Any player can
+tether a rival and jam their abilities and weapon for a few seconds. A second deep-hack puzzle, a timed pulse
+strike, is mixed in with the sign puzzle. The checklist is section 7h of `PHASE0_BRINGUP.md`.
+
+### M4 progress (code complete where code can do it, not yet play-tested)
+
+Everything below is made in code, so it needs no art files. It is a stand-in that gives the game a look of its
+own, not a replacement for artists, composers, voice actors or cultural consultants.
+
+| M4 item | State |
+|---------|-------|
+| Setting | Done as text. The premise is on the lobby screen and on signs in the Gallery |
+| Four renamed specialists | Done. Cipher, Spider, Smith and Shield, each with a code-built model whose outline differs (visor and antenna, hood and limbs, apron and pack, pauldrons and shield). The enum names in code are unchanged |
+| Crew pattern identities | Done. Each crew has a palette and a generated pattern (Lagos rings, Nairobi check, Accra strips, Joburg steps) on clothing, dock banners and the HUD |
+| One art-passed district | Stand-in. The Gallery has a stone floor, arch, colonnades, plinths with show pieces, name plates, signs and warm lamps, all from boxes |
+| Tiered music | Stand-in. Four synthesised layers at 113 BPM that fade in with the alarm tier and the getaway |
+| Voice callouts | Stand-in. Subtitled crew radio lines per crew in Pidgin, Swahili and Sheng, Twi and isiZulu, with English underneath. **Written by a non-speaker. They must be reviewed by native speakers before anyone outside the team sees them** |
+| HUD reskin | Partial. Crew pattern band, crew accent colours and specialist names. The layout is unchanged |
+| Twenty artefacts with story cards | Done. Twenty named items, each with a model shape, a value and a story |
+| Guards | Done. Code-built models for the three guard types |
+| Weapons and effects | Done by the builder. Gun pack models on the seven weapons; Cartoon FX on impact, explosion and extraction |
+
+Still open in M4 and not solvable in code: real character and environment art, composed music, recorded
+voice, the cultural review named in 4.1, and the visual language of the hack signs.
+
+### M5 progress (code complete, not yet play-tested)
+
+M5 was started at your request before the first play session. Everything here compiles and the rules are
+unit-tested, but none of it has run in Unity.
+
+| M5 item | State |
+|---------|-------|
+| Main menu | Done in code. Quick play, solo (offline with bots), host a private match, join with a code, name entry. Shown on Play unless `showMainMenu` is unticked on `GameSessionManager` |
+| Party codes | Done in code. A five-character code is the session name of a private match; the pause menu shows it |
+| Session browser | Not done. Quick play and codes cover finding a match for now |
+| Pause menu | Done in code. Esc: resume, settings, controls, profile, leave match (reloads the scene to the main menu), quit |
+| Settings | Done in code. Look and aim sensitivity, field of view, invert Y, master and music volume, teammate markers, crew radio, full screen. Stored per machine |
+| Controls and keybinds | Done as a read-only list of every action for keyboard and mouse and for gamepad. Rebinding has code but no screen |
+| Loadout screen | Unchanged: the lobby picker chooses specialist and both weapons |
+| Post-match summary | Done in code. The end screen adds the XP gained and the level |
+| Cosmetic progression | Done in code, local only. XP, 50 levels and eight titles. Nothing it unlocks changes a match |
+| Dedicated servers or host migration | **Recommendation: stay player-hosted and add Fusion host migration before any public test.** Dedicated servers cost money every hour a match runs and need an operations pipeline this project does not have. Host migration removes the worst failure of player hosting (the host leaves, the match dies) at the cost of engineering only. Not implemented yet |
+
+Also added with M5, at your request:
+
+| Item | State |
+|------|-------|
+| Gun mechanics | Done in code. One weapon in hand; the wheel swaps, left click fires, right click aims down sights. Aiming tightens spread, cuts kick, slows the walk, blocks sprint and zooms. Draw time on swap. A first-person view model with draw, aim, reload and kick motion |
+| Teammate indicators | Done in code. A crew-coloured diamond, name, health and distance over each crewmate, visible through walls, pinned to the screen edge when they are out of view. Rivals show nothing unless a reveal has tagged them |
+| Every piece of gear visible | Done in code. Stand-in models for weapons without a prefab, the spare weapon on the back, worn armour, speed rig and ammunition belt, the trap, the placed charge, grenades with a trail, the recon drone, and an effect for all sixteen abilities and eight statuses |
+| Environment pieces | Done in code. Eighteen kinds of prop and structure modelled from primitives |
+| Map build-out | Done in code. 75 props across every district and three new areas (bonded store, courtyard, motor pool), a crane, getaway vans at the side exits, district floors, signs and lighting. No new vaults |
+
+### M2 progress (code complete, not yet play-tested)
+
+Compiles against the real Fusion and Input System APIs; the new rules arithmetic is unit-tested. Not run in
+Unity. The checklist is section 7f of `PHASE0_BRINGUP.md`.
+
+| M2 item | State |
+|---------|-------|
+| Quota and getaway | Done in code. Exits stay shut until a crew is carrying the quota (or the timer runs out); then the central getaway and the side exits open, the facility locks down and the richest crew's carriers are revealed |
+| Scoring | Done in code. Score is extracted value only; side exits bank 60% |
+| Physical loot | Done in code. Vaults spill named items from a catalog with story cards; players carry up to four; death drops them one by one |
+| Loot transfer on wipe, respawn rules | Done in code. Respawn needs a living crewmate; a wipe redeploys the crew once and then eliminates it. Revive and respawn stations are not built |
+| Team format | Done in code. Four crews of three, config-driven, named Lagos, Nairobi, Accra and Joburg |
+| Bot crews | Done in code. A bot is a normal player object fed input by `AI/BotBrain.cs`; bots fill empty seats, follow a human crewmate, fight, open all four lock types, carry loot and extract. Placeholder quality: no cover use or climbing |
+| Fair contests | Done in code. Simultaneous claims no longer always go to the lowest team id |
+| Blockout map | Done as a builder script (`Ouroboros > Setup > Create Freeport Map (M2)`): laid out by hand in code, built by the editor on your machine. The old generated arena is still available but is no longer the first scene |
+| Loot catalog writing | Placeholder. Eighteen fictional items; names and stories need review with people from the cultures they draw on |
+
 ### M1 progress (first slice, code complete, not yet play-tested)
 
 Everything below compiles against the real Fusion and Input System APIs and the pure maths is unit-tested.
@@ -281,15 +367,26 @@ Decision 2 affects the local `ViewMode.cs`: if it is a first/third-person toggle
 
 ## 7. What is needed from you next
 
-1. Push your local project to a branch so `ViewMode.cs` and the Keybinds panel can be reviewed and fixed.
-2. Open the project in Unity 6000.4. Confirm it compiles and that AI Navigation resolved.
-3. Re-run **Ouroboros > Setup > Create Dev Scene**, then work through sections 5, 6 and 7e of `PHASE0_BRINGUP.md`
-   and list what breaks. Section 7e is the M1 checklist.
-4. With those results: fix what the playtest finds, then finish M1 (ADS and weapon switching, URP, a
-   third-person body) and tune the weapon numbers.
+1. Open the project in Unity 6000.4 and confirm it compiles. Nothing since M0 has been through the Fusion weaver.
+2. Run **Ouroboros > Setup > Recreate Freeport Map** (or **Create Freeport Map (M2)** if the scene does not
+   exist yet). It applies the prefab upgrades, the devices and gravity zones, the art pass, the map build-out
+   and the per-weapon handling values.
+3. Press Play and choose **Solo** on the main menu. That needs no Photon connection.
+4. Work through sections 7e to 7i of `PHASE0_BRINGUP.md` and list what breaks.
+5. Find native speakers of Nigerian Pidgin, Swahili or Sheng, Twi and isiZulu to rewrite the crew radio lines
+   in `Assets/Scripts/UI/CrewCallouts.cs`, and someone who can review the artefact names and stories.
 
-`main` holds M0 (merged 2026-11-18, pull request 2). The M1 slice is on `claude/awesome-darwin-awl360`, which
-has that merge folded back in.
+M1 to M5 are code complete as far as code can take them, and none has been play-tested. Five milestones of
+untested work is a real risk: the first play session will find bugs, and some will be in the oldest layers.
+The next milestone should be that session and its fixes, not M6.
+
+Notes on the repository as of the M2 work:
+- `main` holds M0, M1 and your Unity project state ("Squashed local work"). M2 is on `claude/awesome-darwin-awl360`.
+- `ViewMode.cs` and the Keybinds panel are not in the pushed project, so nothing blocks ADS any more.
+- The pushed project references a URP global settings asset but the URP package is not in `Packages/manifest.json`.
+  Either finish the switch (install Universal RP, assign a pipeline asset, upgrade materials) or remove the stray asset.
+- The SciFi Gun Pack and Cartoon FX Remaster are now used by the art pass (weapon models, three effect slots).
+  LaserGunPack is still unused; its turret models could replace the box turrets.
 
 ## Sources
 

@@ -15,7 +15,11 @@ namespace Ouroboros.Network
     /// locally on every peer from the replicated <see cref="ClassType"/> (so late joiners get them),
     /// but abilities only execute on the state authority.
     /// </summary>
-    public class NetworkPlayer : NetworkBehaviour, Core.IAbilityContext, Combat.IDamageable
+    // [v0.10] public class NetworkPlayer : NetworkBehaviour, Core.IAbilityContext, Combat.IDamageable
+    // (v0.11) partial: hacking state and rules live in NetworkPlayer.Hacking.cs
+    // [v0.11] public partial class NetworkPlayer : NetworkBehaviour, Core.IAbilityContext, Combat.IDamageable
+    // (v0.12) IQuickHackable: a rival can tether a player and jam their gear (see NetworkPlayer.Hacking.cs)
+    public partial class NetworkPlayer : NetworkBehaviour, Core.IAbilityContext, Combat.IDamageable, Interaction.IQuickHackable
     {
         /// <summary>Live registry of every spawned player on this peer. Cheap radius queries iterate this.</summary>
         public static readonly List<NetworkPlayer> All = new List<NetworkPlayer>();
@@ -44,6 +48,16 @@ namespace Ouroboros.Network
         [Networked] public int KeycardMask { get; set; }
         /// <summary>ID cards looted from dead players of other teams (v0.7).</summary>
         [Networked] public int EnemyCards { get; set; }
+
+        /// <summary>(v0.10) Driven by <c>AI.BotBrain</c> on the state authority instead of a person. Has no input authority.</summary>
+        [Networked] public NetworkBool IsBot { get; set; }
+
+        /// <summary>Structural size of <see cref="CarriedItemIds"/>. The rule limit is GameModeConfig.maxCarriedItems.</summary>
+        public const int MAX_CARRIED_ITEMS = 8;
+        /// <summary>(v0.10) Loot catalog ids of the named items being carried (first <see cref="CarriedItemCount"/> entries).</summary>
+        [Networked, Capacity(MAX_CARRIED_ITEMS)]
+        public NetworkArray<int> CarriedItemIds => default;
+        [Networked] public int CarriedItemCount { get; set; }
 
         [Networked, Capacity(Core.GameConstants.MAX_ABILITY_SLOTS)]
         public NetworkArray<TickTimer> AbilityCooldowns => default;
@@ -151,6 +165,7 @@ namespace Ouroboros.Network
         public override void Spawned()
         {
             if (!All.Contains(this)) All.Add(this);
+            Interaction.QuickHack.Register(this); // (v0.12)
             loadout = GetComponent<Equipment.NetworkLoadout>();
 
             changeDetector = GetChangeDetector(ChangeDetector.Source.SimulationState);
@@ -173,11 +188,21 @@ namespace Ouroboros.Network
                 Health = MaxHealth;
                 Stamina = MaxStamina;
             }
+
+            // (v0.13) the owner tells the host what they are called; the host cleans it before anyone sees it
+            if (Object.HasInputAuthority) RPC_SetName(Core.PlayerProfile.Name);
+        }
+
+        [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+        private void RPC_SetName(string requested)
+        {
+            DisplayName = Core.ProfileRules.SanitiseName(requested, DisplayName.ToString());
         }
 
         public override void Despawned(NetworkRunner runner, bool hasState)
         {
             All.Remove(this);
+            Interaction.QuickHack.Unregister(this);
         }
 
         public override void FixedUpdateNetwork()
@@ -558,6 +583,7 @@ namespace Ouroboros.Network
             // [v0.1] currentClass.TakeDamage(damage);            // BUG: class kept a second health value
             // [v0.1] Health = Mathf.Max(0, Health - damage);     // ...and the shield modifier was ignored here
             Health = Mathf.Max(0f, Health - damage);
+            LastDamageTick = (int)Runner.Tick; // (v0.11) taking damage breaks a hack tether
 
             if (Health <= 0f)
             {
@@ -572,6 +598,7 @@ namespace Ouroboros.Network
         public void NotifyHitConfirm(float damage, bool headshot, bool killed)
         {
             if (!Object.HasStateAuthority || damage <= 0f) return;
+            if (Object.InputAuthority.IsNone) return; // (v0.10) bots have no client to tell
             RPC_HitConfirm(damage, headshot, killed);
         }
 
@@ -597,6 +624,7 @@ namespace Ouroboros.Network
         {
             IsAlive = false;
             Deaths++;
+            ClearHackState(); // (v0.11)
             Status = Core.StatusFlags.None;
             for (int i = 0; i < STATUS_TIMER_SLOTS; i++) StatusTimers.Set(i, TickTimer.None);
             BurnTimer = TickTimer.None;
@@ -614,10 +642,11 @@ namespace Ouroboros.Network
             if (gm != null)
             {
                 gm.OnPlayerDied(this, killer);
-                if (gm.CanRespawn(this))
-                {
-                    RespawnTimer = TickTimer.CreateFromSeconds(Runner, gm.Config.respawnDelay);
-                }
+                // [v0.9] if (gm.CanRespawn(this))
+                // [v0.9] {
+                // [v0.9]     RespawnTimer = TickTimer.CreateFromSeconds(Runner, gm.Config.respawnDelay);
+                // [v0.9] }
+                gm.ScheduleRespawn(this); // (v0.10) also resolves crew wipes
             }
 
             RPC_OnPlayerDeath(killer != null ? killer.PlayerRef : default);
@@ -659,10 +688,56 @@ namespace Ouroboros.Network
         /// <summary>Removes and returns all carried loot (death drop / extraction banking).</summary>
         public int TakeAllLoot()
         {
+            // [v0.9] if (!Object.HasStateAuthority) return 0;
+            // [v0.9] int loot = CarriedLoot;
+            // [v0.9] CarriedLoot = 0;
+            // [v0.9] return loot;
+            return TakeAllLoot(null);
+        }
+
+        /// <summary>
+        /// (v0.10) As above, and also hands back the catalog ids of the named items that were carried, so a
+        /// death can drop them as separate pickups. <see cref="CarriedLoot"/> is the total: items plus loose loot.
+        /// </summary>
+        public int TakeAllLoot(List<int> itemIds)
+        {
             if (!Object.HasStateAuthority) return 0;
             int loot = CarriedLoot;
             CarriedLoot = 0;
+
+            int count = Mathf.Clamp(CarriedItemCount, 0, MAX_CARRIED_ITEMS);
+            for (int i = 0; i < count; i++)
+            {
+                itemIds?.Add(CarriedItemIds[i]);
+                CarriedItemIds.Set(i, 0);
+            }
+            CarriedItemCount = 0;
             return loot;
+        }
+
+        /// <summary>(v0.10) How many named items this player may carry under the current rules.</summary>
+        public int ItemCapacity
+        {
+            get
+            {
+                var gm = GameMode.ExtractionHeistGameMode.Instance;
+                int limit = gm != null ? gm.Config.maxCarriedItems : 4;
+                return Mathf.Clamp(limit, 1, MAX_CARRIED_ITEMS);
+            }
+        }
+
+        public bool CanCarryItem => CarriedItemCount < ItemCapacity && CarriedLoot < Core.GameConstants.MAX_CARRIED_LOOT;
+
+        /// <summary>
+        /// (v0.10) Picks up one named item. All or nothing: returns false when the hands are full. State authority only.
+        /// </summary>
+        public bool AddLootItem(int itemId, int value)
+        {
+            if (!Object.HasStateAuthority || itemId <= 0 || value <= 0 || !CanCarryItem) return false;
+            if (AddLoot(value) <= 0) return false;
+            CarriedItemIds.Set(CarriedItemCount, itemId);
+            CarriedItemCount++;
+            return true;
         }
 
         /// <summary>Marks this player as extracted: out of the match, untargetable, loot banked by the game mode.</summary>
@@ -670,6 +745,7 @@ namespace Ouroboros.Network
         {
             if (!Object.HasStateAuthority || IsExtracted) return;
             IsExtracted = true;
+            ClearHackState(); // (v0.11)
             Status = Core.StatusFlags.Extracted;
             RespawnTimer = TickTimer.None;
             RPC_OnExtracted();

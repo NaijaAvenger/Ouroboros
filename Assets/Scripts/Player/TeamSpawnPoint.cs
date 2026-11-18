@@ -31,6 +31,8 @@ namespace Ouroboros.Player
 
         public static Color TeamColor(Core.TeamID team)
         {
+            // (v0.12) crew colours come from the crew's style (teal, red, gold, blue); the switch below is the [v0.11] set
+            if (Core.TeamUtil.IsValid(team)) return Art.CrewStyle.Get(team).Primary;
             switch (team)
             {
                 case Core.TeamID.TeamAlpha:   return Color.red;

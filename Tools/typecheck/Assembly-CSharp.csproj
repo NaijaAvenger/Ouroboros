@@ -22,6 +22,6 @@
     <Reference Include="$(BuildRoot)Unity.InputSystem/default/bin/Unity.InputSystem.dll" Condition="'$(Variant)' != 'legacy'" />
     <Reference Include="$(CacheRoot)unity3d.sdk/lib/UnityEditor.dll" Condition="'$(Variant)' == 'editor'" />
     <Compile Include="$(RepoRoot)Assets/**/*.cs"
-             Exclude="$(RepoRoot)Assets/Photon/**;$(RepoRoot)Assets/TextMesh Pro/**;$(RepoRoot)Assets/**/Editor/**" />
+             Exclude="$(VendorExcludes);$(RepoRoot)Assets/**/Editor/**" />
   </ItemGroup>
 </Project>

@@ -148,6 +148,52 @@ Still open in Phase 4: object pooling for guards, animation hooks, cover-seeking
 
 Awaiting in-engine validation: PHASE0_BRINGUP.md section 7e.
 
+### v0.10 — M2, "The Run"
+- **Rules**: `GameModeConfig.lootQuota` and friends; `ExtractionHeistGameMode` calls the getaway on quota or timer, tracks the richest crew, resolves crew wipes (`ScheduleRespawn`), scores extracted value only; `ExtractionPoint.isCentral` and payout; `Core/MatchRules.cs` gains the quota, payout, wipe, rotation and item-pick arithmetic.
+- **Loot**: `Data/LootCatalog.cs`; `LootDrop` carries a catalog id; `LootObjective` spills items; `NetworkPlayer.CarriedItemIds`.
+- **Crews and bots**: `GameModeConfig.playersPerTeam` = 3, `TeamUtil.DisplayName`, `HumanAssignment`; `AI/BotBrain.cs`, `PlayerController.SetBot`, `GameSessionManager.FillWithBots`.
+- **Map**: `Assets/Editor/OuroborosFreeportBuilder.cs` (menu **Ouroboros > Setup > Create Freeport Map (M2)**).
+
+Awaiting in-engine validation: PHASE0_BRINGUP.md section 7f.
+
+### v0.11 — M3, hacking
+- **Rules**: `Core/HackRules.cs` (sign puzzles, deep-hack progress, counter-hack, quick-hack time, range and aim cone).
+- **Quick hacks**: `Interaction/QuickHack.cs` (`IQuickHackable`, registry, targeting); `Network/NetworkPlayer.Hacking.cs` (tether state, jack-in state, answers); `Player/HackTether.cs`.
+- **Devices**: cameras, breachable doors and proximity traps implement `IQuickHackable`; new `Interaction/Shutter.cs`, `PowerNode.cs`, `GravLift.cs`, `SentryTurret.cs`; `PlayerController.Launch`.
+- **Deep hack**: `LootObjective.CanJackIn` / `ApplyHackAnswer` / `TakenOver`; passive progress slowed; abandon decay.
+- **Cipher**: `Classes/HackerClass.cs` (Remote Hack, Net Sight), `StatusFlags.NetSight`, `Hacker.asset` names.
+- **UI**: `UI/HackHUD.cs` (prompt, console, Net Sight markers), added automatically by `HeistHUD`.
+- **Bots**: `AI/BotBrain.cs` answers signs on a timer and treats hostile turrets as targets.
+- **Map**: `OuroborosFreeportBuilder.BuildFreeportDevices` (gates, power junctions, lifts, turrets).
+
+Awaiting in-engine validation: PHASE0_BRINGUP.md section 7g.
+
+### v0.12 — M3 follow-up and M4, identity
+M3 follow-up:
+- **Zero gravity**: `Interaction/GravityZone.cs` (hackable volume), `PlayerController.SimulateZeroG` (networked `Floating`, `FloatVelocity`), bot steering in zero-g, two zones on Freeport.
+- **Jamming players**: `NetworkPlayer` implements `IQuickHackable` (`Jam gear`: abilities off, weapon jammed, then immune for a while), `NetworkLoadout.Jam`, warning on the victim's HUD.
+- **Pulse puzzle**: `HackRules.PuzzleKind`, pulse position and window from the shared seed and tick, `LootObjective.puzzleMode` (Signs, Pulse, Mixed), pulse panel in `HackHUD`.
+
+M4, all generated in code:
+- **Crew identity**: `Core/PatternRules.cs` (four patterns, unit-tested), `Art/CrewStyle.cs` (palettes, pattern textures, materials), `UI/CrewSkin.cs` (pattern band and accents for UI panels).
+- **Models**: `Art/CharacterBuilder.cs` (four specialists, three guards, simple animation), `Art/ArtefactBuilder.cs` (nineteen artefact shapes), `Art/WeaponView.cs` (shows `EquipmentData.equipmentPrefab`), `Art/DisplayPiece.cs`, `Art/WorldSign.cs` with `Assets/Ouroboros/Shaders/WorldText.shader`.
+- **Specialists**: Cipher, Spider, Smith, Shield (`Core.ClassUtil.DisplayName`, class scripts and assets). Enum names unchanged.
+- **Loot**: catalog grown to twenty items, each with a shape.
+- **Audio**: `Audio/MusicDirector.cs` (four synthesised layers following the alarm tier and the getaway).
+- **Crew radio**: `UI/CrewCallouts.cs` (subtitled lines per crew; placeholder writing, needs native speakers).
+- **Builder**: `Assets/Editor/OuroborosArtPass.cs` (weapon models, effect slots, pattern assets, Gallery dressing, dock banners; menu **Apply Art Pass (M4)**).
+
+Awaiting in-engine validation: PHASE0_BRINGUP.md section 7h.
+
+### v0.13 — M5, the game shell, plus gun handling, gear visuals, teammate markers and the wider map
+- **Weapons**: `InputButtons.NextWeapon` / `PrevWeapon`; `NetworkLoadout.ActiveSlot`, `SwapTimer`, `Aiming`, `CycleWeapon`, `SetAiming`, `ReloadActive`; `CombatRules.AimedSpread`, `ZoomedFov`, `ZoomSensitivity`; handling fields on `EquipmentData`; `PlayerController.AimBlend` and view zoom; `Art/WeaponView` rewritten (draw, aim, reload, kick, stowed weapon); bots swap and aim.
+- **Gear and effects**: `Art/Prim.cs`, `Art/GearBuilder.cs` (stand-in weapons, trap, charge, grenade, drone, worn gear), `Art/Fx.cs` (particles, pulses, blasts, smoke, fire), `Art/AbilityEffects.cs` with `BasePlayerClass.GetAbilityVisual`, `Art/StatusEffects.cs`, status screen wash in `CombatHUD`, models on `ProximityTrap` and `Projectile`.
+- **Teammate markers**: `UI/TeammateMarkers.cs`.
+- **Map**: `Assets/Editor/OuroborosPropKit.cs` (prop kit, shared materials, `BuildFreeportExpansion`, menu **Build Out Freeport (M5)**).
+- **Shell**: `UI/GameMenu.cs` (main menu, pause, settings, read-only controls list, profile), `Core/GameSettings.cs`, `Core/ProfileRules.cs` (unit-tested), `Core/PlayerProfile.cs`, `GameSessionManager.showMainMenu` / `LeaveToMenu` / `SessionCode`, player names sent to the host and cleaned there.
+
+Awaiting in-engine validation: PHASE0_BRINGUP.md section 7i.
+
 ### Phase 5 — Meta
 - Lobby scene with class picker (`NetworkPlayer.RequestClass` is in place), session browser, late-join handling, host migration.
 - Progression/cosmetics via `ClassData`/`EquipmentData`.

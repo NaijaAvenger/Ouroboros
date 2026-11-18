@@ -16,7 +16,8 @@ namespace Ouroboros.Core
     /// <c>UnityEngine.InputSystem</c> directly.
     ///
     /// Default gamepad map: left stick move · right stick look · A jump · X interact · L3 sprint ·
-    /// D-pad abilities 1-4 · RT primary · LT secondary · LB utility · RB gadget · Start cursor · Select debug HUD.
+    /// D-pad abilities 1-4 · RT fire · LT aim · LB utility · RB gadget · Select swap weapon · Start menu.
+    /// Mouse: left fires, right aims, the wheel (or X) swaps weapon.
     /// </summary>
     public static class LocalInputSource
     {
@@ -113,6 +114,8 @@ namespace Ouroboros.Core
             if (action == null) return false;
             bool pressed = action.WasPressedThisFrame();
             if (pressed) NoteDevice(action);
+            // (v0.13) the wheel is not a real button: also read it directly, so a notch is never missed
+            if (!pressed && (button == InputButtons.NextWeapon || button == InputButtons.PrevWeapon)) pressed = WheelNotch(button);
             return pressed;
 #elif ENABLE_LEGACY_INPUT_MANAGER
             return LegacyPressed(button);
@@ -120,6 +123,19 @@ namespace Ouroboros.Core
             return false;
 #endif
         }
+
+#if ENABLE_INPUT_SYSTEM
+        /// <summary>(v0.13) True on a frame the mouse wheel moved in this button's direction.</summary>
+        private static bool WheelNotch(InputButtons button)
+        {
+            var mouse = Mouse.current;
+            if (mouse == null) return false;
+            float y = mouse.scroll.ReadValue().y;
+            bool notch = button == InputButtons.NextWeapon ? y > 0.01f : y < -0.01f;
+            if (notch) LastDeviceWasGamepad = false;
+            return notch;
+        }
+#endif
 
         /// <summary>Esc / Start: toggle cursor lock.</summary>
         public static bool CursorTogglePressed()
@@ -139,7 +155,8 @@ namespace Ouroboros.Core
 #if ENABLE_INPUT_SYSTEM
             return Actions.DebugHudToggle.WasPressedThisFrame();
 #elif ENABLE_LEGACY_INPUT_MANAGER
-            return Input.GetKeyDown(KeyCode.F1) || Input.GetKeyDown(KeyCode.JoystickButton6);
+            // [v0.12] return Input.GetKeyDown(KeyCode.F1) || Input.GetKeyDown(KeyCode.JoystickButton6);
+            return Input.GetKeyDown(KeyCode.F1); // (v0.13) Select now swaps weapons
 #else
             return false;
 #endif
@@ -214,6 +231,19 @@ namespace Ouroboros.Core
             return DefaultHint(button, LastDeviceWasGamepad);
         }
 
+        /// <summary>
+        /// (v0.13) Label for a button on a named device, for the controls list. Unlike <see cref="Hint"/> it does
+        /// not depend on which device was touched last.
+        /// </summary>
+        public static string BindingLabel(InputButtons button, bool gamepad)
+        {
+#if ENABLE_INPUT_SYSTEM
+            string s = Actions.DisplayString(button, gamepad);
+            if (!string.IsNullOrEmpty(s) && s != "?") return s;
+#endif
+            return DefaultHint(button, gamepad);
+        }
+
         public static string DefaultHint(InputButtons button, bool gamepad)
         {
             if (gamepad)
@@ -227,13 +257,15 @@ namespace Ouroboros.Core
                     case InputButtons.Ability2:  return "D-Right";
                     case InputButtons.Ability3:  return "D-Down";
                     case InputButtons.Ability4:  return "D-Left";
-                    case InputButtons.Primary:   return "RT";
+                    case InputButtons.Primary:   return "RT";   // fire
                     case InputButtons.Secondary: return "LT";
                     case InputButtons.Utility:   return "LB";
                     case InputButtons.Gadget:    return "RB";
                     case InputButtons.Reload:    return "Y";
                     case InputButtons.Slide:     return "B";
                     case InputButtons.Grapple:   return "R3";
+                    case InputButtons.NextWeapon: return "Select";
+                    case InputButtons.PrevWeapon: return "Select";
                 }
             }
             switch (button)
@@ -252,6 +284,8 @@ namespace Ouroboros.Core
                 case InputButtons.Reload:    return "R";
                 case InputButtons.Slide:     return "Ctrl";
                 case InputButtons.Grapple:   return "G";
+                case InputButtons.NextWeapon: return "Wheel";
+                case InputButtons.PrevWeapon: return "Wheel";
             }
             return "?";
         }
@@ -278,6 +312,8 @@ namespace Ouroboros.Core
                 case InputButtons.Reload:    return Input.GetKey(KeyCode.R)         || Input.GetKey(KeyCode.JoystickButton3);
                 case InputButtons.Slide:     return Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.JoystickButton1);
                 case InputButtons.Grapple:   return Input.GetKey(KeyCode.G)         || Input.GetKey(KeyCode.JoystickButton9);
+                case InputButtons.NextWeapon: return Input.GetAxis("Mouse ScrollWheel") > 0f || Input.GetKey(KeyCode.X) || Input.GetKey(KeyCode.JoystickButton6);
+                case InputButtons.PrevWeapon: return Input.GetAxis("Mouse ScrollWheel") < 0f;
             }
             return false;
         }
@@ -300,6 +336,8 @@ namespace Ouroboros.Core
                 case InputButtons.Reload:    return Input.GetKeyDown(KeyCode.R)         || Input.GetKeyDown(KeyCode.JoystickButton3);
                 case InputButtons.Slide:     return Input.GetKeyDown(KeyCode.LeftControl) || Input.GetKeyDown(KeyCode.JoystickButton1);
                 case InputButtons.Grapple:   return Input.GetKeyDown(KeyCode.G)         || Input.GetKeyDown(KeyCode.JoystickButton9);
+                case InputButtons.NextWeapon: return Input.GetAxis("Mouse ScrollWheel") > 0f || Input.GetKeyDown(KeyCode.X) || Input.GetKeyDown(KeyCode.JoystickButton6);
+                case InputButtons.PrevWeapon: return Input.GetAxis("Mouse ScrollWheel") < 0f;
             }
             return false;
         }

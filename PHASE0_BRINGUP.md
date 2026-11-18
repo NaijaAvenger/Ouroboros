@@ -136,6 +136,152 @@ Host + client (this is the part that cannot be checked offline):
 
 If something fails, note which line and what you saw; the three risky areas are the sync component swap, predicted weapon state, and the lag-compensated ray.
 
+## 7f. M2 validation: The Run (v0.10)
+Setup, once:
+- [ ] Menu **Ouroboros > Setup > Create Freeport Map (M2)**. It upgrades the prefabs (as 7e), migrates `DevGameModeConfig` (console: `migrated to the M2 rules`), builds `Assets/Ouroboros/Scenes/Freeport.unity`, bakes its NavMesh and makes it the first scene in Build Settings.
+- [ ] Open `Freeport`. Fly round it in the Scene view: a raised plaza in the middle with four ramps, a mezzanine to the north, a catwalk and raised server floor to the east, container stacks to the west, a dock in each corner. If two things overlap or a ramp does not meet its platform, note where.
+- [ ] The NavMesh overlay (Window > AI > Navigation) covers the ground, the ramps and the tops of the plaza, mezzanine, catwalk and server floor.
+
+Solo (host), press Play and then **Start match now**:
+- [ ] Console: `Filled empty seats with 11 bot(s): 4 crews of 3`. The scoreboard shows Lagos, Nairobi, Accra and Joburg, each `3/3 up`. You are on Lagos with two bots.
+- [ ] Your two bots follow you, shoot guards and rivals they see, and hold Interact with you at a vault.
+- [ ] The other crews' bots walk to vaults and crack them; their scoreboard `carried / quota` numbers rise. Watch one bot crew for a minute: do they get stuck anywhere?
+- [ ] Crack **Loading Bay** (south, no door). It spills gold spheres. Walking over one gives `+ <item name> ($value)` and its story line in the feed; the loot readout shows `1/4 items`. A fifth item is refused.
+- [ ] No exit works before the getaway: standing on one says `Locked until the getaway is called`.
+- [ ] Die while carrying: your items drop as separate spheres around the body. A bot or you can pick them up.
+- [ ] You respawn after 8 s while a crewmate is alive. Get the whole crew killed: `CREW WIPED - redeploying together`, 15 s. A second wipe: `CREW ELIMINATED`, no respawn.
+- [ ] When any crew is carrying $2500, or at 8:00: banner `... hit the quota`, the alarm goes to LOCKDOWN, the top bar reads `GETAWAY - <crew> holds the most`, and that crew's carriers show as Revealed.
+- [ ] Stand on the central plaza disc: `CENTRAL GETAWAY - stand here to bank everything`. Stand on an edge exit: `Side exit - banks 60%`. Extract at each in different runs and compare the score with what you carried.
+- [ ] Bot crews head for an exit during the getaway; crews with nothing to bank converge on the plaza.
+- [ ] The match ends when the 2:00 getaway timer runs out or every crew is away or out. Highest score is the crew that extracted the most value; kills alone score nothing.
+- [ ] Each lock works: red keycard (on the server floor, east) opens Gallery West; the code note (top of the double container stack, west) lets you open Gallery East; holding Interact at the Archive Strongroom starts a lockdown you must outlast; Customs needs an ID card from a dead rival.
+
+Host + client:
+- [ ] The client joins the same crew as the host (crews fill before they spread), replacing a bot if the match already started.
+- [ ] Bots move smoothly on the client's screen and take damage from the client's shots.
+- [ ] Item pickups, the carried count, drops on death and the getaway banner agree on both screens.
+
+Known limits of the bots (by design for now): no use of cover, they do not climb containers, and they leave vaults that need a Hacker's unlock to people.
+
+## 7g. M3 validation: hacking (v0.11)
+Setup: re-run **Ouroboros > Setup > Create Freeport Map (M2)**. On an existing Freeport scene it adds a `Devices` group (console: `Freeport devices ready: 3 shutter gates, 3 power junctions, 3 lifts, 3 sentry turrets`) and re-bakes the NavMesh. No prefab changes are needed for M3.
+
+Quick hacks (any class). Aim at a device within about 18 m and hold **F**:
+- [ ] A prompt appears under the crosshair before you press anything: `Hold [F] Blind camera`, `Close shutter`, `Cut the power`, `Start lift`, `Hijack turret`.
+- [ ] Holding F draws a line in your crew colour from you to the device and fills the bar. Look away, break line of sight, or get shot: the hack breaks and the bar resets.
+- [ ] **Camera**: its ground cone turns grey for 20 s.
+- [ ] **Shutter gate** (south, east and west of the atrium; aim at the blue control box): the barrier drops and guards path around it. Hack again to open. It reopens on its own after 25 s.
+- [ ] **Power junction** (green box in each district): the district light goes out, nearby camera cones go grey, nearby turrets stop, and the feed says who cut it. It cannot be cut again for 45 s (box turns orange).
+- [ ] **Lift pad** (grey disc below the mezzanine, the catwalk and a plaza corner): turns cyan for 25 s and throws anyone who steps on it up to the level above. On a client, check the launch is not followed by a snap back to the ground.
+- [ ] **Sentry turret** (three vault fronts): unhacked, it turns red, waits about a second, then fires at you. Hijacked, it shows your crew colour for 30 s and fires at rivals and guards. Shooting it to zero shuts it down for 30 s.
+- [ ] On a second screen, another player's tether line is visible.
+
+Deep hacks (vaults). Stand at an open vault and **press** F once:
+- [ ] The console opens: one gold sign, four cyan candidates numbered 1 to 4. Movement, weapons and abilities are locked. Press F again to jack out. The crosshair is hidden while the console is open.
+- [ ] Press the number of the matching sign: the bar jumps by about a fifth, a new puzzle appears. Five right answers crack a vault.
+- [ ] Press a wrong one: red flash, the bar drops a little, the alarm meter rises, and input is refused for a moment.
+- [ ] Do nothing: the bar creeps on its own, slowly (about three times the old crack time).
+- [ ] Jack out mid-crack and wait: the bar drains instead of resetting.
+- [ ] Rare vaults (Gallery, Archive, Customs) show candidates that differ from the target by two marks instead of three; they are harder to tell apart.
+- [ ] With two crews at one vault: a rival who jacks in sees `COUNTER-HACK - <crew> holds NN%`. Their right answers push the bar down; past zero the vault changes hands and the feed says so.
+- [ ] Bots crack vaults at a steady pace without anyone watching (they answer on a timer).
+
+The Cipher (pick the first class in the lobby; it is still `Hacker` in code):
+- [ ] Quick hacks reach noticeably further and take half as long; a second hack within 4 s of the first is faster still.
+- [ ] **1, Remote Hack**: aim at a device up to 40 m away and press 1. It is hacked at once, with no tether.
+- [ ] **2, Net Sight**: for 10 s, labels appear on devices through walls with their action and distance.
+- [ ] At a vault, the Cipher's signs are easier to tell apart and four right answers are enough.
+
+Host + client:
+- [ ] The client's answers register (the bar moves on both screens) and a fast double press does not count twice.
+- [ ] Tethers, shutter states, blackouts and turret ownership agree on both screens.
+
+## 7h. M3 follow-up and M4 validation: zero-g, jamming, pulse, identity (v0.12)
+Setup: re-run **Ouroboros > Setup > Create Freeport Map (M2)**. On an existing Freeport scene it adds a `Gravity Zones` group. The Gallery dressing and dock banners are only added to a scene built from scratch, so either use **Recreate Freeport Map** or, to keep hand edits, open the scene and run **Ouroboros > Setup > Apply Art Pass (M4)**, then save.
+
+Zero gravity (two zones: the air over the atrium, and the container yard):
+- [ ] Aim at a gravity control box and hold **F**: `Kill gravity` (and `Restore gravity` while it is off). The zone shows a faint volume and the feed says who switched it.
+- [ ] Walk in: you lift off. You fly where you look, **Space** thrusts up, **Slide** thrusts down, and you keep your speed until you thrust the other way.
+- [ ] Guards inside stay on the floor. Bots inside steer for their target and do not get stuck on the ceiling.
+- [ ] After 30 s, or when someone hacks the box again, everyone in the air falls. No fall is fatal and nobody ends up inside geometry.
+- [ ] Host + client: the client's flight is smooth, with no snap back when entering or leaving the zone.
+
+Jamming a rival (any class):
+- [ ] Aim at a rival player within hack range and hold **F**: `Jam gear`. It takes about 2 s and they see `BEING HACKED by <name> - break line of sight or shoot them`.
+- [ ] On completion their abilities are off for 4 s and their weapon will not fire for 2 s. The feed names both players.
+- [ ] The same player cannot be jammed again for 14 s. Breaking line of sight or shooting the hacker breaks the tether.
+
+Pulse puzzle (the second deep-hack type; vaults default to a mix of both):
+- [ ] Some puzzles are a moving marker and a highlighted window instead of signs. Press **Space** while the marker is in the window: the bar jumps. Outside it: `MISSED`, the bar drops and the alarm rises.
+- [ ] Harder vaults have a narrower window and a faster marker.
+- [ ] Host + client: a strike the client saw as a hit is a hit on the host (it is judged from the shared tick, not the client's clock).
+
+Identity:
+- [ ] The lobby shows the premise and four specialists called **Cipher, Spider, Smith, Shield**.
+- [ ] Each crew wears its own colours and pattern (Lagos rings, Nairobi check, Accra strips, Joburg steps). You can tell crews apart at range by silhouette and colour. Guards look like guards, and the three guard types differ.
+- [ ] Your HUD carries your crew's pattern band and colour.
+- [ ] Weapons show a model from the SciFi Gun Pack in first person and in other players' hands. **Check the model points forward.** If it points sideways, change `viewEuler` on the weapon's Equipment asset (default `0, -90, 0`).
+- [ ] Loot on the floor is a recognisable object per item (leopard, harp, sword, data core, and so on), glowing in its tier colour.
+- [ ] Music: a quiet held chord in the lobby, a kick and bass once the match is live, a log-drum line that comes in at alarm tier 1 and is full at tier 2, and an alarm layer in lockdown and during the getaway. Layers fade, they do not cut, and they stay in time with each other.
+- [ ] Crew radio lines appear above the ability bar at match start, when your crew opens a vault, when a crewmate goes down, at lockdown, at the getaway, and when you extract. Each has an English line under it.
+- [ ] The Gallery (north) has a stone floor, an entrance arch signed `THE GALLERY`, colonnades, six plinths with slowly turning show pieces and name plates, and warm lamps. Cutting the Gallery power turns the lamps off too.
+- [ ] Signs are hidden by walls. If they show through walls, the `Ouroboros/World Text` shader did not compile: send the console error.
+- [ ] Each crew dock has a banner in the crew's pattern with its city over it.
+- [ ] Impacts, explosions and extractions show Cartoon FX effects. If an effect is too big or too bright, swap it on `Assets/Ouroboros/FeedbackLibrary.asset`.
+
+## 7i. M5 validation: shell, gun handling, gear, markers, map (v0.13)
+Setup: run **Ouroboros > Setup > Recreate Freeport Map**. To keep a hand-edited Freeport scene instead, run **Create Freeport Map (M2)** (it refreshes the assets, including the weapons' handling values, and leaves an existing level alone), then with the scene open run **Apply Art Pass (M4)** and **Build Out Freeport (M5)**. Then press Play.
+
+Main menu and session:
+- [ ] Play shows the main menu over the map, with the cursor free. Nothing has spawned yet.
+- [ ] **Solo** starts an offline match: you spawn, bots fill the other seats, the class picker appears.
+- [ ] **Quick Play** hosts a public match when none exists; a second instance pressing Quick Play joins it.
+- [ ] **Host Private Match** starts a match. Esc shows a five-character party code. A second instance typing that code and pressing **Join Code** joins it. A wrong code shows a message and stays on the menu.
+- [ ] The name typed on the menu is the name other players see. Symbols are stripped and long names are cut at 16.
+- [ ] If starting fails, the menu says so and stays usable.
+
+Pause, settings, controls, profile:
+- [ ] **Esc** opens the pause menu, frees the cursor and stops your character. Esc again closes it and locks the cursor. The match keeps running behind it.
+- [ ] **Settings**: sensitivity and field of view change at once; music volume changes the score; the marker and radio toggles work; values survive a restart.
+- [ ] **Controls** lists every action with a key cap for keyboard and mouse and one for gamepad. The key caps cannot be clicked, focused or changed.
+- [ ] **Leave Match** returns to the main menu with a clean scene. Starting another match afterwards works. **Check this one carefully: it shuts the runner down and reloads the scene, and it is the least certain part of the shell.**
+- [ ] At match end the results screen shows `+NNN XP` and your level. **Profile** shows the totals, and they survive a restart.
+
+Gun handling:
+- [ ] You hold one weapon. **Left click** fires it. **Right click** does not fire anything; it raises the sights.
+- [ ] **Mouse wheel** (either way) or **X** swaps weapon. The new weapon rises from below and cannot fire for about half a second. The HUD shows the weapon in hand large and the other one small.
+- [ ] Aiming: the view zooms, the weapon moves to the centre, the crosshair bars fade to a dot, you walk slower and cannot sprint. Shots land tighter and the view kicks less.
+- [ ] The Marksman Rifle is wild from the hip and exact when aimed, with a strong zoom. Look speed drops with the zoom so aiming does not feel twitchy.
+- [ ] **R** reloads only the weapon in hand. Swapping during a reload cancels it. Aiming drops during a reload.
+- [ ] The Smith's launcher is its second weapon: swap to it, fire with left click, no aiming.
+- [ ] Host + client: swap, aim and fire feel immediate on the client, with no weapon snapping back after a swap.
+- [ ] Bots change weapon when the first runs dry and aim at range.
+
+Teammate markers:
+- [ ] Each crewmate has a diamond in your crew colour over their head, with name, health bar and distance, visible through walls.
+- [ ] Turn away: the marker slides to the screen edge on their side. A crewmate behind you is pinned to an edge too, never lost.
+- [ ] A crewmate who is down shows a red marker and `DOWN` where they fell.
+- [ ] Rivals have no marker. After a Data Mine, Recon Drone or Net Sight tags one, they show a bare magenta diamond until the reveal ends.
+
+Gear and effects. Nothing a player carries, places or triggers should be invisible:
+- [ ] Other players hold their weapon and carry the spare across the back. A weapon with no prefab shows a blocky stand-in, not an empty hand.
+- [ ] Light Armor shows chest and back plates, Stim Rig shows green injectors on the belt, Hollow Points shows an ammunition belt.
+- [ ] Every shot has a muzzle flash at the gun and a spark at the hit.
+- [ ] Cipher: Remote Hack fires a cyan bolt; Net Sight and Data Mine send rings across the floor; EMP Blast is a blue shell with sparks.
+- [ ] Spider: the trap is a disc with a blinking light in the owner's colour and explodes visibly; Stealth shimmers; Sabotage is a yellow shock; Smoke Bomb leaves a cloud for its full duration.
+- [ ] Smith: a placed charge is a taped block with a fast blinking light, and Detonate blows up each one; Breaching Charge blasts ahead; Incendiary throws a patch of fire and victims burn visibly. Grenades are canisters with a smoke trail.
+- [ ] Shield: Tactical Shield is a cyan bubble; Damage Boost is a red aura at the feet; Recon Drone is a small drone that climbs, sweeps scan rings and leaves; Flashbang is a white burst.
+- [ ] On yourself, statuses tint the screen: white when flashed, orange when burning, blue flicker when jammed, cyan when shielded.
+- [ ] A player carrying the case has it on their back. A revealed player has a magenta diamond over the head.
+
+Map:
+- [ ] Each district has its own floor colour and light colour, and a name on its outer wall. Side exits have a green `EXIT` board and a parked van with a green beacon.
+- [ ] The plaza has a gold ring inlay marking the central getaway and four banner masts.
+- [ ] South-east: the Bonded Store, a walled room with three doors, shelving and a roof over the back half. North-east: the Courtyard, with a fountain, trees, benches and two stalls. South-west: the Motor Pool, two vans under a canopy. North-west: the Harbour Office. A yellow crane stands over the container yard.
+- [ ] Walk every new area. Nothing is stuck inside anything else, every door is passable, and no route that existed before is blocked.
+- [ ] Guards path around the new props (the NavMesh was re-baked) and do not walk through shelving or vans.
+- [ ] Frame rate with the props and lights in. If it has dropped, the first thing to cut is the number of point lights.
+
 ## 7d. Expected flow and troubleshooting
 **Expected flow on Play (dev config):** spectator camera orbits the arena → session starts → your player spawns → the
 **class picker** appears with the cursor free (state *Waiting for players*) → host presses **Start match now** (or the

@@ -216,5 +216,49 @@ namespace Ouroboros.Tests
             Assert.That(CombatRules.GuardHitChance(5f, 0f, 12f, 0f, 3), Is.EqualTo(0.95f).Within(1e-5f));
             Assert.That(CombatRules.GuardHitChance(0f, 50f, 12f, 20f, 0), Is.EqualTo(0.05f).Within(1e-5f));
         }
+
+        // ------------------------------------------------------------------
+        // Aiming down sights (v0.13)
+
+        [Test]
+        public void AimedSpread_OnlyTightensWhileAiming()
+        {
+            Assert.That(CombatRules.AimedSpread(2f, false, 0.4f), Is.EqualTo(2f));
+            Assert.That(CombatRules.AimedSpread(2f, true, 0.4f), Is.EqualTo(0.8f).Within(1e-5f));
+        }
+
+        [Test]
+        public void AimedSpread_NeverWidensAndNeverGoesNegative()
+        {
+            Assert.That(CombatRules.AimedSpread(2f, true, 3f), Is.EqualTo(2f), "A multiplier above 1 must not make aiming worse.");
+            Assert.That(CombatRules.AimedSpread(2f, true, -1f), Is.EqualTo(0f));
+            Assert.That(CombatRules.AimedSpread(-2f, false, 0.4f), Is.EqualTo(0f));
+        }
+
+        [Test]
+        public void ZoomedFov_NoZoomLeavesTheViewAlone()
+        {
+            Assert.That(CombatRules.ZoomedFov(80f, 1f), Is.EqualTo(80f));
+            Assert.That(CombatRules.ZoomedFov(80f, 0.5f), Is.EqualTo(80f), "Zoom below 1 is treated as none.");
+        }
+
+        [Test]
+        public void ZoomedFov_MagnifiesByTheZoomFactor()
+        {
+            // Twice the zoom means the half angle's tangent halves: things look twice as large.
+            float fov = CombatRules.ZoomedFov(90f, 2f);
+            double tan = Math.Tan(fov * 0.5 * Math.PI / 180.0);
+            Assert.That(tan, Is.EqualTo(0.5).Within(1e-4));
+            Assert.That(CombatRules.ZoomedFov(80f, 3f), Is.LessThan(CombatRules.ZoomedFov(80f, 1.3f)));
+        }
+
+        [Test]
+        public void ZoomSensitivity_MatchesTheMagnification()
+        {
+            Assert.That(CombatRules.ZoomSensitivity(80f, 80f), Is.EqualTo(1f).Within(1e-5f));
+            float zoomed = CombatRules.ZoomedFov(80f, 2f);
+            Assert.That(CombatRules.ZoomSensitivity(80f, zoomed), Is.EqualTo(0.5f).Within(1e-3f), "At 2x zoom the view should turn half as fast.");
+            Assert.That(CombatRules.ZoomSensitivity(80f, 100f), Is.EqualTo(1f), "A wider view never speeds the look up.");
+        }
     }
 }

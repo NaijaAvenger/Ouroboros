@@ -75,6 +75,10 @@ namespace Ouroboros.Core
             Button(InputButtons.Reload,    "Reload",    "<Keyboard>/r",         "<Gamepad>/buttonNorth");
             Button(InputButtons.Slide,     "Slide",     "<Keyboard>/leftCtrl",  "<Gamepad>/buttonEast");
             Button(InputButtons.Grapple,   "Grapple",   "<Keyboard>/g",         "<Gamepad>/rightStickPress");
+            // (v0.13) weapon swap: wheel either way (there are two weapons), X for mice without a wheel, Select on a pad
+            Button(InputButtons.NextWeapon, "NextWeapon", "<Mouse>/scroll/up",   "<Gamepad>/select");
+            Button(InputButtons.PrevWeapon, "PrevWeapon", "<Mouse>/scroll/down", null);
+            Get(InputButtons.NextWeapon).AddBinding("<Keyboard>/x", groups: KeyboardGroup);
 
             CursorToggle = Map.AddAction("CursorToggle", InputActionType.Button);
             CursorToggle.AddBinding("<Keyboard>/escape", groups: KeyboardGroup);
@@ -82,7 +86,7 @@ namespace Ouroboros.Core
 
             DebugHudToggle = Map.AddAction("DebugHudToggle", InputActionType.Button);
             DebugHudToggle.AddBinding("<Keyboard>/f1", groups: KeyboardGroup);
-            DebugHudToggle.AddBinding("<Gamepad>/select", groups: GamepadGroup);
+            // [v0.12] DebugHudToggle.AddBinding("<Gamepad>/select", groups: GamepadGroup);   // Select now swaps weapons
 
             LoadBindings();
             Map.Enable();
@@ -92,7 +96,8 @@ namespace Ouroboros.Core
         {
             var action = Map.AddAction(name, InputActionType.Button);
             action.AddBinding(keyboardPath, groups: KeyboardGroup);
-            action.AddBinding(gamepadPath, groups: GamepadGroup);
+            // [v0.12] action.AddBinding(gamepadPath, groups: GamepadGroup);
+            if (!string.IsNullOrEmpty(gamepadPath)) action.AddBinding(gamepadPath, groups: GamepadGroup); // (v0.13) optional
             buttons[(int)id] = action;
         }
 

@@ -29,6 +29,8 @@ namespace Ouroboros.Network
         [SerializeField] private Fusion.GameMode startMode = Fusion.GameMode.AutoHostOrClient;
         [SerializeField] private string sessionName = "ouroboros-dev";
         [SerializeField] private bool autoStartOnPlay = true;
+        [Tooltip("(v0.13) Show the main menu instead of starting a session on Play. Untick for the old press-Play-and-host flow.")]
+        [SerializeField] private bool showMainMenu = true;
         [SerializeField] private NetworkRunner runnerPrefab;
 
         [Header("Player Prefab")]
@@ -48,6 +50,10 @@ namespace Ouroboros.Network
         [Header("Class Data (optional)")]
         [Tooltip("Designer stats / ability numbers / class prefabs. Published to every peer as ClassRegistry.Active.")]
         [SerializeField] private Data.ClassRegistry classRegistry;
+
+        [Header("Loot (optional)")]
+        [Tooltip("(v0.10) Named loot items. Leave empty to use the built-in catalog, which is identical on every peer.")]
+        [SerializeField] private Data.LootCatalog lootCatalog;
 
         [Header("Defaults")]
         [SerializeField] private Core.PlayerClassType defaultClass = Core.PlayerClassType.Agent;
@@ -94,6 +100,10 @@ namespace Ouroboros.Network
         public NetworkRunner Runner => runner;
         public static Data.FeedbackLibrary FeedbackLibrary { get; private set; }
         public bool IsSessionRunning => runner != null && runner.IsRunning;
+        /// <summary>(v0.13) True when the main menu, not auto-start, decides when a session begins.</summary>
+        public bool ShowMainMenu => showMainMenu;
+        /// <summary>(v0.13) Name of the running session. For a private match this is the party code.</summary>
+        public string SessionCode { get; private set; }
         public IReadOnlyDictionary<PlayerRef, NetworkObject> SpawnedPlayers => spawnedPlayers;
 
         private void Awake()
@@ -116,6 +126,8 @@ namespace Ouroboros.Network
             FeedbackLibrary = feedbackLibrary;
             if (equipmentRegistry != null) Data.EquipmentRegistry.Active = equipmentRegistry;
 
+            if (lootCatalog != null) Data.LootCatalog.Active = lootCatalog; // (v0.10)
+
             Equipment.NetworkLoadout.WeaponFired += OnWeaponFired; // (v0.9) recoil
         }
 
@@ -137,6 +149,13 @@ namespace Ouroboros.Network
 
             Core.CombatRules.RecoilKick(recoilBurstShots, data.recoilPitch, data.recoilYaw, loadout.FireCount * 7919 + slot, out float up, out float yaw);
             recoilBurstShots++;
+            // (v0.13) a shouldered weapon kicks less
+            if (loadout.Aiming && slot == loadout.ActiveSlot)
+            {
+                float steady = Mathf.Clamp01(data.adsRecoilMultiplier);
+                up *= steady;
+                yaw *= steady;
+            }
             recoilPitch -= up;
             recoilYaw += yaw;
             recoilRecovery = Mathf.Max(1f, data.recoilRecoveryPerSecond);
@@ -144,7 +163,8 @@ namespace Ouroboros.Network
 
         private async void Start()
         {
-            if (autoStartOnPlay)
+            // [v0.12] if (autoStartOnPlay)
+            if (autoStartOnPlay && !showMainMenu) // (v0.13) with the menu on, the player picks how to start
             {
                 await StartSession(startMode, sessionName);
             }
@@ -165,6 +185,7 @@ namespace Ouroboros.Network
         {
             if (Cursor.lockState == CursorLockMode.Locked) return;
             if (UI.ClassPickerUI.IsShown || UI.KeypadUI.IsShown) return;
+            if (UI.GameMenu.IsOpen) return; // (v0.13) the menu owns the cursor while it is up
             if (!runner.TryGetPlayerObject(runner.LocalPlayer, out NetworkObject local) || local == null) return;
             if (Core.LocalInputSource.Pressed(Core.InputButtons.Primary))
             {
@@ -229,7 +250,36 @@ namespace Ouroboros.Network
             }
 
             Debug.Log($"[GameSessionManager] Session '{session}' started as {mode}");
+            SessionCode = session; // (v0.13)
             return true;
+        }
+
+        /// <summary>
+        /// (v0.13) Leaves the session and reloads the scene, which brings the main menu back. Reloading is the
+        /// simple way to get every scene object back to how it was before the session touched it.
+        /// </summary>
+        public async void LeaveToMenu()
+        {
+            int buildIndex = SceneManager.GetActiveScene().buildIndex;
+            var leaving = runner;
+            try
+            {
+                if (leaving != null) await leaving.Shutdown();
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+
+            // If Fusion moved this object out of the scene to keep the runner alive, the reload would not replace it.
+            if (this != null && gameObject.scene.name == "DontDestroyOnLoad")
+            {
+                if (Instance == this) Instance = null;
+                Destroy(gameObject);
+            }
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+            if (buildIndex >= 0) SceneManager.LoadScene(buildIndex);
         }
 
         public async void ShutdownSession()
@@ -263,6 +313,12 @@ namespace Ouroboros.Network
             if (teamManager != null && teamManager.Object != null && teamManager.Object.HasStateAuthority)
             {
                 team = teamManager.AssignPlayerToTeam(player);
+                // (v0.10) every seat taken, some by bots: a person joining late takes a bot's place
+                if (team == Core.TeamID.None)
+                {
+                    Core.TeamID freed = RemoveOneBot(r);
+                    if (freed != Core.TeamID.None) team = teamManager.AssignPlayerToTeam(player, freed);
+                }
             }
 
             Core.PlayerClassType classType = defaultClass;
@@ -322,6 +378,115 @@ namespace Ouroboros.Network
             }
         }
 
+        // ------------------------------------------------------------------
+        // Bots (v0.10)
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// Bots are identified by PlayerRefs far above anything Fusion hands to a real connection, so everything
+        /// keyed by <c>NetworkPlayer.PlayerRef</c> (teams, kill credit, the carried case) works for them unchanged.
+        /// They have no input authority.
+        /// </summary>
+        private const int BotRefBase = 200;
+        private static readonly string[] BotNames =
+        {
+            "Ada", "Kofi", "Zuri", "Tunde", "Amara", "Sipho", "Wanjiru", "Chidi", "Efua", "Thabo", "Nia", "Jabari", "Folake", "Kwame", "Imani", "Sizwe"
+        };
+        private readonly List<PlayerRef> botRefs = new List<PlayerRef>();
+        private int botSerial;
+
+        public int BotCount => botRefs.Count;
+
+        /// <summary>
+        /// Fills every empty crew seat with a bot. Called by the game mode when the match starts. Host / Server
+        /// mode only: in Shared mode there is no single peer that could simulate them.
+        /// </summary>
+        public void FillWithBots()
+        {
+            if (runner == null || !runner.IsRunning || !runner.IsServer) return;
+            var gm = GameMode.ExtractionHeistGameMode.Instance;
+            var tm = TeamManager.Instance;
+            if (gm == null || tm == null || tm.Object == null || !tm.Object.HasStateAuthority) return;
+
+            var cfg = gm.Config;
+            int added = 0;
+            for (int t = 0; t < cfg.CrewCount; t++)
+            {
+                Core.TeamID team = Core.TeamUtil.FromIndex(t);
+                for (int guard = 0; guard < Core.GameConstants.PLAYERS_PER_TEAM && tm.GetTeamPlayerCount(team) < cfg.CrewSize; guard++)
+                {
+                    if (!SpawnBot(runner, team, cfg.botSkill)) break;
+                    added++;
+                }
+            }
+            if (added > 0) Debug.Log($"[GameSessionManager] Filled empty seats with {added} bot(s): {cfg.CrewCount} crews of {cfg.CrewSize}");
+        }
+
+        private bool SpawnBot(NetworkRunner r, Core.TeamID team, float skill)
+        {
+            if (!playerPrefab.IsValid && playerPrefabObject == null) return false;
+            var tm = TeamManager.Instance;
+
+            PlayerRef botRef = PlayerRef.FromIndex(BotRefBase + botSerial);
+            if (tm.AssignPlayerToTeam(botRef, team) != team) { tm.RemovePlayerFromTeam(botRef); return false; }
+
+            int classCount = Enum.GetValues(typeof(Core.PlayerClassType)).Length - 1; // skip None
+            Core.PlayerClassType classType = (Core.PlayerClassType)(1 + (classRotation++ % classCount));
+            string botName = BotNames[botSerial % BotNames.Length];
+            botSerial++;
+
+            var point = spawnPoints.Pick(team);
+            Vector3 pos = point != null ? point.GetSpawnPosition() : Vector3.zero;
+            Quaternion rot = point != null ? point.GetSpawnRotation() : Quaternion.identity;
+
+            void InitBot(NetworkRunner runner, NetworkObject o)
+            {
+                var np = o.GetComponent<NetworkPlayer>();
+                if (np == null) return;
+                np.PlayerRef = botRef;
+                np.AssignedTeam = team;
+                np.ClassType = classType;
+                np.DisplayName = botName;
+                np.IsBot = true;
+            }
+
+            // No input authority: the state authority simulates the bot from AI.BotBrain's input.
+            NetworkObject obj = playerPrefab.IsValid
+                ? r.Spawn(playerPrefab, pos, rot, null, InitBot)
+                : r.Spawn(playerPrefabObject, pos, rot, null, InitBot);
+            if (obj == null) { tm.RemovePlayerFromTeam(botRef); return false; }
+
+            var brain = obj.gameObject.AddComponent<AI.BotBrain>();
+            brain.skill = skill;
+            var controller = obj.GetComponent<Player.PlayerController>();
+            if (controller != null) controller.SetBot(brain);
+
+            spawnedPlayers[botRef] = obj;
+            botRefs.Add(botRef);
+            Debug.Log($"[GameSessionManager] Spawned bot '{botName}' on {Core.TeamUtil.DisplayName(team)} as {classType}");
+            return true;
+        }
+
+        /// <summary>Removes one bot to make room for a person. Returns the crew whose seat was freed, or None.</summary>
+        private Core.TeamID RemoveOneBot(NetworkRunner r)
+        {
+            for (int i = 0; i < botRefs.Count; i++)
+            {
+                PlayerRef botRef = botRefs[i];
+                if (!spawnedPlayers.TryGetValue(botRef, out NetworkObject obj) || obj == null) continue;
+                var np = obj.GetComponent<NetworkPlayer>();
+                Core.TeamID team = np != null ? np.Team : Core.TeamID.None;
+
+                r.Despawn(obj);
+                spawnedPlayers.Remove(botRef);
+                botRefs.RemoveAt(i);
+                var tm = TeamManager.Instance;
+                if (tm != null && tm.Object != null && tm.Object.HasStateAuthority) tm.RemovePlayerFromTeam(botRef);
+                return team;
+            }
+            return Core.TeamID.None;
+        }
+
         /// <summary>Respawns a dead player at one of their team's spawn points. State authority only.</summary>
         public void RespawnPlayer(NetworkPlayer player)
         {
@@ -350,9 +515,15 @@ namespace Ouroboros.Network
         {
             if (Cursor.lockState == CursorLockMode.Locked || Core.LocalInputSource.LastDeviceWasGamepad)
             {
-                Vector2 look = Core.LocalInputSource.LookDelta(mouseSensitivity, gamepadLookSpeed, Time.unscaledDeltaTime);
+                // [v0.12] Vector2 look = Core.LocalInputSource.LookDelta(mouseSensitivity, gamepadLookSpeed, Time.unscaledDeltaTime);
+                // [v0.12] accumulatedYaw += look.x;
+                // [v0.12] accumulatedPitch -= look.y;
+                // (v0.13) the player's sensitivity setting, scaled down with the zoom while aiming
+                var localController = Player.PlayerController.Local;
+                float lookScale = Core.GameSettings.Sensitivity * (localController != null ? localController.LookSensitivityScale : 1f);
+                Vector2 look = Core.LocalInputSource.LookDelta(mouseSensitivity * lookScale, gamepadLookSpeed * lookScale, Time.unscaledDeltaTime);
                 accumulatedYaw += look.x;
-                accumulatedPitch -= look.y;
+                accumulatedPitch -= Core.GameSettings.InvertY ? -look.y : look.y;
                 accumulatedPitch = Mathf.Clamp(accumulatedPitch, -pitchLimit, pitchLimit);
             }
 
@@ -366,7 +537,9 @@ namespace Ouroboros.Network
                 if (Core.LocalInputSource.Pressed((Core.InputButtons)b)) pressedSinceLastTick |= 1 << b;
             }
 
-            if (!UI.KeypadUI.IsShown && Core.LocalInputSource.CursorTogglePressed())
+            // [v0.12] if (!UI.KeypadUI.IsShown && Core.LocalInputSource.CursorTogglePressed())
+            // (v0.13) Esc opens the pause menu when there is one; this is the fallback for scenes without it
+            if (!UI.GameMenu.Exists && !UI.KeypadUI.IsShown && Core.LocalInputSource.CursorTogglePressed())
             {
                 Cursor.lockState = Cursor.lockState == CursorLockMode.Locked ? CursorLockMode.None : CursorLockMode.Locked;
                 Cursor.visible = Cursor.lockState != CursorLockMode.Locked;
@@ -406,7 +579,16 @@ namespace Ouroboros.Network
                 for (int b = (int)Core.InputButtons.Ability1; b <= (int)Core.InputButtons.Ability4; b++) data.Buttons.Set(b, false);
                 data.Buttons.Set((int)Core.InputButtons.Primary, false);
                 data.Buttons.Set((int)Core.InputButtons.Secondary, false);
+                data.Buttons.Set((int)Core.InputButtons.NextWeapon, false); // (v0.13)
+                data.Buttons.Set((int)Core.InputButtons.PrevWeapon, false);
                 data.Buttons.Set((int)Core.InputButtons.Interact, false);
+                data.Move = Vector2.zero;
+            }
+
+            // (v0.13) with the menu up the character stands still and does nothing
+            if (UI.GameMenu.IsOpen)
+            {
+                data.Buttons = default;
                 data.Move = Vector2.zero;
             }
 
@@ -467,6 +649,7 @@ namespace Ouroboros.Network
         {
             Debug.Log($"[GameSessionManager] Runner shutdown: {shutdownReason}");
             spawnedPlayers.Clear();
+            botRefs.Clear(); // (v0.10)
             runner = null;
         }
 

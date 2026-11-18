@@ -17,7 +17,8 @@ namespace Ouroboros.Core
         public const int MAX_EQUIPMENT_SLOTS = 6;
         public const int MAX_TECH_SLOTS = 3;
         /// <summary>Number of entries in <see cref="InputButtons"/> (keep in sync).</summary>
-        public const int INPUT_BUTTON_COUNT = 14;
+        // [v0.12] public const int INPUT_BUTTON_COUNT = 14;
+        public const int INPUT_BUTTON_COUNT = 16; // (v0.13) + NextWeapon, PrevWeapon
 
         // ---- v0.2 additions ----
 
@@ -50,6 +51,25 @@ namespace Ouroboros.Core
     }
 
     /// <summary>
+    /// (v0.12, M4) Specialist names shown to players. The enum keeps its original names because class
+    /// assets, equipment restrictions and saved scenes serialise them.
+    /// </summary>
+    public static class ClassUtil
+    {
+        public static string DisplayName(PlayerClassType type)
+        {
+            switch (type)
+            {
+                case PlayerClassType.Hacker:      return "Cipher";
+                case PlayerClassType.Saboteur:    return "Spider";
+                case PlayerClassType.Demolitions: return "Smith";
+                case PlayerClassType.Agent:       return "Shield";
+                default:                          return "Unassigned";
+            }
+        }
+    }
+
+    /// <summary>
     /// Helpers for converting between <see cref="TeamID"/> and zero-based array indices.
     /// </summary>
     public static class TeamUtil
@@ -57,6 +77,22 @@ namespace Ouroboros.Core
         public static int ToIndex(TeamID team) => (int)team - 1;
         public static TeamID FromIndex(int index) => (TeamID)(index + 1);
         public static bool IsValid(TeamID team) => team != TeamID.None && (int)team <= GameConstants.MAX_TEAMS;
+
+        /// <summary>
+        /// (v0.10) Crew name shown to players. Crews are city crews, not Alpha to Delta; the enum names stay
+        /// as they are because scenes and assets serialise them.
+        /// </summary>
+        public static string DisplayName(TeamID team)
+        {
+            switch (team)
+            {
+                case TeamID.TeamAlpha:   return "Lagos";
+                case TeamID.TeamBravo:   return "Nairobi";
+                case TeamID.TeamCharlie: return "Accra";
+                case TeamID.TeamDelta:   return "Joburg";
+                default: return "-";
+            }
+        }
     }
 
     /// <summary>
@@ -96,7 +132,9 @@ namespace Ouroboros.Core
         Sliding      = 1 << 11,
         Gliding      = 1 << 12,
         Climbing     = 1 << 13,
-        Grappling    = 1 << 14
+        Grappling    = 1 << 14,
+        /// <summary>(v0.11) Sees hackable devices through walls. Uses the last status timer slot: adding another flag means raising STATUS_TIMER_SLOTS.</summary>
+        NetSight     = 1 << 15
     }
 
     /// <summary>
@@ -139,7 +177,9 @@ namespace Ouroboros.Core
         Ability2 = 4,
         Ability3 = 5,
         Ability4 = 6,
+        /// <summary>(v0.13) Fire the weapon in hand. Before v0.13 this fired the Primary slot.</summary>
         Primary = 7,
+        /// <summary>(v0.13) Aim down sights. Before v0.13 this fired the Secondary slot.</summary>
         Secondary = 8,
         Utility = 9,
         Gadget = 10,
@@ -147,6 +187,11 @@ namespace Ouroboros.Core
         /// <summary>Sprint + Slide = power slide (v0.7).</summary>
         Slide = 12,
         /// <summary>Grappling hook for classes that have it (v0.7).</summary>
-        Grapple = 13
+        // [v0.12] Grapple = 13
+        Grapple = 13,
+        /// <summary>(v0.13) Swap to the other weapon. Mouse wheel up.</summary>
+        NextWeapon = 14,
+        /// <summary>(v0.13) Swap to the other weapon. Mouse wheel down.</summary>
+        PrevWeapon = 15
     }
 }

@@ -87,6 +87,31 @@ namespace Ouroboros.Data
         [Tooltip("Set by the scene builder once it has applied a per-weapon feel profile. 0 = defaults above.")]
         public int feelVersion = 0;
 
+        [Header("Handling (v0.13): aiming down sights and swapping")]
+        [Tooltip("Magnification while aiming. 1 = no zoom, 1.25 = rifle sights, 2.5 or more = scope.")]
+        public float adsZoom = 1.25f;
+        [Tooltip("Spread while aiming, as a fraction of hip spread.")]
+        [Range(0f, 1f)] public float adsSpreadMultiplier = 0.4f;
+        [Tooltip("Movement speed while aiming, as a fraction of walking speed.")]
+        [Range(0.2f, 1f)] public float adsMoveMultiplier = 0.65f;
+        [Tooltip("View kick while aiming, as a fraction of the hip kick.")]
+        [Range(0f, 1f)] public float adsRecoilMultiplier = 0.75f;
+        [Tooltip("Seconds to bring the sights up or down (view only).")]
+        public float adsSeconds = 0.18f;
+        [Tooltip("Seconds after swapping to this weapon before it can fire.")]
+        public float swapSeconds = 0.4f;
+        [Tooltip("Position in front of the camera while aiming: centred, with the sights near the middle of the screen.")]
+        public Vector3 adsPosition = new Vector3(0f, -0.135f, 0.36f);
+
+        [Header("Model placement (v0.12): how equipmentPrefab sits when shown by Art.WeaponView")]
+        [Tooltip("Position in front of the camera for the local player's first-person view.")]
+        public Vector3 viewPosition = new Vector3(0.2f, -0.2f, 0.45f);
+        [Tooltip("Position relative to the hand joint on other players' characters.")]
+        public Vector3 handPosition = new Vector3(0f, 0.02f, 0.12f);
+        [Tooltip("Rotation applied to the model. The imported gun pack's barrels point along +X, so the default turns them to face forward.")]
+        public Vector3 viewEuler = new Vector3(0f, -90f, 0f);
+        public float viewScale = 1f;
+
         [Header("Projectile (v0.4, kind = ProjectileWeapon)")]
         public Fusion.NetworkObject projectilePrefab;
         public float projectileSpeed = 25f;
