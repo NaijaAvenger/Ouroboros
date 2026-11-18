@@ -43,6 +43,17 @@ namespace Ouroboros.Combat
                 }
             }
 
+            // (v0.14) Breakable objects: blasts are how armoured ones come open.
+            for (int i = Interaction.Breakable.All.Count - 1; i >= 0; i--)
+            {
+                var target = Interaction.Breakable.All[i];
+                if (target == null || !target.IsAlive) continue;
+                if (TryHit(target, target.Position, origin, radius, radiusSq, damage, attacker, falloff, requireLineOfSight, occluders))
+                {
+                    hit++;
+                }
+            }
+
             return hit;
         }
 
@@ -70,7 +81,11 @@ namespace Ouroboros.Combat
             }
 
             // [v0.8] target.ApplyDamage(scaled, attacker);
-            target.ApplyDamage(scaled, attacker, origin); // (v0.9) the blast centre, so the victim's HUD points at it
+            // [v0.13] target.ApplyDamage(scaled, attacker, origin); // (v0.9) the blast centre, so the victim's HUD points at it
+            using (DamageContext.Begin(means: "Explosion", point: targetPos + Vector3.up * 1.2f)) // (v0.14) an outer scope's name wins
+            {
+                target.ApplyDamage(scaled, attacker, origin);
+            }
             return true;
         }
 

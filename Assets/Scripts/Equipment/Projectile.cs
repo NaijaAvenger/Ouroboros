@@ -126,11 +126,17 @@ namespace Ouroboros.Equipment
         {
             if (explosionRadius > 0f)
             {
-                Combat.DamageUtil.ApplyRadialDamage(point, explosionRadius, damage, shooter, shooter != null ? shooter.Team : Core.TeamID.None, falloff: true);
+                using (Combat.DamageContext.Begin(means: "Grenade")) // (v0.14)
+                {
+                    Combat.DamageUtil.ApplyRadialDamage(point, explosionRadius, damage, shooter, shooter != null ? shooter.Team : Core.TeamID.None, falloff: true);
+                }
             }
             else if (directTarget != null && directTarget.IsAlive)
             {
-                directTarget.ApplyDamage(damage, shooter);
+                using (Combat.DamageContext.Begin(means: "Launcher", point: point)) // (v0.14)
+                {
+                    directTarget.ApplyDamage(damage, shooter);
+                }
             }
 
             RPC_Exploded(point, explosionRadius);

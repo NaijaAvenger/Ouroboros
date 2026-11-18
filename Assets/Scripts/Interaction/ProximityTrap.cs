@@ -131,7 +131,10 @@ namespace Ouroboros.Interaction
         private void Detonate()
         {
             var owner = ownerClass != null ? Network.NetworkPlayer.Resolve(ownerClass.Context) : null;
-            Combat.DamageUtil.ApplyRadialDamage(transform.position, blastRadius, damage, owner, OwnerTeam, falloff: true);
+            using (Combat.DamageContext.Begin(source: "Trap", means: "Trap")) // (v0.14)
+            {
+                Combat.DamageUtil.ApplyRadialDamage(transform.position, blastRadius, damage, owner, OwnerTeam, falloff: true);
+            }
             RPC_Detonated();
             Consume();
         }

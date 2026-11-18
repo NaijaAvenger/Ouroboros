@@ -42,6 +42,10 @@ namespace Ouroboros.Equipment
         /// <summary>Aiming down sights: tighter spread, slower walk, no sprint. Zoom is the owner's view only.</summary>
         [Networked] public NetworkBool Aiming { get; set; }
 
+        // ---- v0.14: gadgets ----
+        /// <summary>Runs while a Loot Scanner sweep is showing loot on the owner's HUD.</summary>
+        [Networked] public TickTimer ScanTimer { get; set; }
+
         private Network.NetworkPlayer owner;
         private ChangeDetector changeDetector;
         private int shownActiveSlot;
@@ -388,6 +392,61 @@ namespace Ouroboros.Equipment
                 float remaining = UseTimers[i].RemainingTime(Runner) ?? 0f;
                 if (seconds > remaining) UseTimers.Set(i, TickTimer.CreateFromSeconds(Runner, seconds));
             }
+        }
+
+        // ------------------------------------------------------------------
+        // Gadgets (v0.14)
+
+        /// <summary>Fired on every peer when a gadget goes off (loadout, type, world point, reach). Cosmetic.</summary>
+        public static event Action<NetworkLoadout, Data.GadgetType, Vector3, float> GadgetUsed;
+
+        public bool IsScanning => Object != null && ScanTimer.IsRunning && !ScanTimer.Expired(Runner);
+
+        public void StartScan(float seconds)
+        {
+            if (!Object.HasStateAuthority || seconds <= 0f) return;
+            ScanTimer = TickTimer.CreateFromSeconds(Runner, seconds);
+        }
+
+        /// <summary>True when any slot holds a gadget of this type.</summary>
+        public bool HasGadget(Data.GadgetType type)
+        {
+            if (Object == null) return false;
+            for (int i = 0; i < SLOTS; i++)
+            {
+                var data = GetData(i);
+                if (data != null && data.kind == Data.EquipmentKind.Gadget && data.gadget == type) return true;
+            }
+            return false;
+        }
+
+        /// <summary>The gadget in the Gadget slot, or null.</summary>
+        public Data.EquipmentData GadgetData
+        {
+            get
+            {
+                var data = GetData((int)EquipmentSlotType.Gadget);
+                return data != null && data.kind == Data.EquipmentKind.Gadget ? data : null;
+            }
+        }
+
+        /// <summary>Seconds until the item in <paramref name="slot"/> can be used again. 0 when ready.</summary>
+        public float CooldownRemaining(int slot)
+        {
+            if (Object == null || slot < 0 || slot >= SLOTS) return 0f;
+            return UseTimers[slot].IsRunning ? Mathf.Max(0f, UseTimers[slot].RemainingTime(Runner) ?? 0f) : 0f;
+        }
+
+        public void NotifyGadget(Data.GadgetType type, Vector3 point, float reach)
+        {
+            if (!Object.HasStateAuthority) return;
+            RPC_GadgetUsed((byte)type, point, reach);
+        }
+
+        [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+        private void RPC_GadgetUsed(byte type, Vector3 point, float reach)
+        {
+            GadgetUsed?.Invoke(this, (Data.GadgetType)type, point, reach);
         }
 
         /// <summary>Spends one round. Auto-starts a reload when the magazine is empty. Returns false if nothing was spent.</summary>

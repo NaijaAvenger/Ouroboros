@@ -11,7 +11,21 @@ namespace Ouroboros.Data
         HitscanWeapon,
         ProjectileWeapon,
         PassiveGear,
-        Deployable
+        // [v0.13] Deployable
+        Deployable,
+        /// <summary>(v0.14) A tool in the Gadget slot. See <see cref="GadgetType"/> and <c>Equipment.GadgetTool</c>.</summary>
+        Gadget
+    }
+
+    /// <summary>(v0.14) What a gadget does. Values are stored in assets: add new ones at the end.</summary>
+    public enum GadgetType
+    {
+        None = 0,
+        BreachingKit = 1,
+        EmpEmitter = 2,
+        BypassKey = 3,
+        LootScanner = 4,
+        GrappleLine = 5
     }
 
     /// <summary>
@@ -38,6 +52,8 @@ namespace Ouroboros.Data
         public EquipmentRarity rarity;
         [Tooltip("(v0.4) Which behaviour class drives this item.")]
         public EquipmentKind kind = EquipmentKind.HitscanWeapon;
+        [Tooltip("(v0.14) For kind = Gadget: what it does. Its reach is 'range' and how long its effect lasts is 'effectDuration'.")]
+        public GadgetType gadget = GadgetType.None;
 
         [Header("Equipment Stats")]
         [Tooltip("Seconds between uses (for weapons: 1 / fire rate).")]

@@ -21,8 +21,14 @@ namespace Ouroboros.UI
         private VisualElement panel;
         private Label title, subtitle;
         private Button startButton;
-        private readonly Label[] loadoutLabels = new Label[2];
-        private static readonly Equipment.EquipmentSlotType[] loadoutSlots = { Equipment.EquipmentSlotType.Primary, Equipment.EquipmentSlotType.Secondary };
+        // [v0.13] private readonly Label[] loadoutLabels = new Label[2];
+        private readonly Label[] loadoutLabels = new Label[3]; // (v0.14) + gadget
+        // [v0.13] private static readonly Equipment.EquipmentSlotType[] loadoutSlots = { Equipment.EquipmentSlotType.Primary, Equipment.EquipmentSlotType.Secondary };
+        // (v0.14) the gadget is part of the plan: it decides which of the building's obstacles this player can open
+        private static readonly Equipment.EquipmentSlotType[] loadoutSlots =
+        {
+            Equipment.EquipmentSlotType.Primary, Equipment.EquipmentSlotType.Secondary, Equipment.EquipmentSlotType.Gadget
+        };
         private readonly Button[] cards = new Button[4];
         private readonly Core.PlayerClassType[] cardTypes =
         {
@@ -131,7 +137,7 @@ namespace Ouroboros.UI
                 var rowEl = new VisualElement();
                 rowEl.style.flexDirection = FlexDirection.Row; rowEl.style.alignItems = Align.Center; rowEl.style.marginTop = 4;
                 var prev = new Button(() => CycleLoadout(slot, -1)) { text = "<" };
-                var label = new Label(""); label.style.minWidth = 260; label.style.unityTextAlign = TextAnchor.MiddleCenter; label.style.color = Color.white; label.style.fontSize = 14;
+                var label = new Label(""); label.style.whiteSpace = WhiteSpace.Normal; label.style.maxWidth = 460; label.style.minWidth = 260; label.style.unityTextAlign = TextAnchor.MiddleCenter; label.style.color = Color.white; label.style.fontSize = 14;
                 var next = new Button(() => CycleLoadout(slot, +1)) { text = ">" };
                 rowEl.Add(prev); rowEl.Add(label); rowEl.Add(next);
                 loadoutBox.Add(rowEl);
@@ -244,7 +250,11 @@ namespace Ouroboros.UI
             for (int i = 0; i < loadoutSlots.Length; i++)
             {
                 var data = lo != null && lo.Object != null ? lo.GetData(loadoutSlots[i]) : null;
-                loadoutLabels[i].text = $"{loadoutSlots[i]}: {(data != null ? data.equipmentName : "-")}";
+                // [v0.13] loadoutLabels[i].text = $"{loadoutSlots[i]}: {(data != null ? data.equipmentName : "-")}";
+                bool gadget = loadoutSlots[i] == Equipment.EquipmentSlotType.Gadget;
+                loadoutLabels[i].text = gadget && data != null
+                    ? $"Gadget: {data.equipmentName}\n{data.description}"
+                    : $"{loadoutSlots[i]}: {(data != null ? data.equipmentName : "-")}";
             }
         }
 

@@ -133,6 +133,7 @@ namespace Ouroboros.EditorTools
             var equipment = CreateEquipmentAssets(projectilePrefab);
             Remember(EquipRegistryPath, equipment);
             AssignStartingEquipment(registry, equipment);
+            EnsureGadgets(registry, equipment); // (v0.14)
             foreach (var cls in registry.classes)
             {
                 if (cls != null && cls.classType == Core.PlayerClassType.Saboteur && cls.trapPrefab == null) { cls.trapPrefab = trapPrefabFresh; EditorUtility.SetDirty(cls); }
@@ -1035,6 +1036,17 @@ namespace Ouroboros.EditorTools
                 Passive("Light Armor", Equipment.EquipmentSlotType.Armor, defense: 0.15f, speed: -0.05f, damage: 0f, "Take 15% less damage, move 5% slower."),
                 Passive("Stim Rig", Equipment.EquipmentSlotType.Accessory, defense: 0f, speed: 0.08f, damage: 0f, "Move 8% faster."),
                 Passive("Hollow Points", Equipment.EquipmentSlotType.Accessory, defense: 0f, speed: 0f, damage: 0.1f, "Deal 10% more damage."),
+                // (v0.14) Gadgets. Added at the end: items are networked by their position in this list.
+                Gadget("Breaching Kit", Data.GadgetType.BreachingKit, cooldown: 22f, range: 4.5f, seconds: 0f,
+                    "Blows open the weak wall, strongbox, safe or door in front of you. Loud."),
+                Gadget("EMP Emitter", Data.GadgetType.EmpEmitter, cooldown: 28f, range: 12f, seconds: 10f,
+                    "Switches off cameras, turrets and laser grids around you for ten seconds. Quiet."),
+                Gadget("Bypass Key", Data.GadgetType.BypassKey, cooldown: 14f, range: 4.5f, seconds: 12f,
+                    "Opens the nearest maglocked staff door for twelve seconds. Silent."),
+                Gadget("Loot Scanner", Data.GadgetType.LootScanner, cooldown: 24f, range: 38f, seconds: 10f,
+                    "Marks containers with loot inside, and loose loot, through walls for ten seconds."),
+                Gadget("Grapple Line", Data.GadgetType.GrappleLine, cooldown: 0f, range: 25f, seconds: 0f,
+                    "A grapple for any specialist. Use it with the Grapple key to reach ledges and upper floors."),
             };
 
             registry.items = items.ToArray();
@@ -1147,6 +1159,52 @@ namespace Ouroboros.EditorTools
             ApplyWeaponFeel(d); // (v0.9)
             EditorUtility.SetDirty(d);
             return d;
+        }
+
+        /// <summary>(v0.14) A tool for the Gadget slot. Any specialist may carry any gadget.</summary>
+        private static Data.EquipmentData Gadget(string name, Data.GadgetType type, float cooldown, float range, float seconds, string description)
+        {
+            var d = LoadOrCreateEquipment(name, out bool created);
+            if (!created) return d;
+            d.equipmentName = name; d.description = description;
+            d.slotType = Equipment.EquipmentSlotType.Gadget; d.kind = Data.EquipmentKind.Gadget; d.gadget = type;
+            d.cooldown = cooldown; d.range = range; d.effectDuration = seconds;
+            d.magazineSize = 0; d.reserveAmmo = 0; d.automatic = false; d.noiseRadius = 0f;
+            EditorUtility.SetDirty(d);
+            return d;
+        }
+
+        /// <summary>
+        /// (v0.14) Gives every specialist a gadget if it has none: the one closest to what the class already does.
+        /// Players can swap it in the lobby. Existing choices are left alone.
+        /// </summary>
+        private static void EnsureGadgets(Data.ClassRegistry classes, Data.EquipmentRegistry equipment)
+        {
+            Data.EquipmentData Find(string n) { foreach (var i in equipment.items) if (i != null && i.equipmentName == n) return i; return null; }
+
+            foreach (var cls in classes.classes)
+            {
+                if (cls == null) continue;
+                bool has = false;
+                if (cls.startingEquipment != null)
+                {
+                    foreach (var item in cls.startingEquipment) if (item != null && item.slotType == Equipment.EquipmentSlotType.Gadget) has = true;
+                }
+                if (has) continue;
+
+                Data.EquipmentData gadget;
+                switch (cls.classType)
+                {
+                    case Core.PlayerClassType.Hacker:      gadget = Find("EMP Emitter"); break;
+                    case Core.PlayerClassType.Saboteur:    gadget = Find("Bypass Key"); break;
+                    case Core.PlayerClassType.Demolitions: gadget = Find("Breaching Kit"); break;
+                    default:                               gadget = Find("Loot Scanner"); break;
+                }
+                if (gadget == null) continue;
+                var list = new List<Data.EquipmentData>(cls.startingEquipment ?? new Data.EquipmentData[0]) { gadget };
+                cls.startingEquipment = list.ToArray();
+                EditorUtility.SetDirty(cls);
+            }
         }
 
         private static Data.EquipmentData Passive(string name, Equipment.EquipmentSlotType slot, float defense, float speed, float damage, string description)

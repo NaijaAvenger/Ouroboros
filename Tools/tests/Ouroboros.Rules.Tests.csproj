@@ -25,6 +25,7 @@
     <Compile Include="$(RepoRoot)Assets/Scripts/Core/HackRules.cs" Link="UnderTest/HackRules.cs" />
     <Compile Include="$(RepoRoot)Assets/Scripts/Core/PatternRules.cs" Link="UnderTest/PatternRules.cs" />
     <Compile Include="$(RepoRoot)Assets/Scripts/Core/ProfileRules.cs" Link="UnderTest/ProfileRules.cs" />
+    <Compile Include="$(RepoRoot)Assets/Scripts/Core/DamageLog.cs" Link="UnderTest/DamageLog.cs" />
     <Compile Include="$(RepoRoot)Assets/Scripts/Core/GameConstants.cs" Link="UnderTest/GameConstants.cs" />
     <Compile Include="$(RepoRoot)Assets/Scripts/AI/BehaviorTree.cs" Link="UnderTest/BehaviorTree.cs" />
     <Compile Include="*.cs" />

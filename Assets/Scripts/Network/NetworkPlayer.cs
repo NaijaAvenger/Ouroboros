@@ -526,7 +526,11 @@ namespace Ouroboros.Network
             }
             NetworkPlayer attacker = Resolve(BurnAttacker);
             float healthBeforeBurn = Health;
-            ApplyDamage(BurnDamagePerSecond * Runner.DeltaTime, attacker, ignoreShield: true);
+            // [v0.13] ApplyDamage(BurnDamagePerSecond * Runner.DeltaTime, attacker, ignoreShield: true);
+            using (Combat.DamageContext.Begin(source: "Fire", means: "Fire")) // (v0.14) named in the death recap
+            {
+                ApplyDamage(BurnDamagePerSecond * Runner.DeltaTime, attacker, ignoreShield: true);
+            }
             if (Health < healthBeforeBurn) LastDamageOrigin = transform.position; // (v0.9) fire has no direction
         }
 
@@ -582,13 +586,62 @@ namespace Ouroboros.Network
 
             // [v0.1] currentClass.TakeDamage(damage);            // BUG: class kept a second health value
             // [v0.1] Health = Mathf.Max(0, Health - damage);     // ...and the shield modifier was ignored here
+            float healthBefore = Health; // (v0.14)
             Health = Mathf.Max(0f, Health - damage);
             LastDamageTick = (int)Runner.Tick; // (v0.11) taking damage breaks a hack tether
+
+            // (v0.14) remember who did what, for the death recap, and tell the attacker what the hit was worth
+            float dealt = healthBefore - Health;
+            if (dealt > 0f)
+            {
+                var info = Combat.DamageContext.Current;
+                bool byPlayer = attacker != null && attacker != this;
+                lastDamageSource = byPlayer ? attacker.DisplayName.ToString() : (attacker == this ? "Yourself" : (info.Source ?? "Hazard"));
+                lastDamageMeans = !string.IsNullOrEmpty(info.Means) ? info.Means
+                                : byPlayer && attacker.Loadout != null && attacker.Loadout.ActiveData != null ? attacker.Loadout.ActiveData.equipmentName
+                                : "";
+                damageLog.Add(lastDamageSource, lastDamageMeans, dealt);
+                if (byPlayer) attacker.NotifyDamageDealt(dealt, info.HasPoint ? info.Point : Position + Vector3.up * 1.3f, info.Headshot, Health <= 0f);
+            }
 
             if (Health <= 0f)
             {
                 Die(attacker);
             }
+        }
+
+        // ------------------------------------------------------------------
+        // Death recap and damage numbers (v0.14)
+
+        /// <summary>Damage taken this life, by source. Kept on the state authority and sent to the victim when they die.</summary>
+        private readonly Core.DamageLog damageLog = new Core.DamageLog();
+        private string lastDamageSource = "", lastDamageMeans = "";
+
+        /// <summary>Raised on the victim's own client when they die, with everything that hurt them this life.</summary>
+        public static event Action<NetworkPlayer, Core.DeathReport> DeathReported;
+        /// <summary>
+        /// Raised on the attacker's own client for every hit that did damage, on anything:
+        /// (attacker, world point, damage, headshot, killed or destroyed).
+        /// </summary>
+        public static event Action<NetworkPlayer, Vector3, float, bool, bool> DamageDealt;
+
+        /// <summary>Called by whatever this player damaged (state authority). Bots have no client to tell.</summary>
+        public void NotifyDamageDealt(float damage, Vector3 point, bool headshot, bool killed)
+        {
+            if (!Object.HasStateAuthority || damage <= 0f || Object.InputAuthority.IsNone) return;
+            RPC_DamageDealt(point, damage, headshot, killed);
+        }
+
+        [Rpc(RpcSources.StateAuthority, RpcTargets.InputAuthority, Channel = RpcChannel.Unreliable)]
+        private void RPC_DamageDealt(Vector3 point, float damage, NetworkBool headshot, NetworkBool killed)
+        {
+            DamageDealt?.Invoke(this, point, damage, headshot, killed);
+        }
+
+        [Rpc(RpcSources.StateAuthority, RpcTargets.InputAuthority)]
+        private void RPC_DeathReport(string encoded)
+        {
+            if (Core.DamageLog.TryDecode(encoded, out var report)) DeathReported?.Invoke(this, report);
         }
 
         /// <summary>
@@ -650,6 +703,10 @@ namespace Ouroboros.Network
             }
 
             RPC_OnPlayerDeath(killer != null ? killer.PlayerRef : default);
+
+            // (v0.14) the recap goes only to the player who died
+            if (!Object.InputAuthority.IsNone) RPC_DeathReport(damageLog.Encode(lastDamageSource, lastDamageMeans));
+            damageLog.Clear();
         }
 
         [Rpc(RpcSources.StateAuthority, RpcTargets.All)]

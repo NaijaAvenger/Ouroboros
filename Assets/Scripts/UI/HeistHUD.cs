@@ -38,6 +38,7 @@ namespace Ouroboros.UI
         // Vitals
         private Label nameLabel, healthText, staminaText, statusLabel, lootLabel, kdLabel, weaponLabel, ammoLabel;
         private VisualElement healthFill, staminaFill;
+        private Label gadgetLabel; // (v0.14) the gadget in the Gadget slot and whether it is ready
         // (v0.12, M4) crew identity on the HUD
         private VisualElement crewStrip, vitalsPanel, topPanel;
         private Core.TeamID skinnedTeam = Core.TeamID.None;
@@ -96,6 +97,10 @@ namespace Ouroboros.UI
             if (GetComponent<TeammateMarkers>() == null) gameObject.AddComponent<TeammateMarkers>();
             // (v0.13, M5) main menu, pause, settings, controls and profile
             if (GetComponent<GameMenu>() == null) gameObject.AddComponent<GameMenu>();
+            // (v0.14) numbers on the hits you land, and a recap of what killed you
+            if (GetComponent<DamageNumbers>() == null) gameObject.AddComponent<DamageNumbers>();
+            if (GetComponent<DeathRecap>() == null) gameObject.AddComponent<DeathRecap>();
+            if (GetComponent<MapHUD>() == null) gameObject.AddComponent<MapHUD>(); // zone name, event and scanner markers
 
             var ps = document.panelSettings;
             Debug.Log($"[HeistHUD] Enabled. PanelSettings='{(ps != null ? ps.name : "NONE")}', theme='{(ps != null && ps.themeStyleSheet != null ? ps.themeStyleSheet.name : "NONE")}', " +
@@ -113,6 +118,10 @@ namespace Ouroboros.UI
             Interaction.PowerNode.PowerCut += OnPowerCut;
             Interaction.QuickHack.Completed += OnQuickHack;
             Interaction.GravityZone.Switched += OnGravitySwitched; // (v0.12)
+            // (v0.14) map events and security
+            GameMode.MapEventDirector.Warned += OnMapEventWarned;
+            GameMode.MapEventDirector.Fired += OnMapEventFired;
+            Interaction.LaserGrid.Tripped += OnLaserTripped;
             Network.NetworkPlayer.Jammed += OnJammed;
         }
 
@@ -122,6 +131,9 @@ namespace Ouroboros.UI
             Interaction.PowerNode.PowerCut -= OnPowerCut;
             Interaction.QuickHack.Completed -= OnQuickHack;
             Interaction.GravityZone.Switched -= OnGravitySwitched;
+            GameMode.MapEventDirector.Warned -= OnMapEventWarned;
+            GameMode.MapEventDirector.Fired -= OnMapEventFired;
+            Interaction.LaserGrid.Tripped -= OnLaserTripped;
             Network.NetworkPlayer.Jammed -= OnJammed;
             GameMode.ExtractionHeistGameMode.GetawayCalled -= OnGetawayCalled;
             GameMode.ExtractionHeistGameMode.CrewWiped -= OnCrewWiped;
@@ -274,10 +286,13 @@ namespace Ouroboros.UI
             econ.style.alignItems = Align.FlexEnd;
             lootLabel = Text("", 20, LootColor, bold: true);
             kdLabel = Text("", 13, Color.white);
+            gadgetLabel = Text("", 13, new Color(0.5f, 0.95f, 1f), bold: true); // (v0.14)
+            gadgetLabel.style.marginTop = 6;
             weaponLabel = Text("", 13, new Color(1f, 1f, 1f, 0.8f), bold: true);
             weaponLabel.style.marginTop = 6;
             ammoLabel = Text("", 24, Color.white, bold: true);
-            econ.Add(lootLabel); econ.Add(kdLabel); econ.Add(weaponLabel); econ.Add(ammoLabel);
+            // [v0.13] econ.Add(lootLabel); econ.Add(kdLabel); econ.Add(weaponLabel); econ.Add(ammoLabel);
+            econ.Add(lootLabel); econ.Add(kdLabel); econ.Add(gadgetLabel); econ.Add(weaponLabel); econ.Add(ammoLabel);
             root.Add(econ);
 
             // Centre-bottom: zone prompt
@@ -564,7 +579,18 @@ namespace Ouroboros.UI
         private void RefreshAmmo()
         {
             var lo = local.Loadout;
-            if (lo == null || lo.Object == null) { weaponLabel.text = ""; ammoLabel.text = ""; return; }
+            if (lo == null || lo.Object == null) { weaponLabel.text = ""; ammoLabel.text = ""; gadgetLabel.text = ""; return; }
+
+            // (v0.14) the gadget, its key and its cooldown
+            var gadget = lo.GadgetData;
+            if (gadget == null) gadgetLabel.text = "";
+            else if (gadget.gadget == Data.GadgetType.GrappleLine) gadgetLabel.text = $"[{Core.LocalInputSource.Hint(Core.InputButtons.Grapple)}] {gadget.equipmentName}";
+            else
+            {
+                float wait = lo.CooldownRemaining((int)Equipment.EquipmentSlotType.Gadget);
+                gadgetLabel.text = $"[{Core.LocalInputSource.Hint(Core.InputButtons.Gadget)}] {gadget.equipmentName}  " + (wait > 0.05f ? $"{wait:0}s" : "READY");
+                gadgetLabel.style.opacity = wait > 0.05f ? 0.55f : 1f;
+            }
 
             int p = (int)Equipment.EquipmentSlotType.Primary, s = (int)Equipment.EquipmentSlotType.Secondary;
             var primary = lo.GetData(p);
@@ -815,6 +841,28 @@ namespace Ouroboros.UI
         }
 
         private void OnExtractionOpened() => ShowBanner("Extraction points are open");
+
+        // (v0.14) Map events: told to everyone, before and when they happen.
+        private static string EventLine(GameMode.MapEvent e) => string.IsNullOrEmpty(e.place) ? e.title : $"{e.title}: {e.place}";
+
+        private void OnMapEventWarned(GameMode.MapEvent e, float seconds)
+        {
+            AddFeed($"{EventLine(e)} in {seconds:0}s", LootColor);
+        }
+
+        private void OnMapEventFired(GameMode.MapEvent e)
+        {
+            ShowBanner(EventLine(e).ToUpperInvariant());
+            AddFeed(EventLine(e), LootColor);
+        }
+
+        private void OnLaserTripped(Interaction.LaserGrid grid, Network.NetworkPlayer who)
+        {
+            if (grid == null) return;
+            string zone = GameMode.MapZone.NameAt(grid.transform.position);
+            AddFeed(who != null ? $"{who.DisplayName} tripped the lasers" + (zone.Length > 0 ? $" in {zone}" : "") : "Lasers tripped", HealthColor);
+            if (who != null && who.IsLocalPlayer) ShowBanner("LASER GRID - every guard knows where you are");
+        }
 
         // ---- (v0.11) Hacking ----
 

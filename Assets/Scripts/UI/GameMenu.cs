@@ -60,11 +60,13 @@ namespace Ouroboros.UI
             root.style.display = DisplayStyle.None;
             panelRoot.Add(root);
 
-            nav = Column(330);
-            content = Column(560);
+            // [v0.13] nav = Column(330);   // too narrow for the title: "OUROBOROS" ran past the edge
+            nav = Column(NavWidth);
+            content = Column(ContentWidth);
             content.style.marginLeft = 14;
             content.style.minHeight = 470;
             root.Add(nav); root.Add(content);
+            root.RegisterCallback<GeometryChangedEvent>(_ => FitToScreen()); // (v0.14)
 
             Exists = true;
             Core.PlayerProfile.Changed += OnDataChanged;
@@ -77,6 +79,26 @@ namespace Ouroboros.UI
             Exists = false;
             IsOpen = false;
             open = false;
+        }
+
+        private const float NavWidth = 390f, ContentWidth = 560f, Gutter = 14f, Margin = 24f;
+
+        /// <summary>
+        /// (v0.14) Keeps both columns on screen. On a wide screen they sit side by side at full size; as the
+        /// window narrows the right column shrinks, and below that it gives way so the buttons never clip.
+        /// </summary>
+        private void FitToScreen()
+        {
+            if (root == null || nav == null || content == null) return;
+            float width = root.resolvedStyle.width;
+            if (float.IsNaN(width) || width <= 0f) return;
+
+            float navWidth = Mathf.Min(NavWidth, width - Margin * 2f);
+            float room = width - navWidth - Gutter - Margin * 2f;
+            bool showContent = room >= 320f;
+            nav.style.width = navWidth;
+            content.style.display = showContent ? DisplayStyle.Flex : DisplayStyle.None;
+            if (showContent) content.style.width = Mathf.Min(ContentWidth, room);
         }
 
         private void OnDataChanged()
@@ -130,6 +152,7 @@ namespace Ouroboros.UI
             root.style.backgroundColor = new Color(0f, 0f, 0f, inSession ? 0.6f : 0.78f);
             BuildNav();
             BuildContent();
+            FitToScreen();
         }
 
         private void Close()
@@ -155,8 +178,12 @@ namespace Ouroboros.UI
 
             if (!builtForSession)
             {
-                var title = Text("OUROBOROS", 40, Gold, true);
-                title.style.letterSpacing = 8;
+                // [v0.13] var title = Text("OUROBOROS", 40, Gold, true);
+                // [v0.13] title.style.letterSpacing = 8;   // wider than the column it sat in
+                var title = Text("OUROBOROS", 36, Gold, true);
+                title.style.letterSpacing = 4;
+                title.style.whiteSpace = WhiteSpace.NoWrap;
+                title.style.overflow = Overflow.Hidden;
                 nav.Add(title);
                 var tag = Text("Everything in the freeport was taken from somewhere. Take it back.", 12, Soft);
                 tag.style.whiteSpace = WhiteSpace.Normal; tag.style.marginBottom = 14;
@@ -187,7 +214,8 @@ namespace Ouroboros.UI
                 });
                 var join = new Button(JoinWithCode) { text = "JOIN CODE" };
                 StyleButton(join, false);
-                join.style.width = 120; join.style.marginBottom = 0;
+                join.style.width = 124; join.style.marginBottom = 0; join.style.flexShrink = 0;
+                codeField.style.minWidth = 0; codeField.style.flexShrink = 1;
                 joinRow.Add(codeField); joinRow.Add(join);
                 nav.Add(joinRow);
             }
@@ -446,6 +474,8 @@ namespace Ouroboros.UI
             column.style.backgroundColor = Ink;
             column.style.paddingLeft = 22; column.style.paddingRight = 22; column.style.paddingTop = 20; column.style.paddingBottom = 20;
             column.style.borderLeftWidth = 3; column.style.borderLeftColor = Gold;
+            column.style.flexShrink = 0;          // (v0.14) sized by FitToScreen, never squeezed by the row
+            column.style.overflow = Overflow.Hidden;
             return column;
         }
 
@@ -484,6 +514,7 @@ namespace Ouroboros.UI
             button.style.height = 38; button.style.marginBottom = 6; button.style.marginLeft = 0; button.style.marginRight = 0;
             button.style.fontSize = 14; button.style.unityFontStyleAndWeight = FontStyle.Bold;
             button.style.unityTextAlign = TextAnchor.MiddleLeft; button.style.paddingLeft = 12;
+            button.style.whiteSpace = WhiteSpace.NoWrap; button.style.overflow = Overflow.Hidden; // (v0.14)
             button.style.color = primary ? new Color(0.08f, 0.07f, 0.05f) : Color.white;
             button.style.backgroundColor = primary ? Gold : new Color(1f, 1f, 1f, 0.1f);
             button.style.borderTopWidth = 0; button.style.borderBottomWidth = 0; button.style.borderLeftWidth = 0; button.style.borderRightWidth = 0;
@@ -500,6 +531,7 @@ namespace Ouroboros.UI
             wrap.Add(button);
             var sub = Text(hint, 10, Soft);
             sub.style.marginBottom = 6; sub.style.marginLeft = 2;
+            sub.style.whiteSpace = WhiteSpace.Normal; // (v0.14) wrap, never clip
             wrap.Add(sub);
             return wrap;
         }

@@ -89,7 +89,11 @@ namespace Ouroboros.Equipment
                 float damage = Core.CombatRules.ShotDamage(data.damage, falloff, hit.Head, data.headshotMultiplier);
 
                 float healthBefore = HealthOf(hit.Target);
-                hit.Target.ApplyDamage(damage, owner, origin);
+                // [v0.13] hit.Target.ApplyDamage(damage, owner, origin);
+                using (Combat.DamageContext.Begin(means: data.equipmentName, headshot: hit.Head, point: hit.Point)) // (v0.14)
+                {
+                    hit.Target.ApplyDamage(damage, owner, origin);
+                }
                 float lost = healthBefore - HealthOf(hit.Target);
 
                 if (lost > 0f || !hit.Target.IsAlive)

@@ -189,6 +189,25 @@ namespace Ouroboros.Art
             return root;
         }
 
+        /// <summary>
+        /// (v0.14) A security camera: a bracket, a housing and a lens that glows in <paramref name="lens"/>.
+        /// Built looking along +Z, to match the object it is attached to.
+        /// </summary>
+        public static Transform BuildCamera(Transform parent, out Renderer lens)
+        {
+            var root = Prim.Group(parent, "Camera Model");
+            Vector3 s = parent.lossyScale;
+            root.localScale = new Vector3(1f / Mathf.Max(0.01f, s.x), 1f / Mathf.Max(0.01f, s.y), 1f / Mathf.Max(0.01f, s.z));
+            var shell = ArtMaterials.Colour(new Color(0.86f, 0.87f, 0.9f));
+            Prim.Box(root, "Bracket", new Vector3(0f, 0.22f, -0.2f), new Vector3(0.08f, 0.36f, 0.08f), ArtMaterials.Colour(Gunmetal));
+            Prim.Box(root, "Mount", new Vector3(0f, 0.4f, -0.2f), new Vector3(0.3f, 0.06f, 0.3f), ArtMaterials.Colour(Gunmetal));
+            Prim.Box(root, "Housing", new Vector3(0f, 0f, 0f), new Vector3(0.24f, 0.22f, 0.6f), shell);
+            Prim.Box(root, "Hood", new Vector3(0f, 0.13f, 0.08f), new Vector3(0.28f, 0.03f, 0.7f), shell);
+            Prim.Rod(root, "Lens Ring", new Vector3(0f, 0f, 0.31f), new Vector3(0.17f, 0.02f, 0.17f), ArtMaterials.Colour(Polymer), new Vector3(90f, 0f, 0f));
+            lens = Prim.Rod(root, "Lens", new Vector3(0f, 0f, 0.335f), new Vector3(0.11f, 0.01f, 0.11f), ArtMaterials.Emissive(new Color(0.2f, 0.9f, 1f)), new Vector3(90f, 0f, 0f)).GetComponent<Renderer>();
+            return root;
+        }
+
         // ------------------------------------------------------------------
         // Passive gear, worn on the character
 
