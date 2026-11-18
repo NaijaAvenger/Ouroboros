@@ -61,12 +61,17 @@ namespace Ouroboros.Player
 
             Vector3 aim = player.AimDirection;
             Vector3 muzzle = player.EyePosition + aim * 0.6f;
+            // (v0.13) start at the real muzzle when the weapon model is on screen
+            var weaponView = GetComponent<Art.WeaponView>();
+            bool hasMuzzle = false;
+            if (weaponView != null && weaponView.TryGetMuzzle(out Vector3 modelMuzzle)) { muzzle = modelMuzzle; hasMuzzle = true; }
             var data = loadout.GetData(slot);
             if (data == null || data.kind == Data.EquipmentKind.HitscanWeapon)
             {
                 // First person: start the line low and to the right of the camera so the shooter can see it.
                 Vector3 from = muzzle;
-                if (player.IsLocalPlayer)
+                // [v0.12] if (player.IsLocalPlayer)
+                if (player.IsLocalPlayer && !hasMuzzle)
                 {
                     Vector3 right = Vector3.Cross(Vector3.up, aim).normalized;
                     from += right * 0.18f - Vector3.up * 0.14f + aim * 0.3f;
@@ -74,9 +79,17 @@ namespace Ouroboros.Player
                 Combat.ShotTracer.Spawn(from, point, PlayerTracerColor);
             }
 
-            if (lib == null) return;
-            lib.SpawnVfx(lib.muzzleVfx, muzzle, Quaternion.LookRotation(aim));
-            if (hit) lib.SpawnVfx(lib.impactVfx, point, Quaternion.identity);
+            // [v0.12] if (lib == null) return;
+            // [v0.12] lib.SpawnVfx(lib.muzzleVfx, muzzle, Quaternion.LookRotation(aim));
+            // [v0.12] if (hit) lib.SpawnVfx(lib.impactVfx, point, Quaternion.identity);
+            // (v0.13) assigned effects when there are any, code-built ones otherwise: no shot without a flash and a hit mark
+            if (lib != null && lib.muzzleVfx != null) lib.SpawnVfx(lib.muzzleVfx, muzzle, Quaternion.LookRotation(aim));
+            else Art.Fx.MuzzleFlash(muzzle, aim, data != null && data.kind == Data.EquipmentKind.ProjectileWeapon ? 1.6f : 1f);
+            if (hit)
+            {
+                if (lib != null && lib.impactVfx != null) lib.SpawnVfx(lib.impactVfx, point, Quaternion.identity);
+                else Art.Fx.Impact(point);
+            }
         }
 
         private void OnReloadStarted(Equipment.NetworkLoadout loadout, int slot)

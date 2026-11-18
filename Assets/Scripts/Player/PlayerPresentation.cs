@@ -23,6 +23,11 @@ namespace Ouroboros.Player
         private Art.CharacterModel model;
         private Art.CharacterAnimator animator;
         private Art.WeaponView weaponView;
+        // (v0.13) status effects and worn passive gear
+        private Art.StatusEffects statusEffects;
+        private Equipment.NetworkLoadout loadout;
+        private readonly System.Collections.Generic.List<Transform> wornGear = new System.Collections.Generic.List<Transform>();
+        private bool gearDirty = true;
         private Core.PlayerClassType builtClass;
         private Core.TeamID builtTeam;
 
@@ -37,6 +42,11 @@ namespace Ouroboros.Player
             if (modelRenderer == null) modelRenderer = GetComponentInChildren<Renderer>();
             weaponView = GetComponent<Art.WeaponView>();
             if (weaponView == null) weaponView = gameObject.AddComponent<Art.WeaponView>(); // (v0.12) no prefab change needed
+
+            statusEffects = GetComponent<Art.StatusEffects>();
+            if (statusEffects == null) statusEffects = gameObject.AddComponent<Art.StatusEffects>(); // (v0.13)
+            loadout = GetComponent<Equipment.NetworkLoadout>();
+            if (loadout != null) loadout.SlotChanged += (_, __) => gearDirty = true;
 
             player.StatusChanged += (_, __) => Apply();
             player.Died += _ => Apply();
@@ -56,6 +66,7 @@ namespace Ouroboros.Player
             if (modelRenderer == null || player == null || player.Object == null) return;
 
             EnsureModel(); // (v0.12)
+            if (gearDirty && model != null) RefreshWornGear(); // (v0.13)
 
             bool visible = player.IsAlive && !player.IsExtracted;
 
@@ -123,6 +134,28 @@ namespace Ouroboros.Player
             }
         }
 
+        /// <summary>
+        /// (v0.13) Passive gear is worn where it can be seen: armour as plates, a speed rig as injectors, damage
+        /// gear as an ammunition belt. Weapons are handled by <see cref="Art.WeaponView"/>.
+        /// </summary>
+        private void RefreshWornGear()
+        {
+            gearDirty = false;
+            for (int i = 0; i < wornGear.Count; i++) Art.GearBuilder.RemoveWornGear(model, wornGear[i]);
+            wornGear.Clear();
+            if (loadout == null || loadout.Object == null) { gearDirty = true; return; }
+
+            Color crew = Core.TeamUtil.IsValid(player.Team) ? Art.CrewStyle.Get(player.Team).Primary : Color.white;
+            for (int slot = 0; slot < Equipment.NetworkLoadout.SLOTS; slot++)
+            {
+                if (Equipment.NetworkLoadout.IsWeaponSlot(slot)) continue;
+                var data = loadout.GetData(slot);
+                if (data == null || data.kind != Data.EquipmentKind.PassiveGear) continue;
+                var piece = Art.GearBuilder.BuildWornGear(model, data, crew);
+                if (piece != null) wornGear.Add(piece);
+            }
+        }
+
         /// <summary>(v0.12) Builds (or rebuilds) the character when the class or crew is known or changes.</summary>
         private void EnsureModel()
         {
@@ -138,7 +171,11 @@ namespace Ouroboros.Player
 
             if (animator == null) animator = gameObject.AddComponent<Art.CharacterAnimator>();
             animator.Model = model;
-            if (weaponView != null) weaponView.SetHand(model.HandR);
+            if (statusEffects != null) statusEffects.SetModel(model); // (v0.13)
+            wornGear.Clear();                                           // the old pieces went with the old model
+            gearDirty = true;
+            // [v0.12] if (weaponView != null) weaponView.SetHand(model.HandR);
+            if (weaponView != null) weaponView.SetJoints(model.HandR, model.Torso); // (v0.13) hand, and the back for the stowed weapon
         }
 
         // [v0.11]

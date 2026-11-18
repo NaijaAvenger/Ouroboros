@@ -1073,7 +1073,9 @@ namespace Ouroboros.EditorTools
         /// </summary>
         private static void ApplyWeaponFeel(Data.EquipmentData d)
         {
-            if (d == null || d.feelVersion >= 1) return;
+            // [v0.12] if (d == null || d.feelVersion >= 1) return;
+            if (d == null || d.feelVersion >= 2) return; // (v0.13) version 2 adds handling: aiming and swapping
+            bool needsFeel = d.feelVersion < 1;
 
             void Feel(float head, float falloffStart, float falloffEnd, float falloffMin, float bloom, float bloomMax, float bloomRecovery,
                 float recoilPitch, float recoilYaw, float recoilRecovery)
@@ -1084,7 +1086,7 @@ namespace Ouroboros.EditorTools
                 d.recoilPitch = recoilPitch; d.recoilYaw = recoilYaw; d.recoilRecoveryPerSecond = recoilRecovery;
             }
 
-            switch (d.equipmentName)
+            if (needsFeel) switch (d.equipmentName)
             {
                 // Controllable in bursts, climbs if you hold the trigger.
                 case "Assault Rifle":    Feel(1.5f, 25f, 60f, 0.6f, 0.28f, 2.6f, 7f, 0.55f, 0.22f, 9f); break;
@@ -1100,7 +1102,32 @@ namespace Ouroboros.EditorTools
                     break;
             }
 
-            d.feelVersion = 1;
+            // (v0.13) Handling: zoom, spread and walk speed and kick while aiming (fractions of the hip values),
+            // seconds to bring the sights up, seconds to draw. hipSpread, when given, replaces the hip cone.
+            void Handling(float zoom, float aimSpread, float aimMove, float aimRecoil, float aimSeconds, float swapSeconds, float hipSpread = -1f)
+            {
+                d.adsZoom = zoom; d.adsSpreadMultiplier = aimSpread; d.adsMoveMultiplier = aimMove; d.adsRecoilMultiplier = aimRecoil;
+                d.adsSeconds = aimSeconds; d.swapSeconds = swapSeconds;
+                if (hipSpread >= 0f) d.spreadDegrees = hipSpread;
+            }
+
+            switch (d.equipmentName)
+            {
+                case "Assault Rifle":    Handling(1.3f, 0.35f, 0.7f, 0.7f, 0.18f, 0.45f); break;
+                // Already a hip-fire weapon: aiming helps a little and costs little.
+                case "Suppressed SMG":   Handling(1.15f, 0.55f, 0.85f, 0.8f, 0.12f, 0.3f); break;
+                case "Breacher Shotgun": Handling(1.1f, 0.8f, 0.8f, 0.85f, 0.16f, 0.5f); break;
+                // A scope, not sights: wild from the hip, exact when aimed, slow to bring up and to walk with.
+                case "Marksman Rifle":   Handling(3f, 0.04f, 0.45f, 0.6f, 0.28f, 0.6f, hipSpread: 3.5f); break;
+                // The fast draw is the point of a sidearm.
+                case "Service Pistol":   Handling(1.15f, 0.45f, 0.9f, 0.8f, 0.1f, 0.25f); break;
+                default:
+                    if (d.kind == Data.EquipmentKind.ProjectileWeapon) Handling(1f, 1f, 1f, 1f, 0.15f, 0.55f);
+                    break;
+            }
+
+            // [v0.12] d.feelVersion = 1;
+            d.feelVersion = 2;
             EditorUtility.SetDirty(d);
         }
 

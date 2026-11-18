@@ -44,11 +44,33 @@ namespace Ouroboros.Equipment
             configured = true;
         }
 
+        // (v0.13) code-built model and a smoke trail, so a grenade in the air can be seen and dodged
+        private Transform modelRoot;
+
+        private void BuildModel()
+        {
+            foreach (var r in GetComponentsInChildren<Renderer>()) r.enabled = false; // the prefab's placeholder sphere
+            modelRoot = Art.GearBuilder.BuildProjectile(transform, FuseTimer.IsRunning);
+            Vector3 s = transform.lossyScale;
+            modelRoot.localScale = new Vector3(1f / Mathf.Max(0.01f, s.x), 1f / Mathf.Max(0.01f, s.y), 1f / Mathf.Max(0.01f, s.z)) * 1.4f;
+            Color smoke = new Color(0.8f, 0.8f, 0.82f, 0.5f), thin = new Color(0.8f, 0.8f, 0.82f, 0.2f);
+            Art.Fx.Particles("Trail", Vector3.zero, transform, smoke, thin, 40f, 0, 1f, true, 0.35f, 0.6f, 0f, 0.2f, 0.12f, 0.22f, 0.03f, 0f, 1.8f, false);
+        }
+
+        public override void Render()
+        {
+            if (modelRoot == null) return;
+            Vector3 v = Velocity;
+            if (v.sqrMagnitude > 0.05f) modelRoot.rotation = Quaternion.LookRotation(v);
+        }
+
         public override void Spawned()
         {
+            if (Object.HasStateAuthority && fuseTime > 0f) FuseTimer = TickTimer.CreateFromSeconds(Runner, fuseTime); // set before the model reads it
+            BuildModel(); // (v0.13)
             if (!Object.HasStateAuthority) return;
             LifeTimer = TickTimer.CreateFromSeconds(Runner, lifetime);
-            if (fuseTime > 0f) FuseTimer = TickTimer.CreateFromSeconds(Runner, fuseTime);
+            // [v0.12] if (fuseTime > 0f) FuseTimer = TickTimer.CreateFromSeconds(Runner, fuseTime);   // moved above BuildModel
             if (shooter == null) shooter = Network.NetworkPlayer.Resolve(OwnerRef);
         }
 

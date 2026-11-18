@@ -128,7 +128,8 @@ namespace Ouroboros.Audio
         private void Fade(int layer, float target)
         {
             volumes[layer] = Mathf.MoveTowards(volumes[layer], target, fadeSpeed * Time.unscaledDeltaTime);
-            sources[layer].volume = volumes[layer] * masterVolume;
+            // [v0.12] sources[layer].volume = volumes[layer] * masterVolume;
+            sources[layer].volume = volumes[layer] * masterVolume * (Core.GameSettings.MusicVolume / 0.7f); // (v0.13) the music slider; 0.7 is its default
         }
 
         // ------------------------------------------------------------------

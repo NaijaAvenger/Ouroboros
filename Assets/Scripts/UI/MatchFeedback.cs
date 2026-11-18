@@ -17,6 +17,8 @@ namespace Ouroboros.UI
         {
             // (v0.12) the layered score needs no scene change: it rides along with the match feedback object
             if (GetComponent<Audio.MusicDirector>() == null) gameObject.AddComponent<Audio.MusicDirector>();
+            // (v0.13) abilities, charges, traps and the drone all show something
+            if (GetComponent<Art.AbilityEffects>() == null) gameObject.AddComponent<Art.AbilityEffects>();
             if (audioSource == null)
             {
                 audioSource = gameObject.AddComponent<AudioSource>();
@@ -64,8 +66,11 @@ namespace Ouroboros.UI
             // [v0.8] if (lib.explosion != null) AudioSource.PlayClipAtPoint(lib.explosion, point, lib.matchVolume);
             // (v0.9) placeholder fallback so explosions are never silent
             AudioSource.PlayClipAtPoint(lib != null && lib.explosion != null ? lib.explosion : Core.ProceduralSfx.Explosion, point, lib != null ? lib.matchVolume : 1f);
-            if (lib == null) return;
-            lib.SpawnVfx(lib.explosionVfx, point, Quaternion.identity);
+            // [v0.12] if (lib == null) return;
+            // [v0.12] lib.SpawnVfx(lib.explosionVfx, point, Quaternion.identity);
+            // (v0.13) an explosion is never invisible: the assigned effect if there is one, a code-built blast otherwise
+            if (lib != null && lib.explosionVfx != null) lib.SpawnVfx(lib.explosionVfx, point, Quaternion.identity);
+            else Art.Fx.Explosion(point, radius > 0f ? radius : 1.5f);
         }
 
         private void OnDisable()

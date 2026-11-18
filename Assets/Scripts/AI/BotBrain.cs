@@ -680,6 +680,13 @@ namespace Ouroboros.AI
             var data = loadout.GetData(slotToFire);
             if (data == null) return;
 
+            // (v0.13) bring the wanted weapon to hand first, like a player would
+            if (loadout.ActiveSlot != slotToFire)
+            {
+                if (pulse && !loadout.IsSwapping) input.Buttons.Set((int)Core.InputButtons.NextWeapon, true);
+                return;
+            }
+
             if (data.UsesAmmo && loadout.Magazine[slotToFire] <= 0)
             {
                 if (!loadout.IsReloading(slotToFire) && pulse) input.Buttons.Set((int)Core.InputButtons.Reload, true);
@@ -689,6 +696,11 @@ namespace Ouroboros.AI
             if (!lineOfFire || tick - firstSeenTick < Ticks(ReactionSeconds)) return;
 
             Vector3 want = (target - eye).normalized;
+            // (v0.13) bots shoulder the weapon at range, and always with a scope: hip fire is too loose there
+            if (data.kind == Data.EquipmentKind.HitscanWeapon && ((target - eye).sqrMagnitude > 14f * 14f || data.adsZoom >= 2f))
+            {
+                input.Buttons.Set((int)Core.InputButtons.Secondary, true);
+            }
             if (Vector3.Angle(me.AimDirection, want) > FireTolerance) return;
 
             // Short bursts with pauses: lets the bloom settle and gives the other side a window.
@@ -700,7 +712,8 @@ namespace Ouroboros.AI
             }
             if (tick < burstPauseUntilTick) return;
 
-            int button = slotToFire == (int)Equipment.EquipmentSlotType.Primary ? (int)Core.InputButtons.Primary : (int)Core.InputButtons.Secondary;
+            // [v0.12] int button = slotToFire == (int)Equipment.EquipmentSlotType.Primary ? (int)Core.InputButtons.Primary : (int)Core.InputButtons.Secondary;
+            int button = (int)Core.InputButtons.Primary; // (v0.13) the fire button fires whatever is in hand
             // Automatic weapons want the trigger held; the rest need a fresh press for every shot.
             if (data.automatic || pulse) input.Buttons.Set(button, true);
         }
@@ -709,7 +722,8 @@ namespace Ouroboros.AI
         private void MaintainWeapon(ref Core.NetworkInputData input)
         {
             if (loadout == null || loadout.Object == null) return;
-            int slot = (int)Equipment.EquipmentSlotType.Primary;
+            // [v0.12] int slot = (int)Equipment.EquipmentSlotType.Primary;
+            int slot = loadout.ActiveSlot; // (v0.13) only the weapon in hand reloads
             var data = loadout.GetData(slot);
             if (data == null || !data.UsesAmmo || loadout.IsReloading(slot) || loadout.Reserve[slot] <= 0) return;
             if (loadout.Magazine[slot] * 2 < data.magazineSize && pulse) input.Buttons.Set((int)Core.InputButtons.Reload, true);

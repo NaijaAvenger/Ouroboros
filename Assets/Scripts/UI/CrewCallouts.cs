@@ -157,6 +157,7 @@ namespace Ouroboros.UI
         {
             var me = Local();
             if (me == null || panel == null) return;
+            if (!Core.GameSettings.CrewRadio) return; // (v0.13) can be switched off in the settings
             if (!urgent && Time.unscaledTime < nextAllowed) return;
             if (!Lines.TryGetValue(me.Team, out var crew) || !crew.TryGetValue(moment, out Line line)) return;
 

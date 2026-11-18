@@ -173,11 +173,13 @@ namespace Ouroboros.Player
             if (currentClass == null) currentClass = networkPlayer.CurrentClass;
 
             if (Object.HasInputAuthority) Network.GameSessionManager.NotifyLocalPlayer(true);
+            if (Object.HasInputAuthority) Local = this; // (v0.13)
         }
 
         public override void Despawned(NetworkRunner runner, bool hasState)
         {
             if (Object != null && Object.HasInputAuthority) Network.GameSessionManager.NotifyLocalPlayer(false);
+            if (Local == this) Local = null; // (v0.13)
         }
         
         public override void FixedUpdateNetwork()
@@ -243,6 +245,39 @@ namespace Ouroboros.Player
             var lp = cameraTransform.localPosition;
             lp.y = Mathf.Lerp(lp.y, targetY, Time.deltaTime * 12f);
             cameraTransform.localPosition = lp;
+            UpdateAimView(); // (v0.13)
+        }
+
+        // ------------------------------------------------------------------
+        // Aiming down sights: the owner's view (v0.13)
+
+        /// <summary>The local player's controller, or null. Set while its object is spawned on this peer.</summary>
+        public static PlayerController Local { get; private set; }
+
+        /// <summary>0 from the hip, 1 with the sights fully up. Eased, for the view model and the crosshair.</summary>
+        public float AimBlend { get; private set; }
+
+        /// <summary>Look-speed multiplier for the current zoom, so aiming does not feel faster than hip fire.</summary>
+        public float LookSensitivityScale { get; private set; } = 1f;
+
+        private Camera viewCamera;
+
+        private void UpdateAimView()
+        {
+            if (viewCamera == null) viewCamera = cameraTransform.GetComponentInChildren<Camera>();
+            if (viewCamera == null) return;
+
+            var data = networkLoadout != null && networkLoadout.Object != null ? networkLoadout.ActiveData : null;
+            bool aiming = data != null && networkLoadout.Aiming;
+            float seconds = data != null ? Mathf.Max(0.03f, data.adsSeconds) : 0.18f;
+            AimBlend = Mathf.MoveTowards(AimBlend, aiming ? 1f : 0f, Time.deltaTime / seconds);
+            float eased = AimBlend * AimBlend * (3f - 2f * AimBlend);
+
+            float baseFov = Core.GameSettings.FieldOfView;
+            float aimFov = Core.CombatRules.ZoomedFov(baseFov, data != null ? data.adsZoom : 1f);
+            float fov = Mathf.Lerp(baseFov, aimFov, eased);
+            viewCamera.fieldOfView = fov;
+            LookSensitivityScale = Core.CombatRules.ZoomSensitivity(baseFov, fov) * Mathf.Lerp(1f, Core.GameSettings.AimSensitivity, eased);
         }
 
         /// <summary>Called by the local input collector every frame so the camera doesn't wait for a tick.</summary>
@@ -335,7 +370,10 @@ namespace Ouroboros.Player
 
             Vector2 axes = Vector2.ClampMagnitude(input.Move, 1f);
             bool wantsSprint = input.Buttons.IsSet((int)Core.InputButtons.Sprint) && axes.y > 0.1f;
-            bool canSprint = wantsSprint && networkPlayer.Stamina > Core.GameConstants.SPRINT_MIN_STAMINA
+            // [v0.12] bool canSprint = wantsSprint && networkPlayer.Stamina > Core.GameConstants.SPRINT_MIN_STAMINA
+            // [v0.12]                  && !networkPlayer.HasStatus(Core.StatusFlags.Flashed);
+            bool aiming = networkLoadout != null && networkLoadout.Aiming; // (v0.13) sights up: no sprint, slower walk
+            bool canSprint = wantsSprint && !aiming && networkPlayer.Stamina > Core.GameConstants.SPRINT_MIN_STAMINA
                              && !networkPlayer.HasStatus(Core.StatusFlags.Flashed);
 
             float speed = currentClass != null
@@ -343,6 +381,7 @@ namespace Ouroboros.Player
                 : defaultMovementSpeed;
             if (networkLoadout != null) speed *= networkLoadout.SpeedMultiplier; // v0.4: armor / accessories
             speed *= networkPlayer.CarryWeightSpeedMultiplier;                      // v0.5: loot weight / case
+            if (networkLoadout != null) speed *= networkLoadout.AimSpeedMultiplier; // v0.13: aiming down sights
 
             // ---- Slide: sprint + Slide while grounded
             bool sliding = IsSliding;
@@ -561,14 +600,30 @@ namespace Ouroboros.Player
         private void HandleEquipment(NetworkButtons pressed, NetworkButtons held)
         {
             if (equipmentLoadout == null) return;
-            Dispatch(Equipment.EquipmentSlotType.Primary,   Core.InputButtons.Primary,   pressed, held);
-            Dispatch(Equipment.EquipmentSlotType.Secondary, Core.InputButtons.Secondary, pressed, held);
+            // [v0.12] Left click fired the Primary slot and right click fired the Secondary slot:
+            // [v0.12] Dispatch(Equipment.EquipmentSlotType.Primary,   Core.InputButtons.Primary,   pressed, held);
+            // [v0.12] Dispatch(Equipment.EquipmentSlotType.Secondary, Core.InputButtons.Secondary, pressed, held);
+            // (v0.13) One weapon in hand. The wheel swaps, the fire button fires it, the aim button aims it.
+            if (networkLoadout != null)
+            {
+                if (pressed.IsSet((int)Core.InputButtons.NextWeapon) || pressed.IsSet((int)Core.InputButtons.PrevWeapon))
+                {
+                    networkLoadout.CycleWeapon();
+                }
+                networkLoadout.SetAiming(held.IsSet((int)Core.InputButtons.Secondary));
+                Dispatch((Equipment.EquipmentSlotType)networkLoadout.ActiveSlot, Core.InputButtons.Primary, pressed, held);
+            }
+            else
+            {
+                Dispatch(Equipment.EquipmentSlotType.Primary, Core.InputButtons.Primary, pressed, held);
+            }
             Dispatch(Equipment.EquipmentSlotType.Utility,   Core.InputButtons.Utility,   pressed, held);
             Dispatch(Equipment.EquipmentSlotType.Gadget,    Core.InputButtons.Gadget,    pressed, held);
 
             if (pressed.IsSet((int)Core.InputButtons.Reload) && networkLoadout != null)
             {
-                networkLoadout.ReloadAny();
+                // [v0.12] networkLoadout.ReloadAny();
+                networkLoadout.ReloadActive();
             }
         }
 

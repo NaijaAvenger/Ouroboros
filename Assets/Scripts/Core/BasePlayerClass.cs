@@ -11,6 +11,52 @@ namespace Ouroboros.Core
     /// its owner through <see cref="IAbilityContext"/>. All timing uses Fusion tick timers so results
     /// are identical on every peer and survive resimulation.
     /// </summary>
+    /// <summary>(v0.13) The family of effect an ability shows. See <c>Art.AbilityEffects</c>.</summary>
+    public enum AbilityVisualKind
+    {
+        None,
+        /// <summary>A ring running out along the floor: scans and reveals.</summary>
+        Pulse,
+        /// <summary>A shell of energy bursting outward: EMP, sabotage.</summary>
+        Shock,
+        /// <summary>A cloud that hangs for a while.</summary>
+        Smoke,
+        /// <summary>A patch of fire thrown ahead.</summary>
+        Fire,
+        /// <summary>A blinding burst thrown ahead.</summary>
+        Flash,
+        /// <summary>A bolt along the aim line.</summary>
+        Beam,
+        /// <summary>A charge left on the floor until it is detonated.</summary>
+        PlaceCharge,
+        /// <summary>Every charge this player placed goes off.</summary>
+        DetonateCharges,
+        /// <summary>A drone that climbs, scans and leaves.</summary>
+        Drone,
+        /// <summary>A small directed blast just ahead: breaching.</summary>
+        Blast,
+        /// <summary>A brief shimmer on the user: cloaks and self buffs.</summary>
+        Shimmer
+    }
+
+    /// <summary>(v0.13) Cosmetic description of one ability use.</summary>
+    public struct AbilityVisual
+    {
+        public AbilityVisualKind Kind;
+        /// <summary>Metres: the area it covers, or the length of a beam.</summary>
+        public float Radius;
+        /// <summary>How long the effect stays, where that makes sense.</summary>
+        public float Seconds;
+        /// <summary>Metres ahead of the eyes where a thrown effect lands.</summary>
+        public float Forward;
+        public Color Colour;
+
+        public AbilityVisual(AbilityVisualKind kind, float radius, float seconds, Color colour, float forward = 0f)
+        {
+            Kind = kind; Radius = radius; Seconds = seconds; Colour = colour; Forward = forward;
+        }
+    }
+
     public abstract class BasePlayerClass : MonoBehaviour, IPlayerClass
     {
         [Header("Class Information")]
@@ -173,6 +219,12 @@ namespace Ouroboros.Core
 
         /// <summary>Multiplier applied to damage this player deals (e.g. Agent damage boost).</summary>
         public virtual float OutgoingDamageMultiplier => 1f;
+
+        /// <summary>
+        /// (v0.13) What an ability looks like in the world when it is used. Read on every peer by
+        /// <c>Art.AbilityEffects</c>; it has no effect on gameplay. Classes override it per slot.
+        /// </summary>
+        public virtual AbilityVisual GetAbilityVisual(int slot) => default;
 
         public AbilitySlot GetAbilitySlot(int abilityIndex)
         {

@@ -50,9 +50,39 @@ namespace Ouroboros.Interaction
             ownerClass = owner;
         }
 
+        /// <summary>(v0.13) Fired on every peer when a trap goes off (position, blast radius). Cosmetic.</summary>
+        public static event System.Action<Vector3, float> Detonated;
+
+        // (v0.13) code-built model: a disc with a sensor light, ringed in the owner's crew colour
+        private Renderer sensorLight;
+        private Core.TeamID modelTeam = Core.TeamID.None;
+        private Transform modelRoot;
+
+        private void BuildModel()
+        {
+            if (modelRoot != null) Destroy(modelRoot.gameObject);
+            foreach (var r in GetComponentsInChildren<Renderer>()) r.enabled = false; // the prefab's placeholder shape
+            modelTeam = OwnerTeam;
+            Color crew = Core.TeamUtil.IsValid(OwnerTeam) ? Art.CrewStyle.Get(OwnerTeam).Primary : Color.gray;
+            modelRoot = Art.GearBuilder.BuildTrap(transform, crew, out sensorLight);
+            // The prefab may be scaled; the model is built in metres.
+            Vector3 s = transform.lossyScale;
+            modelRoot.localScale = new Vector3(1f / Mathf.Max(0.01f, s.x), 1f / Mathf.Max(0.01f, s.y), 1f / Mathf.Max(0.01f, s.z));
+            modelRoot.position = Art.AbilityEffects.Ground(transform.position + Vector3.up * 0.3f);
+        }
+
+        public override void Render()
+        {
+            if (modelRoot == null || modelTeam != OwnerTeam) BuildModel(); // also after a hijack
+            if (sensorLight == null) return;
+            // Arming: steady. Armed: a slow blink. Something to spot, and something to shoot at.
+            sensorLight.enabled = !IsArmed || Mathf.Repeat(Time.time, 1.2f) < 0.6f;
+        }
+
         public override void Spawned()
         {
             QuickHack.Register(this); // (v0.11)
+            BuildModel(); // (v0.13)
             if (Object.HasStateAuthority)
             {
                 ArmTimer = TickTimer.CreateFromSeconds(Runner, armDelay);
@@ -116,6 +146,7 @@ namespace Ouroboros.Interaction
         private void RPC_Detonated()
         {
             Debug.Log($"[ProximityTrap] Trap of {OwnerTeam} detonated");
+            Detonated?.Invoke(transform.position, blastRadius); // (v0.13) blast effect and sound
         }
 
         private void OnDrawGizmosSelected()

@@ -65,6 +65,20 @@ namespace Ouroboros.Classes
             return false;
         }
 
+        /// <summary>(v0.13) What each ability shows in the world.</summary>
+        public override Core.AbilityVisual GetAbilityVisual(int slot)
+        {
+            var cyan = new Color(0.3f, 0.95f, 1f);
+            switch (slot)
+            {
+                case 0: return new Core.AbilityVisual(Core.AbilityVisualKind.Beam, remoteHackRange, 0.25f, cyan);
+                case 1: return new Core.AbilityVisual(Core.AbilityVisualKind.Pulse, 30f, 1.1f, cyan);
+                case 2: return new Core.AbilityVisual(Core.AbilityVisualKind.Shock, empRadius, 0.5f, new Color(0.35f, 0.6f, 1f));
+                case 3: return new Core.AbilityVisual(Core.AbilityVisualKind.Pulse, dataMineRange, 1.4f, new Color(1f, 0.25f, 0.9f));
+                default: return default;
+            }
+        }
+
         private bool HackSystem()
         {
             // [v0.1] if (Time.time - lastHackTime < HACK_COOLDOWN) return;

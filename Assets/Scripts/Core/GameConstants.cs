@@ -17,7 +17,8 @@ namespace Ouroboros.Core
         public const int MAX_EQUIPMENT_SLOTS = 6;
         public const int MAX_TECH_SLOTS = 3;
         /// <summary>Number of entries in <see cref="InputButtons"/> (keep in sync).</summary>
-        public const int INPUT_BUTTON_COUNT = 14;
+        // [v0.12] public const int INPUT_BUTTON_COUNT = 14;
+        public const int INPUT_BUTTON_COUNT = 16; // (v0.13) + NextWeapon, PrevWeapon
 
         // ---- v0.2 additions ----
 
@@ -176,7 +177,9 @@ namespace Ouroboros.Core
         Ability2 = 4,
         Ability3 = 5,
         Ability4 = 6,
+        /// <summary>(v0.13) Fire the weapon in hand. Before v0.13 this fired the Primary slot.</summary>
         Primary = 7,
+        /// <summary>(v0.13) Aim down sights. Before v0.13 this fired the Secondary slot.</summary>
         Secondary = 8,
         Utility = 9,
         Gadget = 10,
@@ -184,6 +187,11 @@ namespace Ouroboros.Core
         /// <summary>Sprint + Slide = power slide (v0.7).</summary>
         Slide = 12,
         /// <summary>Grappling hook for classes that have it (v0.7).</summary>
-        Grapple = 13
+        // [v0.12] Grapple = 13
+        Grapple = 13,
+        /// <summary>(v0.13) Swap to the other weapon. Mouse wheel up.</summary>
+        NextWeapon = 14,
+        /// <summary>(v0.13) Swap to the other weapon. Mouse wheel down.</summary>
+        PrevWeapon = 15
     }
 }

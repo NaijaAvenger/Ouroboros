@@ -34,8 +34,17 @@ namespace Ouroboros.Equipment
         [Networked] public float Bloom { get; set; }
         [Networked] public int BloomTick { get; set; }
 
+        // ---- v0.13 (M5): one weapon in hand ----
+        /// <summary>Which weapon slot is in hand: Primary (0) or Secondary (1). Only that one fires and reloads.</summary>
+        [Networked] public int ActiveSlot { get; set; }
+        /// <summary>Runs while the weapon just swapped to is being drawn; it cannot fire or aim until it ends.</summary>
+        [Networked] public TickTimer SwapTimer { get; set; }
+        /// <summary>Aiming down sights: tighter spread, slower walk, no sprint. Zoom is the owner's view only.</summary>
+        [Networked] public NetworkBool Aiming { get; set; }
+
         private Network.NetworkPlayer owner;
         private ChangeDetector changeDetector;
+        private int shownActiveSlot;
         private readonly int[] knownIds = new int[SLOTS];
         private bool defaultsApplied;
         private int shownFireCount;
@@ -56,6 +65,8 @@ namespace Ouroboros.Equipment
         public static event Action<NetworkLoadout, int, Vector3, bool> WeaponFired;
         /// <summary>Fired on every peer when a reload starts (loadout, slot).</summary>
         public static event Action<NetworkLoadout, int> ReloadStarted;
+        /// <summary>(v0.13) Fired on every peer when the weapon in hand changes (loadout, new slot). Cosmetic.</summary>
+        public static event Action<NetworkLoadout, int> WeaponSwapped;
 
         public Network.NetworkPlayer Owner => owner;
 
@@ -91,6 +102,7 @@ namespace Ouroboros.Equipment
             // Late joiners must not replay shots / reloads that happened before they arrived.
             shownFireCount = FireCount;
             for (int i = 0; i < SLOTS; i++) shownReloading[i] = IsReloading(i);
+            shownActiveSlot = ActiveSlot;
         }
 
         public override void Render()
@@ -110,6 +122,13 @@ namespace Ouroboros.Equipment
 
             RenderShots();
             RenderReloads();
+
+            // (v0.13) predicted on the owner's client, so the swap shows at once
+            if (ActiveSlot != shownActiveSlot)
+            {
+                shownActiveSlot = ActiveSlot;
+                WeaponSwapped?.Invoke(this, ActiveSlot);
+            }
         }
 
         /// <summary>
@@ -187,6 +206,8 @@ namespace Ouroboros.Equipment
             {
                 if (item != null) Equip(item);
             }
+            // (v0.13) a fresh kit starts with the primary in hand
+            if (SlotItemIds[(int)EquipmentSlotType.Primary] != 0) ActiveSlot = (int)EquipmentSlotType.Primary;
         }
 
         /// <summary>Equips an item into the slot its data declares. Returns false if not registered / not allowed.</summary>
@@ -214,6 +235,85 @@ namespace Ouroboros.Equipment
             Reserve.Set(slot, data != null && data.UsesAmmo ? data.reserveAmmo : 0);
             UseTimers.Set(slot, TickTimer.None);
             ReloadTimers.Set(slot, TickTimer.None);
+
+            // (v0.13) never leave an empty hand while the other weapon slot holds something
+            if (IsWeaponSlot(slot))
+            {
+                if (!IsWeaponSlot(ActiveSlot)) ActiveSlot = 0;
+                int other = ActiveSlot == 0 ? 1 : 0;
+                if (SlotItemIds[ActiveSlot] == 0 && SlotItemIds[other] != 0) ActiveSlot = other;
+                Aiming = false;
+                SwapTimer = TickTimer.None;
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // The weapon in hand (v0.13)
+
+        /// <summary>Primary and Secondary are the two weapons you hold one at a time.</summary>
+        public static bool IsWeaponSlot(int slot) => slot == (int)EquipmentSlotType.Primary || slot == (int)EquipmentSlotType.Secondary;
+
+        public Data.EquipmentData ActiveData => GetData(ActiveSlot);
+        public bool IsSwapping => SwapTimer.IsRunning && !SwapTimer.Expired(Runner);
+
+        /// <summary>0 while the new weapon is still coming up, 1 once it is ready. For the view model.</summary>
+        public float SwapProgress
+        {
+            get
+            {
+                if (!IsSwapping) return 1f;
+                var data = ActiveData;
+                float total = data != null ? Mathf.Max(0.05f, data.swapSeconds) : 0.4f;
+                float remaining = SwapTimer.RemainingTime(Runner) ?? 0f;
+                return Mathf.Clamp01(1f - remaining / total);
+            }
+        }
+
+        /// <summary>Swaps to the other weapon. Returns false if there is none. State authority and owner (prediction).</summary>
+        public bool CycleWeapon()
+        {
+            return SelectWeapon(ActiveSlot == 0 ? 1 : 0);
+        }
+
+        /// <summary>Puts the weapon in <paramref name="slot"/> in hand. Cancels a reload in progress on the old one.</summary>
+        public bool SelectWeapon(int slot)
+        {
+            if (!CanSimulate || !IsWeaponSlot(slot) || slot == ActiveSlot) return false;
+            if (SlotItemIds[slot] == 0) return false;
+
+            if (IsWeaponSlot(ActiveSlot)) ReloadTimers.Set(ActiveSlot, TickTimer.None); // a reload does not finish in the holster
+            ActiveSlot = slot;
+            Aiming = false;
+            var data = GetData(slot);
+            SwapTimer = TickTimer.CreateFromSeconds(Runner, data != null ? Mathf.Max(0.05f, data.swapSeconds) : 0.4f);
+            return true;
+        }
+
+        /// <summary>
+        /// Called every tick with whether the aim button is held. Aiming needs a ready hitscan weapon in hand:
+        /// not while it is being drawn or reloaded, and not while the player is out of the fight.
+        /// </summary>
+        public void SetAiming(bool wants)
+        {
+            if (!CanSimulate) return;
+            var data = ActiveData;
+            bool can = wants
+                       && data != null && data.kind == Data.EquipmentKind.HitscanWeapon
+                       && !IsSwapping && !IsReloading(ActiveSlot)
+                       && owner != null && owner.IsActiveInMatch
+                       && !owner.HasStatus(Core.StatusFlags.Climbing) && !owner.HasStatus(Core.StatusFlags.Grappling);
+            if (Aiming != can) Aiming = can;
+        }
+
+        /// <summary>Walking speed multiplier from aiming: 1 from the hip.</summary>
+        public float AimSpeedMultiplier
+        {
+            get
+            {
+                if (!Aiming) return 1f;
+                var data = ActiveData;
+                return data != null ? Mathf.Clamp(data.adsMoveMultiplier, 0.2f, 1f) : 1f;
+            }
         }
 
         /// <summary>Lobby request from the owning client to swap an item (pre-match only).</summary>
@@ -264,6 +364,8 @@ namespace Ouroboros.Equipment
         {
             if (slot < 0 || slot >= SLOTS || SlotItemIds[slot] == 0) return false;
             if (IsOnCooldown(slot) || IsReloading(slot)) return false;
+            // (v0.13) of the two weapons only the one in hand can be used, and not while it is being drawn
+            if (IsWeaponSlot(slot) && (slot != ActiveSlot || IsSwapping)) return false;
             return true;
         }
 
@@ -322,7 +424,17 @@ namespace Ouroboros.Equipment
         /// <summary>Reloads the first weapon slot that needs it (Primary, then Secondary).</summary>
         public void ReloadAny()
         {
-            if (!StartReload((int)EquipmentSlotType.Primary)) StartReload((int)EquipmentSlotType.Secondary);
+            // [v0.12] if (!StartReload((int)EquipmentSlotType.Primary)) StartReload((int)EquipmentSlotType.Secondary);
+            ReloadActive(); // (v0.13) only the weapon in hand reloads
+        }
+
+        /// <summary>(v0.13) Reloads the weapon in hand. Aiming drops for the reload.</summary>
+        public bool ReloadActive()
+        {
+            if (!IsWeaponSlot(ActiveSlot) || IsSwapping) return false;
+            if (!StartReload(ActiveSlot)) return false;
+            Aiming = false;
+            return true;
         }
 
         private void FinishReload(int slot)
@@ -416,7 +528,9 @@ namespace Ouroboros.Equipment
             float stance = Core.CombatRules.StanceSpreadMultiplier(grounded,
                 owner != null && owner.HasStatus(Core.StatusFlags.Sprinting),
                 owner != null && owner.HasStatus(Core.StatusFlags.Sliding));
-            return Core.CombatRules.EffectiveSpread(data.spreadDegrees, CurrentBloom, stance);
+            // [v0.12] return Core.CombatRules.EffectiveSpread(data.spreadDegrees, CurrentBloom, stance);
+            float spread = Core.CombatRules.EffectiveSpread(data.spreadDegrees, CurrentBloom, stance);
+            return Core.CombatRules.AimedSpread(spread, Aiming && slot == ActiveSlot, data.adsSpreadMultiplier); // (v0.13)
         }
 
         // ------------------------------------------------------------------

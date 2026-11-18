@@ -92,6 +92,8 @@ namespace Ouroboros.UI
             if (GetComponent<HackHUD>() == null) gameObject.AddComponent<HackHUD>();
             // (v0.12, M4) crew radio lines
             if (GetComponent<CrewCallouts>() == null) gameObject.AddComponent<CrewCallouts>();
+            // (v0.13) markers over crewmates, so friend and rival are never confused
+            if (GetComponent<TeammateMarkers>() == null) gameObject.AddComponent<TeammateMarkers>();
 
             var ps = document.panelSettings;
             Debug.Log($"[HeistHUD] Enabled. PanelSettings='{(ps != null ? ps.name : "NONE")}', theme='{(ps != null && ps.themeStyleSheet != null ? ps.themeStyleSheet.name : "NONE")}', " +
@@ -574,9 +576,16 @@ namespace Ouroboros.UI
                 return $"{key} {d.equipmentName}  {lo.Magazine[slot]} / {lo.Reserve[slot]}";
             }
 
-            weaponLabel.text = Line(secondary, s, Core.LocalInputSource.Hint(Core.InputButtons.Secondary));
-            ammoLabel.text = Line(primary, p, Core.LocalInputSource.Hint(Core.InputButtons.Primary));
-            ammoLabel.style.color = primary != null && primary.UsesAmmo && lo.Magazine[p] == 0 ? HealthColor : Color.white;
+            // [v0.12] weaponLabel.text = Line(secondary, s, Core.LocalInputSource.Hint(Core.InputButtons.Secondary));
+            // [v0.12] ammoLabel.text = Line(primary, p, Core.LocalInputSource.Hint(Core.InputButtons.Primary));
+            // [v0.12] ammoLabel.style.color = primary != null && primary.UsesAmmo && lo.Magazine[p] == 0 ? HealthColor : Color.white;
+            // (v0.13) the weapon in hand is the big line; the stowed one is small, with the key that swaps to it
+            int hand = lo.ActiveSlot == s ? s : p, stowed = hand == p ? s : p;
+            var inHand = hand == p ? primary : secondary;
+            var other = hand == p ? secondary : primary;
+            weaponLabel.text = other != null ? Line(other, stowed, $"[{Core.LocalInputSource.Hint(Core.InputButtons.NextWeapon)}]") : "";
+            ammoLabel.text = lo.IsSwapping && inHand != null ? $"{inHand.equipmentName}  ..." : Line(inHand, hand, "").Trim();
+            ammoLabel.style.color = inHand != null && inHand.UsesAmmo && lo.Magazine[hand] == 0 ? HealthColor : Color.white;
         }
 
         private void RefreshZone()

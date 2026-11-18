@@ -63,6 +63,19 @@ namespace Ouroboros.Classes
             return false;
         }
 
+        /// <summary>(v0.13) What each ability shows in the world. The shield and the boost also show as status effects.</summary>
+        public override Core.AbilityVisual GetAbilityVisual(int slot)
+        {
+            switch (slot)
+            {
+                case 0: return new Core.AbilityVisual(Core.AbilityVisualKind.Shimmer, 1.4f, 0.5f, new Color(0.3f, 0.9f, 1f));
+                case 1: return new Core.AbilityVisual(Core.AbilityVisualKind.Shimmer, 1.2f, 0.5f, new Color(1f, 0.3f, 0.2f));
+                case 2: return new Core.AbilityVisual(Core.AbilityVisualKind.Drone, reconDroneRange, reconRevealDuration, new Color(1f, 0.25f, 0.9f));
+                case 3: return new Core.AbilityVisual(Core.AbilityVisualKind.Flash, flashbangRadius, 0.35f, Color.white, 2f);
+                default: return default;
+            }
+        }
+
         private bool DeployTacticalShield()
         {
             if (hasActiveShield) return false;

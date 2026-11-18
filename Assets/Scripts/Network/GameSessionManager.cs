@@ -143,6 +143,13 @@ namespace Ouroboros.Network
 
             Core.CombatRules.RecoilKick(recoilBurstShots, data.recoilPitch, data.recoilYaw, loadout.FireCount * 7919 + slot, out float up, out float yaw);
             recoilBurstShots++;
+            // (v0.13) a shouldered weapon kicks less
+            if (loadout.Aiming && slot == loadout.ActiveSlot)
+            {
+                float steady = Mathf.Clamp01(data.adsRecoilMultiplier);
+                up *= steady;
+                yaw *= steady;
+            }
             recoilPitch -= up;
             recoilYaw += yaw;
             recoilRecovery = Mathf.Max(1f, data.recoilRecoveryPerSecond);
@@ -471,9 +478,15 @@ namespace Ouroboros.Network
         {
             if (Cursor.lockState == CursorLockMode.Locked || Core.LocalInputSource.LastDeviceWasGamepad)
             {
-                Vector2 look = Core.LocalInputSource.LookDelta(mouseSensitivity, gamepadLookSpeed, Time.unscaledDeltaTime);
+                // [v0.12] Vector2 look = Core.LocalInputSource.LookDelta(mouseSensitivity, gamepadLookSpeed, Time.unscaledDeltaTime);
+                // [v0.12] accumulatedYaw += look.x;
+                // [v0.12] accumulatedPitch -= look.y;
+                // (v0.13) the player's sensitivity setting, scaled down with the zoom while aiming
+                var localController = Player.PlayerController.Local;
+                float lookScale = Core.GameSettings.Sensitivity * (localController != null ? localController.LookSensitivityScale : 1f);
+                Vector2 look = Core.LocalInputSource.LookDelta(mouseSensitivity * lookScale, gamepadLookSpeed * lookScale, Time.unscaledDeltaTime);
                 accumulatedYaw += look.x;
-                accumulatedPitch -= look.y;
+                accumulatedPitch -= Core.GameSettings.InvertY ? -look.y : look.y;
                 accumulatedPitch = Mathf.Clamp(accumulatedPitch, -pitchLimit, pitchLimit);
             }
 
@@ -527,6 +540,8 @@ namespace Ouroboros.Network
                 for (int b = (int)Core.InputButtons.Ability1; b <= (int)Core.InputButtons.Ability4; b++) data.Buttons.Set(b, false);
                 data.Buttons.Set((int)Core.InputButtons.Primary, false);
                 data.Buttons.Set((int)Core.InputButtons.Secondary, false);
+                data.Buttons.Set((int)Core.InputButtons.NextWeapon, false); // (v0.13)
+                data.Buttons.Set((int)Core.InputButtons.PrevWeapon, false);
                 data.Buttons.Set((int)Core.InputButtons.Interact, false);
                 data.Move = Vector2.zero;
             }

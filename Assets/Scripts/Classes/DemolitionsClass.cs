@@ -61,6 +61,20 @@ namespace Ouroboros.Classes
             return false;
         }
 
+        /// <summary>(v0.13) What each ability shows in the world.</summary>
+        public override Core.AbilityVisual GetAbilityVisual(int slot)
+        {
+            var fire = new Color(1f, 0.55f, 0.12f);
+            switch (slot)
+            {
+                case 0: return new Core.AbilityVisual(Core.AbilityVisualKind.PlaceCharge, explosiveRadius, 0f, fire);
+                case 1: return new Core.AbilityVisual(Core.AbilityVisualKind.DetonateCharges, explosiveRadius, 0f, fire);
+                case 2: return new Core.AbilityVisual(Core.AbilityVisualKind.Blast, 2.5f, 0f, fire, 1.5f);
+                case 3: return new Core.AbilityVisual(Core.AbilityVisualKind.Fire, incendiaryRadius, 1.6f, fire, 3f);
+                default: return default;
+            }
+        }
+
         private bool PlaceExplosive()
         {
             if (currentExplosivesCount <= 0)

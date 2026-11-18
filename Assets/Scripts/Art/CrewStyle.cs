@@ -137,6 +137,78 @@ namespace Ouroboros.Art
             return m;
         }
 
+        // ---- v0.13: see-through and glowing materials for effects (shields, smoke, pulses, flames) ----
+        private static readonly Dictionary<int, Material> Clear = new Dictionary<int, Material>();
+        private static Shader unlitBlend;
+        private static Texture2D softDot;
+        private static Material particle;
+
+        /// <summary>
+        /// An unlit, alpha-blended shader that exists on the built-in pipeline and on URP and is always in a
+        /// build: the sprite shader. It multiplies its colour by vertex colour, which is what particles need.
+        /// </summary>
+        private static Shader UnlitBlend
+        {
+            get
+            {
+                if (unlitBlend == null) unlitBlend = Shader.Find("Sprites/Default") ?? Shader.Find("UI/Default") ?? Shader.Find("Unlit/Transparent") ?? Lit;
+                return unlitBlend;
+            }
+        }
+
+        /// <summary>An unlit see-through colour (alpha is honoured). For bubbles, rings, beams and flashes.</summary>
+        public static Material Translucent(Color color)
+        {
+            int key = Key(color);
+            if (Clear.TryGetValue(key, out var m) && m != null) return m;
+            m = new Material(UnlitBlend) { color = color, hideFlags = HideFlags.DontSave, renderQueue = 3000 };
+            Clear[key] = m;
+            return m;
+        }
+
+        /// <summary>A fresh see-through material that one effect can fade without touching the shared ones.</summary>
+        public static Material TranslucentInstance(Color color)
+        {
+            return new Material(UnlitBlend) { color = color, hideFlags = HideFlags.DontSave, renderQueue = 3000 };
+        }
+
+        /// <summary>A round, soft-edged white dot: the sprite every code-built particle uses.</summary>
+        public static Texture2D SoftDot
+        {
+            get
+            {
+                if (softDot != null) return softDot;
+                const int size = 64;
+                softDot = new Texture2D(size, size, TextureFormat.RGBA32, false) { name = "SoftDot", hideFlags = HideFlags.DontSave, wrapMode = TextureWrapMode.Clamp };
+                var pixels = new Color32[size * size];
+                float half = (size - 1) * 0.5f;
+                for (int y = 0; y < size; y++)
+                {
+                    for (int x = 0; x < size; x++)
+                    {
+                        float d = Mathf.Sqrt((x - half) * (x - half) + (y - half) * (y - half)) / half;
+                        float a = Mathf.Clamp01(1f - d);
+                        pixels[y * size + x] = new Color(1f, 1f, 1f, a * a);
+                    }
+                }
+                softDot.SetPixels32(pixels);
+                softDot.Apply(false, true);
+                return softDot;
+            }
+        }
+
+        /// <summary>Material for code-built particle systems: soft dots tinted by each particle's colour.</summary>
+        public static Material Particle
+        {
+            get
+            {
+                if (particle != null) return particle;
+                particle = new Material(UnlitBlend) { color = Color.white, hideFlags = HideFlags.DontSave, renderQueue = 3100 };
+                particle.mainTexture = SoftDot;
+                return particle;
+            }
+        }
+
         private static Material New(Color color)
         {
             var m = new Material(Lit) { color = color, hideFlags = HideFlags.DontSave };
