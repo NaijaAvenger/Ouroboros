@@ -81,7 +81,18 @@ namespace Ouroboros.UI
             panel.style.alignItems = Align.Center;
             root.Add(panel);
 
-            title = new Label("CHOOSE YOUR OPERATIVE");
+            // (v0.12, M4) the premise, said once, where everyone reads it
+            var setting = new Label("THE OUROBOROS FREEPORT");
+            setting.style.fontSize = 15; setting.style.color = new Color(1f, 0.82f, 0.25f); setting.style.unityFontStyleAndWeight = FontStyle.Bold;
+            setting.style.letterSpacing = 6;
+            panel.Add(setting);
+            var premise = new Label("Everything in these vaults was taken from somewhere. Your crew is here to take it back. So are three others.");
+            premise.style.fontSize = 13; premise.style.color = new Color(1f, 1f, 1f, 0.8f); premise.style.marginBottom = 10;
+            premise.style.whiteSpace = WhiteSpace.Normal; premise.style.maxWidth = 760; premise.style.unityTextAlign = TextAnchor.MiddleCenter;
+            panel.Add(premise);
+
+            // [v0.11] title = new Label("CHOOSE YOUR OPERATIVE");
+            title = new Label("CHOOSE YOUR SPECIALIST");
             title.style.fontSize = 28; title.style.color = Color.white; title.style.unityFontStyleAndWeight = FontStyle.Bold;
             panel.Add(title);
 

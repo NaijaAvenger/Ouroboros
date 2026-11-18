@@ -168,6 +168,23 @@ Awaiting in-engine validation: PHASE0_BRINGUP.md section 7f.
 
 Awaiting in-engine validation: PHASE0_BRINGUP.md section 7g.
 
+### v0.12 — M3 follow-up and M4, identity
+M3 follow-up:
+- **Zero gravity**: `Interaction/GravityZone.cs` (hackable volume), `PlayerController.SimulateZeroG` (networked `Floating`, `FloatVelocity`), bot steering in zero-g, two zones on Freeport.
+- **Jamming players**: `NetworkPlayer` implements `IQuickHackable` (`Jam gear`: abilities off, weapon jammed, then immune for a while), `NetworkLoadout.Jam`, warning on the victim's HUD.
+- **Pulse puzzle**: `HackRules.PuzzleKind`, pulse position and window from the shared seed and tick, `LootObjective.puzzleMode` (Signs, Pulse, Mixed), pulse panel in `HackHUD`.
+
+M4, all generated in code:
+- **Crew identity**: `Core/PatternRules.cs` (four patterns, unit-tested), `Art/CrewStyle.cs` (palettes, pattern textures, materials), `UI/CrewSkin.cs` (pattern band and accents for UI panels).
+- **Models**: `Art/CharacterBuilder.cs` (four specialists, three guards, simple animation), `Art/ArtefactBuilder.cs` (nineteen artefact shapes), `Art/WeaponView.cs` (shows `EquipmentData.equipmentPrefab`), `Art/DisplayPiece.cs`, `Art/WorldSign.cs` with `Assets/Ouroboros/Shaders/WorldText.shader`.
+- **Specialists**: Cipher, Spider, Smith, Shield (`Core.ClassUtil.DisplayName`, class scripts and assets). Enum names unchanged.
+- **Loot**: catalog grown to twenty items, each with a shape.
+- **Audio**: `Audio/MusicDirector.cs` (four synthesised layers following the alarm tier and the getaway).
+- **Crew radio**: `UI/CrewCallouts.cs` (subtitled lines per crew; placeholder writing, needs native speakers).
+- **Builder**: `Assets/Editor/OuroborosArtPass.cs` (weapon models, effect slots, pattern assets, Gallery dressing, dock banners; menu **Apply Art Pass (M4)**).
+
+Awaiting in-engine validation: PHASE0_BRINGUP.md section 7h.
+
 ### Phase 5 — Meta
 - Lobby scene with class picker (`NetworkPlayer.RequestClass` is in place), session browser, late-join handling, host migration.
 - Progression/cosmetics via `ClassData`/`EquipmentData`.

@@ -29,8 +29,11 @@ namespace Ouroboros.Classes
 
         protected override void OnInitialize()
         {
-            className = "Demolitions";
-            description = "Explosives expert capable of breaching reinforced structures and creating area denial zones.";
+            // [v0.11] className = "Demolitions";
+            // [v0.11] description = "Explosives expert capable of breaching reinforced structures and creating area denial zones.";
+            // (v0.12, M4) the Smith. The enum and file keep the old name; players see this one.
+            className = "Smith";
+            description = "Breacher. Makes doors where there are none, carries the heavy charges, and swings across gaps on a grapple line.";
 
             // Demolitions has high health but slower movement
             maxHealth = 110f;

@@ -15,6 +15,8 @@ namespace Ouroboros.UI
 
         private void Awake()
         {
+            // (v0.12) the layered score needs no scene change: it rides along with the match feedback object
+            if (GetComponent<Audio.MusicDirector>() == null) gameObject.AddComponent<Audio.MusicDirector>();
             if (audioSource == null)
             {
                 audioSource = gameObject.AddComponent<AudioSource>();

@@ -154,6 +154,10 @@ namespace Ouroboros.EditorTools
             BuildDocks(level);
             BuildLanesCover(level);
             BuildCrewDocksAndExits();
+
+            // (v0.12, M4) one dressed district, and a banner at each crew dock
+            DressGallery(level);
+            DressCrewDocks(level);
         }
 
         /// <summary>Centre: a 22 m raised plaza, 3 m up, with a ramp on each side and four pillars for cover on top.</summary>
@@ -273,13 +277,15 @@ namespace Ouroboros.EditorTools
         {
             // One dock per crew, in the corners, facing the centre.
             var spawns = new GameObject("SpawnPoints");
-            var docks = new Dictionary<Core.TeamID, Vector3>
-            {
-                { Core.TeamID.TeamAlpha,   new Vector3(-60f, 0f, -60f) },
-                { Core.TeamID.TeamBravo,   new Vector3( 60f, 0f, -60f) },
-                { Core.TeamID.TeamCharlie, new Vector3(-60f, 0f,  62f) },
-                { Core.TeamID.TeamDelta,   new Vector3( 60f, 0f,  62f) },
-            };
+            // [v0.11] the dock positions were a local dictionary here:
+            // var docks = new Dictionary<Core.TeamID, Vector3>
+            // {
+            //     { Core.TeamID.TeamAlpha,   new Vector3(-60f, 0f, -60f) },
+            //     { Core.TeamID.TeamBravo,   new Vector3( 60f, 0f, -60f) },
+            //     { Core.TeamID.TeamCharlie, new Vector3(-60f, 0f,  62f) },
+            //     { Core.TeamID.TeamDelta,   new Vector3( 60f, 0f,  62f) },
+            // };
+            var docks = CrewDocks; // (v0.12) shared with the dock banners in OuroborosArtPass.cs
             foreach (var kvp in docks)
             {
                 var sp = new GameObject(Core.TeamUtil.DisplayName(kvp.Key) + " Dock");
@@ -466,6 +472,7 @@ namespace Ouroboros.EditorTools
 
             BuildFreeportDevices(); // (v0.11, M3)
             BuildFreeportGravityZones(); // (v0.12)
+            LinkGalleryLampsToPower(); // (v0.12, M4) the Gallery's warm lamps go out in a Gallery blackout
 
             TryBakeNavMesh();
 

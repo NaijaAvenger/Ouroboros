@@ -38,6 +38,9 @@ namespace Ouroboros.UI
         // Vitals
         private Label nameLabel, healthText, staminaText, statusLabel, lootLabel, kdLabel, weaponLabel, ammoLabel;
         private VisualElement healthFill, staminaFill;
+        // (v0.12, M4) crew identity on the HUD
+        private VisualElement crewStrip, vitalsPanel, topPanel;
+        private Core.TeamID skinnedTeam = Core.TeamID.None;
         // Abilities
         private readonly AbilitySlotView[] slots = new AbilitySlotView[Core.GameConstants.MAX_ABILITY_SLOTS];
         // Zone
@@ -87,6 +90,8 @@ namespace Ouroboros.UI
             if (GetComponent<CombatHUD>() == null) gameObject.AddComponent<CombatHUD>();
             // (v0.11) quick-hack prompt, deep-hack console and Net Sight markers
             if (GetComponent<HackHUD>() == null) gameObject.AddComponent<HackHUD>();
+            // (v0.12, M4) crew radio lines
+            if (GetComponent<CrewCallouts>() == null) gameObject.AddComponent<CrewCallouts>();
 
             var ps = document.panelSettings;
             Debug.Log($"[HeistHUD] Enabled. PanelSettings='{(ps != null ? ps.name : "NONE")}', theme='{(ps != null && ps.themeStyleSheet != null ? ps.themeStyleSheet.name : "NONE")}', " +
@@ -170,6 +175,7 @@ namespace Ouroboros.UI
             alarmFill = Bar(top, new Color(0.9f, 0.3f, 0.1f), out alarmLabel);
             alarmFill.parent.style.width = 240;
             root.Add(top);
+            topPanel = top;
 
             // Banner under the timer
             bannerLabel = Text("", 26, LootColor, bold: true);
@@ -213,6 +219,12 @@ namespace Ouroboros.UI
             var vitals = Panel(PanelBg);
             vitals.style.position = Position.Absolute;
             vitals.style.left = 12; vitals.style.bottom = 12; vitals.style.minWidth = 300;
+            vitalsPanel = vitals;
+            // (v0.12, M4) a band of the crew's pattern across the top of the vitals panel
+            crewStrip = new VisualElement { pickingMode = PickingMode.Ignore };
+            crewStrip.style.height = 20; crewStrip.style.marginBottom = 5;
+            crewStrip.style.display = DisplayStyle.None;
+            vitals.Add(crewStrip);
             nameLabel = Text("", 15, Color.white, bold: true);
             vitals.Add(nameLabel);
             healthFill = Bar(vitals, HealthColor, out healthText);
@@ -298,6 +310,18 @@ namespace Ouroboros.UI
             endTable.style.marginTop = 16;
             endScreen.Add(endTitle); endScreen.Add(endTable);
             root.Add(endScreen);
+        }
+
+        /// <summary>(v0.12, M4) Dresses the HUD in the local crew's pattern and colour.</summary>
+        private void ApplyCrewSkin(Core.TeamID team)
+        {
+            skinnedTeam = team;
+            bool valid = Core.TeamUtil.IsValid(team);
+            crewStrip.style.display = valid ? DisplayStyle.Flex : DisplayStyle.None;
+            CrewSkin.FillPattern(crewStrip, team, 20, 15, vertical: false);
+            CrewSkin.AccentLeft(vitalsPanel, team);
+            CrewSkin.AccentBottom(topPanel, team);
+            nameLabel.style.color = valid ? CrewSkin.TextColour(team) : Color.white;
         }
 
         private static VisualElement Panel(Color bg)
@@ -489,7 +513,9 @@ namespace Ouroboros.UI
                 return;
             }
 
-            nameLabel.text = $"{local.DisplayName}  ·  {local.ClassType}  ·  {TeamName(local.Team)}";
+            // [v0.11] nameLabel.text = $"{local.DisplayName}  ·  {local.ClassType}  ·  {TeamName(local.Team)}";
+            nameLabel.text = $"{local.DisplayName}  ·  {Core.ClassUtil.DisplayName(local.ClassType)}  ·  {TeamName(local.Team)}";
+            if (local.Team != skinnedTeam) ApplyCrewSkin(local.Team);
             SetBar(healthFill, local.Health, local.MaxHealth);
             healthText.text = $"{local.Health:0} / {local.MaxHealth:0}";
             SetBar(staminaFill, local.Stamina, local.MaxStamina);

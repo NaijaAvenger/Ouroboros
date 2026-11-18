@@ -50,6 +50,25 @@ namespace Ouroboros.Core
     }
 
     /// <summary>
+    /// (v0.12, M4) Specialist names shown to players. The enum keeps its original names because class
+    /// assets, equipment restrictions and saved scenes serialise them.
+    /// </summary>
+    public static class ClassUtil
+    {
+        public static string DisplayName(PlayerClassType type)
+        {
+            switch (type)
+            {
+                case PlayerClassType.Hacker:      return "Cipher";
+                case PlayerClassType.Saboteur:    return "Spider";
+                case PlayerClassType.Demolitions: return "Smith";
+                case PlayerClassType.Agent:       return "Shield";
+                default:                          return "Unassigned";
+            }
+        }
+    }
+
+    /// <summary>
     /// Helpers for converting between <see cref="TeamID"/> and zero-based array indices.
     /// </summary>
     public static class TeamUtil

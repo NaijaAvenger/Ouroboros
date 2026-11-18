@@ -3,8 +3,9 @@
 
 A modular multiplayer extraction heist game built with **Photon Fusion 2**, featuring 4 teams of 4 players competing to crack objectives, hold onto the loot, and extract before the window closes.
 
-> **Status: v0.9 — networked rules prototype.** The systems below exist in code and pass an offline C# type-check
-> and unit tests (`Tools/`). They have not all been validated in play mode, and there is no art, audio or real map yet.
+> **Status: v0.12 — networked prototype with a code-generated look.** The systems below exist in code and pass an
+> offline C# type-check and unit tests (`Tools/`). They have not been validated in play mode. Characters, loot,
+> patterns, music and sound are generated in code as stand-ins; there is no authored art, audio or voice yet.
 > A ✅ in the feature list means "implemented in code", not "tested and fun".
 >
 > - Where the game stands and where it is going: [GAME_AUDIT_AND_ROADMAP.md](GAME_AUDIT_AND_ROADMAP.md) (current plan, milestones M0 to M6)
@@ -20,7 +21,8 @@ A modular multiplayer extraction heist game built with **Photon Fusion 2**, feat
 ## Overview
 - **4 crews of 3** (Lagos, Nairobi, Accra, Joburg); bots fill every empty seat, so one person can play a full match
 - **The Run**: crack vaults, carry the named loot they spill, and when a crew is carrying the quota the getaway is called for everyone. The central getaway banks everything; side exits bank less. Score is what you got out with.
-- **4 Initial Classes**: Hacker, Saboteur, Demolitions, Agent
+- **4 specialists**: Cipher, Spider, Smith, Shield (`Hacker`, `Saboteur`, `Demolitions`, `Agent` in code)
+- **Premise**: the Ouroboros Freeport holds what was taken from a continent. Four crews are here to take it back.
 - **Heist loop**: crack vaults → carry loot → extract to bank it. Dying drops your loot for anyone to grab.
 - **Modular systems** for easy expansion of classes, equipment, interactables, and AI
 
@@ -53,9 +55,9 @@ A modular multiplayer extraction heist game built with **Photon Fusion 2**, feat
 | Class | HP | Speed / Sprint | Abilities (1–4) |
 |-------|----|----------------|-----------------|
 | **Cipher** (hack specialist; `Hacker` in code) | 85 | 5.5 / 7.8 | Remote Hack, Net Sight, EMP Blast, Data Mine |
-| **Saboteur** | 90 | 6.0 / 8.5 | Place Trap, Stealth Mode, Sabotage, Smoke Bomb |
-| **Demolitions** | 110 | 4.5 / 6.5 | Place Explosive, Detonate, Breaching Charge, Incendiary |
-| **Agent** | 100 | 5.2 / 7.5 | Tactical Shield, Damage Boost, Recon Drone, Flashbang |
+| **Spider** (ambush; `Saboteur` in code) | 90 | 6.0 / 8.5 | Place Trap, Stealth Mode, Sabotage, Smoke Bomb |
+| **Smith** (breacher; `Demolitions` in code) | 110 | 4.5 / 6.5 | Place Explosive, Detonate, Breaching Charge, Incendiary |
+| **Shield** (protector; `Agent` in code) | 100 | 5.2 / 7.5 | Tactical Shield, Damage Boost, Recon Drone, Flashbang |
 
 ## Architecture
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed documentation.
@@ -117,7 +119,7 @@ Input goes through the **Input System** package (keyboard, mouse, gamepad) when 
 | Utility / Gadget | Q / E | LB / RB |
 | Reload | R | Y |
 | Slide (while sprinting) | Ctrl | B |
-| Grapple (Demolitions) | G | R3 |
+| Grapple (Smith) | G | R3 |
 | Glide / wall climb | hold Space | hold A |
 | Cursor lock toggle | Esc | Start |
 | Debug overlay | F1 | Select |

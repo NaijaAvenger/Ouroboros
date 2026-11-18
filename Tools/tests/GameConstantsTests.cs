@@ -68,5 +68,20 @@ namespace Ouroboros.Tests
             agent.CanDoubleJump = true;
             Assert.That(agent.Describe(), Does.Contain("Double jump"));
         }
+
+        /// <summary>(v0.12) Every playable specialist has a player-facing name that differs from the others.</summary>
+        [Test]
+        public void ClassDisplayNames_AreDistinctAndRenamed()
+        {
+            var playable = new[] { PlayerClassType.Hacker, PlayerClassType.Saboteur, PlayerClassType.Demolitions, PlayerClassType.Agent };
+            var seen = new System.Collections.Generic.HashSet<string>();
+            foreach (var type in playable)
+            {
+                string name = ClassUtil.DisplayName(type);
+                Assert.That(name, Is.Not.Empty.And.Not.EqualTo("Unassigned"), type + " needs a specialist name.");
+                Assert.That(name, Is.Not.EqualTo(type.ToString()), type + " still shows its internal name.");
+                Assert.That(seen.Add(name), Is.True, "Two specialists share the name " + name + ".");
+            }
+        }
     }
 }

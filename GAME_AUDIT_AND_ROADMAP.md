@@ -38,8 +38,31 @@ Not run in Unity. The checklist is section 7g of `PHASE0_BRINGUP.md`.
 | Bots | Done in code. They jack in and answer on a timer, fight hostile turrets, and may trip devices by accident. They do not quick-hack on purpose |
 | Sign visuals | Placeholder. Plain open and closed bars; the art direction for the glyph language is an M4 decision and needs the cultural review noted in 4.1 |
 
-Not in this slice: zero-gravity zones, hacking rival players' gear directly (the EMP still does that job),
-and a second deep-hack task type.
+M3 follow-up (v0.12, code complete, not play-tested): the three items first left out of M3 are now in.
+Zero-gravity zones are hackable volumes where players fly and keep momentum (two on Freeport). Any player can
+tether a rival and jam their abilities and weapon for a few seconds. A second deep-hack puzzle, a timed pulse
+strike, is mixed in with the sign puzzle. The checklist is section 7h of `PHASE0_BRINGUP.md`.
+
+### M4 progress (code complete where code can do it, not yet play-tested)
+
+Everything below is made in code, so it needs no art files. It is a stand-in that gives the game a look of its
+own, not a replacement for artists, composers, voice actors or cultural consultants.
+
+| M4 item | State |
+|---------|-------|
+| Setting | Done as text. The premise is on the lobby screen and on signs in the Gallery |
+| Four renamed specialists | Done. Cipher, Spider, Smith and Shield, each with a code-built model whose outline differs (visor and antenna, hood and limbs, apron and pack, pauldrons and shield). The enum names in code are unchanged |
+| Crew pattern identities | Done. Each crew has a palette and a generated pattern (Lagos rings, Nairobi check, Accra strips, Joburg steps) on clothing, dock banners and the HUD |
+| One art-passed district | Stand-in. The Gallery has a stone floor, arch, colonnades, plinths with show pieces, name plates, signs and warm lamps, all from boxes |
+| Tiered music | Stand-in. Four synthesised layers at 113 BPM that fade in with the alarm tier and the getaway |
+| Voice callouts | Stand-in. Subtitled crew radio lines per crew in Pidgin, Swahili and Sheng, Twi and isiZulu, with English underneath. **Written by a non-speaker. They must be reviewed by native speakers before anyone outside the team sees them** |
+| HUD reskin | Partial. Crew pattern band, crew accent colours and specialist names. The layout is unchanged |
+| Twenty artefacts with story cards | Done. Twenty named items, each with a model shape, a value and a story |
+| Guards | Done. Code-built models for the three guard types |
+| Weapons and effects | Done by the builder. Gun pack models on the seven weapons; Cartoon FX on impact, explosion and extraction |
+
+Still open in M4 and not solvable in code: real character and environment art, composed music, recorded
+voice, the cultural review named in 4.1, and the visual language of the hack signs.
 
 ### M2 progress (code complete, not yet play-tested)
 
@@ -317,22 +340,25 @@ Decision 2 affects the local `ViewMode.cs`: if it is a first/third-person toggle
 ## 7. What is needed from you next
 
 1. Open the project in Unity 6000.4 and confirm it compiles. Nothing since M0 has been through the Fusion weaver.
-2. Run **Ouroboros > Setup > Create Freeport Map (M2)**. It also applies the M1 prefab upgrades, which the
-   committed `Player.prefab` does not have yet.
-3. Work through sections 7e (M1) and 7f (M2) of `PHASE0_BRINGUP.md` and list what breaks.
-4. With those results: fix what the playtest finds, tune the weapon, quota and hack numbers, then finish M1
-   (ADS and weapon switching, a third-person body). Section 7g is the M3 checklist.
+2. Run **Ouroboros > Setup > Recreate Freeport Map** (or **Create Freeport Map (M2)** if the scene does not
+   exist yet). It applies the M1 prefab upgrades, the M3 devices and gravity zones, and the M4 art pass.
+3. Work through sections 7e (M1), 7f (M2), 7g (M3) and 7h (M3 follow-up and M4) of `PHASE0_BRINGUP.md` and
+   list what breaks.
+4. With those results: fix what the playtest finds and tune the weapon, quota and hack numbers.
+5. Find native speakers of Nigerian Pidgin, Swahili or Sheng, Twi and isiZulu to rewrite the crew radio lines
+   in `Assets/Scripts/UI/CrewCallouts.cs`, and someone who can review the artefact names and stories.
 
-M1, M2 and M3 are now all code complete and none has been play-tested. M4 (the identity slice) is mostly art,
-audio and writing, which need people and assets rather than code, so the next useful step is the playtest.
+M1 to M4 are code complete as far as code can take them, and none has been play-tested. Four milestones of
+untested work is a real risk: the first play session will find bugs, and some will be in the oldest layers.
+M5 (the game shell: menus, settings, progression) should wait for that session.
 
 Notes on the repository as of the M2 work:
 - `main` holds M0, M1 and your Unity project state ("Squashed local work"). M2 is on `claude/awesome-darwin-awl360`.
 - `ViewMode.cs` and the Keybinds panel are not in the pushed project, so nothing blocks ADS any more.
 - The pushed project references a URP global settings asset but the URP package is not in `Packages/manifest.json`.
   Either finish the switch (install Universal RP, assign a pipeline asset, upgrade materials) or remove the stray asset.
-- The imported packs (SciFi Gun Pack, LaserGunPack, Cartoon FX Remaster) are not used by any code yet. They are the
-  obvious source for weapon view models, turrets and muzzle/impact effects in the next M1 pass.
+- The SciFi Gun Pack and Cartoon FX Remaster are now used by the art pass (weapon models, three effect slots).
+  LaserGunPack is still unused; its turret models could replace the box turrets.
 
 ## Sources
 

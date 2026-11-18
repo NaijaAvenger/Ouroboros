@@ -13,8 +13,7 @@ MonoBehaviour:
   m_Name: Hacker
   m_EditorClassIdentifier: Assembly-CSharp::Ouroboros.Data.ClassData
   className: Cipher
-  description: Electronic warfare specialist capable of disabling security systems
-    and hacking enemy equipment.
+  description: Reads the building like a pattern. Hacks faster and from further than anyone, chains one hack into the next, and sees the network through walls.
   classType: 1
   classIcon: {fileID: 0}
   maxHealth: 85

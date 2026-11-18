@@ -31,8 +31,11 @@ namespace Ouroboros.Classes
 
         protected override void OnInitialize()
         {
-            className = "Saboteur";
-            description = "Stealth operative skilled in setting traps, sabotaging equipment, and silent elimination.";
+            // [v0.11] className = "Saboteur";
+            // [v0.11] description = "Stealth operative skilled in setting traps, sabotaging equipment, and silent elimination.";
+            // (v0.12, M4) the Spider. The enum and file keep the old name; players see this one.
+            className = "Spider";
+            description = "Ambush specialist. Lays traps, vanishes, climbs where nobody looks, and is gone before the smoke clears.";
 
             // Saboteur has balanced stats with high stealth capabilities
             maxHealth = 90f;

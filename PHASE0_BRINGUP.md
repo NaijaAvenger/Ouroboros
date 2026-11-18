@@ -196,6 +196,39 @@ Host + client:
 - [ ] The client's answers register (the bar moves on both screens) and a fast double press does not count twice.
 - [ ] Tethers, shutter states, blackouts and turret ownership agree on both screens.
 
+## 7h. M3 follow-up and M4 validation: zero-g, jamming, pulse, identity (v0.12)
+Setup: re-run **Ouroboros > Setup > Create Freeport Map (M2)**. On an existing Freeport scene it adds a `Gravity Zones` group. The Gallery dressing and dock banners are only added to a scene built from scratch, so either use **Recreate Freeport Map** or, to keep hand edits, open the scene and run **Ouroboros > Setup > Apply Art Pass (M4)**, then save.
+
+Zero gravity (two zones: the air over the atrium, and the container yard):
+- [ ] Aim at a gravity control box and hold **F**: `Kill gravity` (and `Restore gravity` while it is off). The zone shows a faint volume and the feed says who switched it.
+- [ ] Walk in: you lift off. You fly where you look, **Space** thrusts up, **Slide** thrusts down, and you keep your speed until you thrust the other way.
+- [ ] Guards inside stay on the floor. Bots inside steer for their target and do not get stuck on the ceiling.
+- [ ] After 30 s, or when someone hacks the box again, everyone in the air falls. No fall is fatal and nobody ends up inside geometry.
+- [ ] Host + client: the client's flight is smooth, with no snap back when entering or leaving the zone.
+
+Jamming a rival (any class):
+- [ ] Aim at a rival player within hack range and hold **F**: `Jam gear`. It takes about 2 s and they see `BEING HACKED by <name> - break line of sight or shoot them`.
+- [ ] On completion their abilities are off for 4 s and their weapon will not fire for 2 s. The feed names both players.
+- [ ] The same player cannot be jammed again for 14 s. Breaking line of sight or shooting the hacker breaks the tether.
+
+Pulse puzzle (the second deep-hack type; vaults default to a mix of both):
+- [ ] Some puzzles are a moving marker and a highlighted window instead of signs. Press **Space** while the marker is in the window: the bar jumps. Outside it: `MISSED`, the bar drops and the alarm rises.
+- [ ] Harder vaults have a narrower window and a faster marker.
+- [ ] Host + client: a strike the client saw as a hit is a hit on the host (it is judged from the shared tick, not the client's clock).
+
+Identity:
+- [ ] The lobby shows the premise and four specialists called **Cipher, Spider, Smith, Shield**.
+- [ ] Each crew wears its own colours and pattern (Lagos rings, Nairobi check, Accra strips, Joburg steps). You can tell crews apart at range by silhouette and colour. Guards look like guards, and the three guard types differ.
+- [ ] Your HUD carries your crew's pattern band and colour.
+- [ ] Weapons show a model from the SciFi Gun Pack in first person and in other players' hands. **Check the model points forward.** If it points sideways, change `viewEuler` on the weapon's Equipment asset (default `0, -90, 0`).
+- [ ] Loot on the floor is a recognisable object per item (leopard, harp, sword, data core, and so on), glowing in its tier colour.
+- [ ] Music: a quiet held chord in the lobby, a kick and bass once the match is live, a log-drum line that comes in at alarm tier 1 and is full at tier 2, and an alarm layer in lockdown and during the getaway. Layers fade, they do not cut, and they stay in time with each other.
+- [ ] Crew radio lines appear above the ability bar at match start, when your crew opens a vault, when a crewmate goes down, at lockdown, at the getaway, and when you extract. Each has an English line under it.
+- [ ] The Gallery (north) has a stone floor, an entrance arch signed `THE GALLERY`, colonnades, six plinths with slowly turning show pieces and name plates, and warm lamps. Cutting the Gallery power turns the lamps off too.
+- [ ] Signs are hidden by walls. If they show through walls, the `Ouroboros/World Text` shader did not compile: send the console error.
+- [ ] Each crew dock has a banner in the crew's pattern with its city over it.
+- [ ] Impacts, explosions and extractions show Cartoon FX effects. If an effect is too big or too bright, swap it on `Assets/Ouroboros/FeedbackLibrary.asset`.
+
 ## 7d. Expected flow and troubleshooting
 **Expected flow on Play (dev config):** spectator camera orbits the arena → session starts → your player spawns → the
 **class picker** appears with the cursor free (state *Waiting for players*) → host presses **Start match now** (or the

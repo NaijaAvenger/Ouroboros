@@ -12,9 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dd4a7c37877836f4ba55066e34996b38, type: 3}
   m_Name: Demolitions
   m_EditorClassIdentifier: Assembly-CSharp::Ouroboros.Data.ClassData
-  className: Demolitions
-  description: Explosives expert capable of breaching reinforced structures and creating
-    area denial zones.
+  className: Smith
+  description: Breacher. Makes doors where there are none, carries the heavy charges, and swings across gaps on a grapple line.
   classType: 3
   classIcon: {fileID: 0}
   maxHealth: 110

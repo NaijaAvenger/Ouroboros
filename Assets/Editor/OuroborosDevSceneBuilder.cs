@@ -138,6 +138,9 @@ namespace Ouroboros.EditorTools
                 if (cls != null && cls.classType == Core.PlayerClassType.Saboteur && cls.trapPrefab == null) { cls.trapPrefab = trapPrefabFresh; EditorUtility.SetDirty(cls); }
             }
 
+            // (v0.12, M4) weapon models, effects and crew pattern assets. Only fills empty slots.
+            ApplyArtAssets();
+
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
         }
@@ -228,7 +231,8 @@ namespace Ouroboros.EditorTools
 
         private static void EnsureFolders()
         {
-            foreach (var dir in new[] { Root, PrefabDir, SceneDir, ClassDir, UIDir, EquipDir })
+            // [v0.11] foreach (var dir in new[] { Root, PrefabDir, SceneDir, ClassDir, UIDir, EquipDir })
+            foreach (var dir in new[] { Root, PrefabDir, SceneDir, ClassDir, UIDir, EquipDir, ArtDir })
             {
                 if (!AssetDatabase.IsValidFolder(dir))
                 {
@@ -464,16 +468,20 @@ namespace Ouroboros.EditorTools
             var list = new List<Data.ClassData>
             {
                 ClassAsset(Core.PlayerClassType.Hacker, "Hacker", 85f, 5.5f, 7.8f,
-                    "Electronic warfare specialist capable of disabling security systems and hacking enemy equipment.",
+                    // [v0.11] "Electronic warfare specialist capable of disabling security systems and hacking enemy equipment.",
+                    "Reads the building like a pattern. Hacks faster and from further than anyone, chains one hack into the next, and sees the network through walls.",
                     ("System Hack", 15f, 15f, 5f), ("Disable Camera", 20f, 10f, 5f), ("EMP Blast", 25f, 25f, 4f), ("Data Mine", 30f, 20f, 5f)),
                 ClassAsset(Core.PlayerClassType.Saboteur, "Saboteur", 90f, 6f, 8.5f,
-                    "Stealth operative skilled in setting traps, sabotaging equipment, and silent elimination.",
+                    // [v0.11] "Stealth operative skilled in setting traps, sabotaging equipment, and silent elimination.",
+                    "Ambush specialist. Lays traps, vanishes, climbs where nobody looks, and is gone before the smoke clears.",
                     ("Place Trap", 6f, 10f, 0f), ("Stealth Mode", 25f, 25f, 10f), ("Sabotage", 18f, 15f, 8f), ("Smoke Bomb", 15f, 10f, 8f)),
                 ClassAsset(Core.PlayerClassType.Demolitions, "Demolitions", 110f, 4.5f, 6.5f,
-                    "Explosives expert capable of breaching reinforced structures and creating area denial zones.",
+                    // [v0.11] "Explosives expert capable of breaching reinforced structures and creating area denial zones.",
+                    "Breacher. Makes doors where there are none, carries the heavy charges, and swings across gaps on a grapple line.",
                     ("Place Explosive", 2f, 5f, 0f), ("Detonate", 4f, 0f, 0f), ("Breaching Charge", 20f, 20f, 0f), ("Incendiary", 18f, 15f, 5f)),
                 ClassAsset(Core.PlayerClassType.Agent, "Agent", 100f, 5.2f, 7.5f,
-                    "Versatile field operative with balanced combat capabilities and tactical support options.",
+                    // [v0.11] "Versatile field operative with balanced combat capabilities and tactical support options.",
+                    "Frontline protector. Takes the first hit behind a shield, lifts the damage of the whole crew, and holds the ground others need.",
                     ("Tactical Shield", 20f, 20f, 8f), ("Damage Boost", 18f, 15f, 6f), ("Recon Drone", 25f, 10f, 6f), ("Flashbang", 12f, 10f, 3f)),
             };
 
@@ -499,7 +507,8 @@ namespace Ouroboros.EditorTools
             if (data != null) return data; // keep designer edits
 
             data = ScriptableObject.CreateInstance<Data.ClassData>();
-            data.className = name;
+            // [v0.11] data.className = name;
+            data.className = Core.ClassUtil.DisplayName(type); // (v0.12, M4) Cipher, Spider, Smith, Shield; the file keeps the old name
             data.description = description;
             data.classType = type;
             data.maxHealth = hp;

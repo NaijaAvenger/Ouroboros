@@ -32,8 +32,11 @@ namespace Ouroboros.Classes
 
         protected override void OnInitialize()
         {
-            className = "Agent";
-            description = "Versatile field operative with balanced combat capabilities and tactical support options.";
+            // [v0.11] className = "Agent";
+            // [v0.11] description = "Versatile field operative with balanced combat capabilities and tactical support options.";
+            // (v0.12, M4) the Shield. The enum and file keep the old name; players see this one.
+            className = "Shield";
+            description = "Frontline protector. Takes the first hit behind a shield, lifts the damage of the whole crew, and holds the ground others need.";
 
             // Agent has balanced stats across all categories
             maxHealth = 100f;

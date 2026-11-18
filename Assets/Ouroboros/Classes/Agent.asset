@@ -12,9 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dd4a7c37877836f4ba55066e34996b38, type: 3}
   m_Name: Agent
   m_EditorClassIdentifier: Assembly-CSharp::Ouroboros.Data.ClassData
-  className: Agent
-  description: Versatile field operative with balanced combat capabilities and tactical
-    support options.
+  className: Shield
+  description: Frontline protector. Takes the first hit behind a shield, lifts the damage of the whole crew, and holds the ground others need.
   classType: 4
   classIcon: {fileID: 0}
   maxHealth: 100
