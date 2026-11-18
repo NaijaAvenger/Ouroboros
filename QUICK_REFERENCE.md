@@ -32,13 +32,27 @@
 - `BaseAIAgent.cs` - Networked AI base with perception and nav helpers
 - `Perception.cs` - FOV / LOS / reveal-aware visibility
 - `BehaviorTree.cs` - Sequence, Selector, Inverter, Condition/Action (+ delegate variants)
-- `GuardAI.cs` - Patrol / investigate / fight
+- `GuardAI.cs` - Patrol / investigate / fight (extensible: `EliteGuard.cs`, `SniperGuard.cs`), `AIBlackboard.cs` shared sightings + noise, `AISpawner.cs`
+
+### Vaults & movement (v0.7)
+- `Interaction/VaultDoor.cs`, `KeycardPickup.cs`, `CodeNote.cs`, `IDCardDrop.cs`, `UI/KeypadUI.cs`, `AI/VisionCone.cs`; movement tech in `Player/PlayerController.cs` with `Core.MovementProfile`
+
+### Heist layer (v0.5)
+- `GameMode/AlarmSystem.cs`, `GameMode/LootCase.cs`, `Interaction/HackTerminal.cs`, `AI/AISpawner.cs`
+
+### Equipment (v0.4)
+- `Equipment/NetworkLoadout.cs` (replicated slots/ammo/cooldowns), `EquipmentLoadout.cs` (local components), `BaseEquipment.cs`
+- `Equipment/HitscanWeapon.cs`, `ProjectileWeapon.cs`, `Projectile.cs`, `PassiveGear.cs`
+- `Data/EquipmentData.cs` (kind + weapon stats), `Data/EquipmentRegistry.cs` (network ids)
 
 ### Data / Player / Equipment / UI
 - `Data/GameModeConfig.cs` (all match rules), `ClassData.cs`, `ClassRegistry.cs`, `EquipmentData.cs`
 - `Player/PlayerController.cs`, `Player/TeamSpawnPoint.cs`, `Player/PlayerPresentation.cs`
-- `UI/HeistHUD.cs` (UI Toolkit HUD), `UI/DevHUD.cs` (F1 debug overlay)
-- `Assets/Editor/OuroborosDevSceneBuilder.cs` — menu *Ouroboros > Setup > Create Dev Scene*
+- `UI/HeistHUD.cs` (UI Toolkit HUD), `UI/ClassPickerUI.cs` (pre-match picker), `UI/MatchFeedback.cs`, `UI/DevHUD.cs` (F1 debug overlay)
+- `Core/LocalInputSource.cs` (only device reader), `Core/HeistInputActions.cs` (rebindable Input System actions)
+- `Data/FeedbackLibrary.cs`, `Player/PlayerFeedback.cs` (audio/VFX hooks)
+- `Assets/Editor/OuroborosDevSceneBuilder.cs` — menus *Ouroboros > Setup > Create Dev Scene* (assets + scene, scene build deferred one editor update) and *Rebuild Scene References* (re-applies every asset reference to DevArena)
+- `Core/DevAssetFallback.cs` — editor-only play-mode fallback when a builder-filled scene reference is empty
 - `Equipment/BaseEquipment.cs`, `EquipmentLoadout.cs`, `BaseTech.cs`
 
 ## Key Constants

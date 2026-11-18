@@ -39,6 +39,7 @@ namespace Ouroboros.Classes
             maxHealth = 100f;
             movementSpeed = 5.2f;
             sprintSpeed = 7.5f;
+            movement.CanDoubleJump = true;                                   // v0.7
 
             DefineAbility(0, "Tactical Shield", cooldown: 20f, staminaCost: 20f, duration: tacticalShieldDuration);
             DefineAbility(1, "Damage Boost",    cooldown: 18f, staminaCost: 15f, duration: damageBoostDuration);

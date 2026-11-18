@@ -38,6 +38,7 @@ namespace Ouroboros.Classes
             maxHealth = 90f;
             movementSpeed = 6f;
             sprintSpeed = 8.5f;
+            movement.CanWallClimb = true; movement.WallClimbSeconds = 2f;   // v0.7: scales buildings
 
             DefineAbility(0, "Place Trap",   cooldown: 6f,  staminaCost: 10f);
             DefineAbility(1, "Stealth Mode", cooldown: 25f, staminaCost: 25f, duration: stealthDuration);

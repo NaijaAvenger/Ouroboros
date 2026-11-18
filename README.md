@@ -24,11 +24,17 @@ A modular multiplayer extraction heist game built with **Photon Fusion 2**, feat
 - ✅ **Objectives & loot** — hold-to-crack vaults, contested capture, loot drops
 - ✅ **Extraction zones** — contested pause, reusable points, whole-team option
 - ✅ **Interactables** — hackable/breachable doors, security cameras, proximity traps
-- ✅ **AI** — server-authoritative agents, perception, behavior trees, a working guard
+- ✅ **AI** — server-authoritative agents, perception, behavior trees, shared blackboard, alarm-tier aggression; Guard, Elite and Sniper types; doors that carve the NavMesh
 - ✅ **HUD** — UI Toolkit HUD: vitals, cooldowns, status, loot, timers, scoreboard, zone prompts, kill feed, death/end screens
 - ✅ **Presentation hooks** — team colours, status tints, stealth visibility, data-driven class stats (`ClassData` + `ClassRegistry`)
-- ⬜ **VFX / audio / animation** — hook into `PlayerPresentation` and the static events (Phase 1, remaining)
-- ⬜ **Weapons** — equipment slots exist; networked weapons are Phase 2
+- ✅ **Input System first** — rebindable keyboard/mouse/gamepad actions, legacy fallback
+- ✅ **Lobby class picker** and pre-match ability lock
+- ✅ **Feedback hooks** — `FeedbackLibrary` audio/VFX slots wired to every gameplay event (assets not included)
+- ⬜ **Animation / art** — presentation is placeholder capsules
+- ✅ **Vaults** — four walled vaults with keycard, enemy-ID-card, passcode (keypad, wrong code = lockdown) and lockdown-override locks gating the interior crack
+- ✅ **Movement tech** — slide, mantle, and per-class double jump / glide / wall climb / grapple
+- ✅ **Heist layer** — alarm tiers with lockdown, guard spawner and reinforcements, hack terminals, carry-the-case, multi-stage vaults, loot weight
+- ✅ **Weapons** — networked loadout (ammo, reload, cooldowns), lag-compensated hitscan, server-simulated projectiles, passive gear, lobby loadout picker
 
 ### Player Classes
 
@@ -66,7 +72,7 @@ Assets/Scripts/
 - **AI Navigation** package (`com.unity.ai.navigation`) for NavMesh baking (GuardAI)
 
 ### Scene Setup
-**Fast path:** menu **Ouroboros > Setup > Create Dev Scene (Phase 0)** generates the config asset, prefabs and a playable `DevArena` scene (see [PHASE0_BRINGUP.md](PHASE0_BRINGUP.md)). Manual equivalent:
+**Fast path:** menu **Ouroboros > Setup > Create Dev Scene (Phase 0)** generates the config asset, prefabs and a playable `DevArena` scene (see [PHASE0_BRINGUP.md](PHASE0_BRINGUP.md)); **Ouroboros > Setup > Rebuild Scene References** re-applies the asset references if any field in the scene comes up empty. Manual equivalent:
 
 1. **Player prefab**: `NetworkObject` + `NetworkTransform` + `CharacterController` + `NetworkPlayer` + `PlayerController` (+ child camera assigned to `cameraTransform`). Register it in the Fusion `NetworkProjectConfig` prefab table.
 2. **Scene objects**: `GameSessionManager` (assign the player prefab), `TeamManager` and `ExtractionHeistGameMode` as scene `NetworkObject`s.
@@ -84,7 +90,7 @@ Assets/Scripts/
 Scoring: objectives, kills, first extraction per team, each member extracted, and banked loot (`GameModeConfig`).
 
 ## Controls
-Input goes through the **Input System** package (keyboard, mouse, gamepad) when it is enabled; the legacy Input Manager is only a fallback.
+Input goes through the **Input System** package (keyboard, mouse, gamepad) when it is enabled; the legacy Input Manager is only a fallback. Bindings are rebindable at runtime (`HeistInputActions.StartRebind`) and persist in PlayerPrefs.
 
 | Action | Keyboard / Mouse | Gamepad |
 |--------|------------------|---------|
@@ -95,6 +101,10 @@ Input goes through the **Input System** package (keyboard, mouse, gamepad) when 
 | Abilities 1–4 | 1 2 3 4 | D-pad ↑ → ↓ ← |
 | Primary / Secondary | LMB / RMB | RT / LT |
 | Utility / Gadget | Q / E | LB / RB |
+| Reload | R | Y |
+| Slide (while sprinting) | Ctrl | B |
+| Grapple (Demolitions) | G | R3 |
+| Glide / wall climb | hold Space | hold A |
 | Cursor lock toggle | Esc | Start |
 | Debug overlay | F1 | Select |
 

@@ -69,6 +69,64 @@ Watch the **DevHUD** (F1) and console:
 - [ ] Other players are tinted by team; your own capsule is hidden; Saboteur stealth hides them from enemies
 - [ ] Death shows the red overlay with countdown; extraction shows the green overlay; match end shows the table
 - [ ] `ClassData` edits (e.g. Hacker max health in `Assets/Ouroboros/Classes/Hacker.asset`) take effect on next spawn on every peer
+- [ ] Pre-match: the class picker appears with the cursor free; clicking a card (or pressing 1-4 / D-pad) changes `ClassType` on the host; "Start match now" shows on the host only
+- [ ] Abilities do nothing before the countdown ends (config `allowAbilitiesBeforeMatch` off)
+- [ ] Taking damage flashes the screen red; assigning clips in `Assets/Ouroboros/FeedbackLibrary.asset` plays them on the matching events
+- [ ] Gamepad: left stick moves, right stick looks, D-pad fires abilities; HUD key hints switch to gamepad labels
+
+## 7c. Phase 2 validation (v0.4)
+- [ ] Re-run the setup menu: `Assets/Ouroboros/Equipment/*` assets, `EquipmentRegistry`, `Projectile.prefab` exist; each `ClassData` has starting equipment; the Player prefab has `NetworkLoadout`
+- [ ] HUD bottom-right shows the primary weapon with `mag / reserve`; LMB fires (auto weapons while held), R reloads, counts update on client and host
+- [ ] Shooting another player lowers their health on every peer; damage flash on the victim; kill feed on death
+- [ ] Demolitions: RMB launches a grenade that arcs and explodes (radial damage); the sticky charge bounces then detonates
+- [ ] Lobby: `< >` cyclers swap Primary / Secondary; selection replicates; starting ammo matches the item
+- [ ] Light Armor reduces damage taken; Stim Rig raises speed
+
+## 7c2. Phase 3 validation (v0.5)
+- [ ] Re-run the setup menu: `GuardSpawner`, two `SecurityCamera`s, `SecurityTerminal`, the orange `LootCase` and an `AlarmSystem` on `GameManagers` exist; Vault 1 shows "stage 1/2"
+- [ ] Install **AI Navigation** (Package Manager) → add `NavMeshSurface` to `Ground` → Bake, or guards will stand still and only shoot
+- [ ] Match start: 3 guards spawn; walking into a camera cone raises the alarm meter; guards seeing you raise it more
+- [ ] Alarm ≥ 80 → "LOCKDOWN": reinforcement log lines every 20 s, extraction takes 1.5× longer
+- [ ] Hold F at the terminal (or System Hack as Hacker): alarm drops, outer vaults get a progress boost
+- [ ] Hold F on the case: "CARRYING CASE" status, you move slower; die → it drops; extract with it → banked with the 1.5× multiplier
+- [ ] Carrying lots of loot slows you (25% at 1500)
+
+## 7c3. Phase 4 validation (v0.6)
+- [ ] Re-run the setup menu: `EliteGuard.prefab`, `SniperGuard.prefab`, two `SniperPost` platforms and a `BreachableDoor` in a wall south of Vault 3 exist; the spawner has elite / sniper refs
+- [ ] Install **AI Navigation** (Package Manager > Unity Registry) and re-run the setup menu: it adds a NavMeshSurface to Ground and bakes automatically (or bake by hand); then guards walk and the door carves a hole while closed
+- [ ] Fire an unsuppressed weapon near guards: they converge on the shot (noise); the suppressed SMG draws them far less
+- [ ] A camera spotting you sends a nearby guard to investigate even if it never saw you
+- [ ] Alarm Alert: waves bring red-tinted elites that strafe and fire bursts; they take ~30% less damage
+- [ ] Snipers on the posts: you get a REVEALED chip while they aim, then a heavy hit; break line of sight to escape
+- [ ] Demolitions Breaching Charge (or Hacker System Hack) on the door: visual disappears, guards path through
+
+## 7c4. Vaults, movement, cones (v0.7)
+- [ ] Re-run the setup menu: four walled vaults (N keycard, E ID card, S passcode, W lockdown), a red keycard SE, a code note NW, `IDCard.prefab`
+- [ ] Console on Play: `[AISpawner] ready ... guard='Guard'` then `[AISpawner] spawned Guard at ...` ×3 once the match is live; if `guard='NONE'`, the spawner lost its prefab reference
+- [ ] Ground cones under cameras and guards: yellow idle, orange searching, red when they have a target, grey when a camera is disabled
+- [ ] Interiors show "Open the vault door first" until the exterior is open; Hacker's System Hack cannot crack a gated vault through the wall
+- [ ] Keycard: pick it up (hold F), swipe at the north door
+- [ ] Passcode: press F at the south door → keypad; wrong code → LOCKDOWN + keypad lockout; read the note (hold F) → code shown on the keypad
+- [ ] Kill a rival → ID card drops; hold F to take it; swipe at the east door
+- [ ] West door: hold F → lockdown, survive 45 s → door opens
+- [ ] Movement: Ctrl while sprinting slides; jump into a cover block to mantle; Agent double jump; Hacker hold Space to glide; Saboteur hold Space on a wall to climb; Demolitions G to grapple to a surface
+
+## 7d. Expected flow and troubleshooting
+**Expected flow on Play (dev config):** spectator camera orbits the arena → session starts → your player spawns → the
+**class picker** appears with the cursor free (state *Waiting for players*) → host presses **Start match now** (or the
+match auto-starts if `autoStart` is on in the config) → 5 s countdown → picker closes, cursor locks, first-person camera.
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Straight into the arena from a high camera, cursor visible, mouse doesn't look | No local player spawned, so nothing locked the cursor or took over the camera. Console shows `No player prefab` or a Fusion spawn error. | Select `GameSessionManager`: **Player Prefab Object** must reference `Assets/Ouroboros/Prefabs/Player.prefab`. Re-run *Ouroboros > Setup > Create Dev Scene* (it now re-applies references without wiping the scene). |
+| The prefab field empties after a refresh | Older builder versions rebuilt the whole scene on every run, and the Fusion `NetworkPrefabRef` field errors when the prefab isn't baked/labelled. | Use the direct **Player Prefab Object** field; run *Tools > Fusion > Rebuild Prefab Table* if the `NetworkPrefabRef` field shows an error. |
+| Player spawns but no HUD / picker at all | The HUD's `UIDocument` lost its Panel Settings (`m_PanelSettings: {fileID: 0}` in the scene), so UI Toolkit renders nothing; console shows the `[HeistHUD] ... no Panel Settings` error. | Re-run *Ouroboros > Setup > Create Dev Scene* (it re-applies the reference), or assign `Assets/Ouroboros/UI/HeistPanelSettings.asset` on the `HUD` object's UIDocument. |
+| `NullReferenceException` in `HitscanWeapon.OnUse` | `Runner.LagCompensation` is null on this runner. | **Fixed**: falls back to a plain physics raycast. |
+| `[Fusion] Failed to find HitboxManager on GameObject: (NetworkRunner)` on every shot | Fusion's `Runner.LagCompensation` getter logs when Lag Compensation is off in `NetworkProjectConfig`. | **Fixed (v0.8)**: `HitscanWeapon` probes for the `HitboxManager` component first. Enable *Lag Compensation* in the NetworkProjectConfig (Tools > Fusion > Network Project Config) if you want lag-compensated hits. |
+| `[Ouroboros] Tried to assign a NULL value to 'lootDropPrefabObject' / 'feedbackLibrary'` while running the setup menu | Loading an asset by path immediately after `AssetDatabase.Refresh()` returned null. | **Fixed (v0.8)**: the scene build now runs on the next editor update, retries with a forced re-import and falls back to the object created in the same run. If it still logs, run *Ouroboros > Setup > Rebuild Scene References* once imports finish. |
+| `[AISpawner] No guard prefab assigned` / `[ExtractionHeist] No GameModeConfig assigned` in play mode | The saved scene has empty references. | In the editor these fields now self-heal (`[Ouroboros] ... was empty: loaded ... as an editor-only fallback`); run *Ouroboros > Setup > Rebuild Scene References* to persist them. Builds have no fallback. |
+| Cursor stays free after the picker closes | Editor released the lock (Esc / focus). | Click in the Game view: the session manager re-locks on primary fire whenever a local player exists and no picker is open. |
+| No class picker, match already running | `autoStart` is on and `minPlayersToStart` is reached instantly. | Set `autoStart = false` on `Assets/Ouroboros/DevGameModeConfig.asset` (new configs default to off) to hold the lobby until Start. |
 
 ## 8. Exit criteria
 - Steps 5 and 6 pass with no non-authority write warnings in the console.

@@ -11,6 +11,8 @@ namespace Ouroboros.Interaction
     public class BreachableDoor : NetworkBehaviour, IBreachable, IHackable
     {
         [SerializeField] private GameObject doorVisual;
+        [Tooltip("(v0.6) Optional NavMeshObstacle (carving) that blocks guards while the door is closed.")]
+        [SerializeField] private UnityEngine.AI.NavMeshObstacle navObstacle;
         [Tooltip("If set, only this team may hack it open (0 = any).")]
         [SerializeField] private Core.TeamID ownerTeam = Core.TeamID.None;
 
@@ -46,12 +48,19 @@ namespace Ouroboros.Interaction
             {
                 doorVisual.SetActive(!IsOpen);
             }
+            if (navObstacle == null && doorVisual != null) navObstacle = doorVisual.GetComponent<UnityEngine.AI.NavMeshObstacle>();
+            if (navObstacle != null && navObstacle.enabled == IsOpen)
+            {
+                navObstacle.enabled = !IsOpen; // carved hole appears when closed, disappears when open
+            }
         }
 
         public void Breach(Core.TeamID byTeam)
         {
             if (!Object.HasStateAuthority || IsBreached) return;
             IsBreached = true;
+            var gm = GameMode.ExtractionHeistGameMode.Instance;
+            GameMode.AlarmSystem.Raise(gm != null ? gm.Config.alarmOnBreach : 30f, name);
             RPC_Breached(byTeam);
         }
 

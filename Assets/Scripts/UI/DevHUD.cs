@@ -22,8 +22,58 @@ namespace Ouroboros.UI
             if (Core.LocalInputSource.DebugHudTogglePressed()) visible = !visible;
         }
 
+        private static readonly Core.PlayerClassType[] PickerClasses =
+        {
+            Core.PlayerClassType.Hacker, Core.PlayerClassType.Saboteur, Core.PlayerClassType.Demolitions, Core.PlayerClassType.Agent
+        };
+
+        /// <summary>
+        /// IMGUI lobby shown whenever the UI Toolkit picker is not showing but the match is waiting. Guarantees the
+        /// class / start flow works even if the HUD document fails to render. Independent of the F1 toggle.
+        /// </summary>
+        private void DrawFallbackLobby()
+        {
+            var gm = GameMode.ExtractionHeistGameMode.Instance;
+            if (gm == null || gm.Object == null || !gm.AllowClassChange) return;
+            if (ClassPickerUI.IsShown) return;
+
+            Network.NetworkPlayer local = null;
+            for (int i = 0; i < Network.NetworkPlayer.All.Count; i++)
+            {
+                if (Network.NetworkPlayer.All[i] != null && Network.NetworkPlayer.All[i].IsLocalPlayer) { local = Network.NetworkPlayer.All[i]; break; }
+            }
+            if (local == null) return;
+
+            if (UnityEngine.Cursor.lockState == CursorLockMode.Locked) { UnityEngine.Cursor.lockState = CursorLockMode.None; UnityEngine.Cursor.visible = true; }
+
+            float w = 460f, h = 170f;
+            var rect = new Rect((Screen.width - w) * 0.5f, (Screen.height - h) * 0.5f, w, h);
+            GUI.Box(rect, "LOBBY (fallback - UI Toolkit picker not visible)");
+            GUILayout.BeginArea(new Rect(rect.x + 10, rect.y + 28, rect.width - 20, rect.height - 38));
+            GUILayout.Label($"State: {gm.CurrentState}   You: {local.ClassType} on {local.Team}" +
+                            (gm.CurrentState == GameMode.ExtractionHeistGameMode.GameState.PreMatch ? $"   starts in {Mathf.CeilToInt(gm.PhaseTimeRemaining ?? 0f)}s" : ""));
+            GUILayout.BeginHorizontal();
+            foreach (var cls in PickerClasses)
+            {
+                GUI.enabled = local.ClassType != cls;
+                if (GUILayout.Button(cls.ToString(), GUILayout.Height(36))) local.RequestClass(cls);
+            }
+            GUI.enabled = true;
+            GUILayout.EndHorizontal();
+            if (gm.Object.HasStateAuthority && gm.CurrentState == GameMode.ExtractionHeistGameMode.GameState.WaitingForPlayers)
+            {
+                if (GUILayout.Button("Start match now", GUILayout.Height(32))) gm.StartMatch();
+            }
+            else
+            {
+                GUILayout.Label(gm.Object.HasStateAuthority ? "" : "Waiting for the host to start...");
+            }
+            GUILayout.EndArea();
+        }
+
         private void OnGUI()
         {
+            DrawFallbackLobby();
             if (!visible) return;
 
             if (style == null)
@@ -59,6 +109,8 @@ namespace Ouroboros.UI
             if (gm.MatchTimeRemaining.HasValue) sb.AppendLine($"Match time left: {gm.MatchTimeRemaining.Value:0}s");
             if (gm.PhaseTimeRemaining.HasValue) sb.AppendLine($"Phase time left: {gm.PhaseTimeRemaining.Value:0}s");
             if (gm.CurrentState == GameMode.ExtractionHeistGameMode.GameState.MatchEnded) sb.AppendLine($"<b>Winner: {gm.WinningTeam}</b>");
+            var alarm = GameMode.AlarmSystem.Instance;
+            if (alarm != null && alarm.Object != null) sb.AppendLine($"Alarm: {alarm.Level:0}/100  tier {alarm.Tier} ({GameMode.AlarmSystem.TierName(alarm.Tier)})  guards alive: {AI.BaseAIAgent.All.Count}");
         }
 
         private void AppendLocalPlayer()

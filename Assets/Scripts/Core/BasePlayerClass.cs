@@ -36,6 +36,10 @@ namespace Ouroboros.Core
         /// <summary>Per-slot ability definitions. Filled by subclasses in <see cref="OnInitialize"/>.</summary>
         protected readonly AbilitySlot[] abilitySlots = new AbilitySlot[GameConstants.MAX_ABILITY_SLOTS];
 
+        /// <summary>Class movement perks (v0.7). Subclasses set flags in <see cref="OnInitialize"/>; ClassData can override.</summary>
+        protected MovementProfile movement = MovementProfile.Default;
+        public MovementProfile Movement => movement;
+
         public string ClassName => className;
         public string Description => description;
         public float MaxHealth => maxHealth;
@@ -97,6 +101,17 @@ namespace Ouroboros.Core
                     if (a.duration > 0f) slot.Duration = a.duration;
                     abilitySlots[i] = slot;
                 }
+            }
+
+            if (data.overrideMovement)
+            {
+                movement.CanDoubleJump = data.canDoubleJump;
+                movement.CanGlide = data.canGlide;
+                if (data.glideSeconds > 0f) movement.GlideSeconds = data.glideSeconds;
+                movement.CanWallClimb = data.canWallClimb;
+                if (data.wallClimbSeconds > 0f) movement.WallClimbSeconds = data.wallClimbSeconds;
+                movement.CanGrapple = data.canGrapple;
+                if (data.grappleRange > 0f) movement.GrappleRange = data.grappleRange;
             }
 
             OnClassDataApplied(data);

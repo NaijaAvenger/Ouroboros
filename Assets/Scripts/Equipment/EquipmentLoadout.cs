@@ -1,4 +1,5 @@
 using UnityEngine;
+using System;
 using System.Collections.Generic;
 
 namespace Ouroboros.Equipment
@@ -6,6 +7,10 @@ namespace Ouroboros.Equipment
     /// <summary>
     /// Manages equipment loadout for a player.
     /// Supports modular equipment system with multiple slots.
+    ///
+    /// v0.4: when a <see cref="NetworkLoadout"/> is present, this component mirrors its replicated slot
+    /// ids into local <see cref="BaseEquipment"/> components (one per slot, type chosen by
+    /// <see cref="Data.EquipmentKind"/>). Without one it still works as a purely local loadout.
     /// </summary>
     public class EquipmentLoadout : MonoBehaviour
     {
@@ -14,22 +19,66 @@ namespace Ouroboros.Equipment
         
         private Dictionary<EquipmentSlotType, IEquipment> equippedItems = new Dictionary<EquipmentSlotType, IEquipment>();
         private List<IEquipment> allEquipment = new List<IEquipment>();
+
+        private NetworkLoadout networkLoadout;
+        private Network.NetworkPlayer owner;
+
+        /// <summary>Fired when a slot's local component changes (slot, equipment or null).</summary>
+        public event Action<EquipmentSlotType, IEquipment> Changed;
         
         private void Awake()
         {
             InitializeSlots();
+            owner = GetComponent<Network.NetworkPlayer>();
+            networkLoadout = GetComponent<NetworkLoadout>();
+            if (networkLoadout != null) networkLoadout.SlotChanged += OnNetworkSlotChanged;
+        }
+
+        private void OnDestroy()
+        {
+            if (networkLoadout != null) networkLoadout.SlotChanged -= OnNetworkSlotChanged;
         }
         
         private void InitializeSlots()
         {
-            // Initialize all possible equipment slots
-            equippedItems[EquipmentSlotType.Primary] = null;
-            equippedItems[EquipmentSlotType.Secondary] = null;
-            equippedItems[EquipmentSlotType.Utility] = null;
-            equippedItems[EquipmentSlotType.Gadget] = null;
-            equippedItems[EquipmentSlotType.Armor] = null;
-            equippedItems[EquipmentSlotType.Accessory] = null;
+            // [v0.1] six hard-coded assignments; now driven by the enum so new slots are picked up
+            foreach (EquipmentSlotType slot in Enum.GetValues(typeof(EquipmentSlotType)))
+            {
+                equippedItems[slot] = null;
+            }
         }
+
+        // ------------------------------------------------------------------
+        // Networked path
+
+        private void OnNetworkSlotChanged(int slotIndex, Data.EquipmentData data)
+        {
+            var slot = (EquipmentSlotType)slotIndex;
+            UnequipItem(slot);
+            if (data == null) return;
+
+            Type type = ComponentTypeFor(data.kind);
+            if (type == null) return;
+
+            var component = (BaseEquipment)gameObject.AddComponent(type);
+            component.Initialize(owner, networkLoadout, slotIndex, data);
+            EquipItem(component);
+        }
+
+        /// <summary>Maps an item kind to its behaviour. Extend here for new families.</summary>
+        public static Type ComponentTypeFor(Data.EquipmentKind kind)
+        {
+            switch (kind)
+            {
+                case Data.EquipmentKind.HitscanWeapon:    return typeof(HitscanWeapon);
+                case Data.EquipmentKind.ProjectileWeapon: return typeof(ProjectileWeapon);
+                case Data.EquipmentKind.PassiveGear:      return typeof(PassiveGear);
+                case Data.EquipmentKind.Deployable:       return typeof(PassiveGear); // placeholder until deployables exist
+                default: return null;
+            }
+        }
+
+        // ------------------------------------------------------------------
         
         /// <summary>
         /// Equips an item to the appropriate slot.
@@ -53,6 +102,7 @@ namespace Ouroboros.Equipment
             allEquipment.Add(equipment);
             
             Debug.Log($"[EquipmentLoadout] Equipped {equipment.EquipmentName} to {slot} slot");
+            Changed?.Invoke(slot, equipment);
             return true;
         }
         
@@ -70,8 +120,15 @@ namespace Ouroboros.Equipment
             equipment.OnUnequip();
             allEquipment.Remove(equipment);
             equippedItems[slot] = null;
+
+            // v0.4: networked items are runtime components; remove them with the slot
+            if (equipment is BaseEquipment component && component.IsNetworked)
+            {
+                Destroy(component);
+            }
             
             Debug.Log($"[EquipmentLoadout] Unequipped {equipment.EquipmentName} from {slot} slot");
+            Changed?.Invoke(slot, null);
             return true;
         }
         
@@ -84,14 +141,20 @@ namespace Ouroboros.Equipment
         }
         
         /// <summary>
-        /// Uses equipment in a specific slot.
+        /// Uses equipment in a specific slot (treated as a press).
         /// </summary>
         public void UseEquipment(EquipmentSlotType slot)
+        {
+            UseEquipment(slot, true, true);
+        }
+
+        /// <summary>v0.4: edge + level aware use so automatic weapons can fire while held.</summary>
+        public void UseEquipment(EquipmentSlotType slot, bool pressed, bool held)
         {
             IEquipment equipment = GetEquipment(slot);
             if (equipment != null)
             {
-                equipment.Use();
+                equipment.Use(pressed, held);
             }
         }
         

@@ -85,6 +85,22 @@ namespace Ouroboros.Network
         }
 
         /// <summary>
+        /// Shared-mode support (v0.5): any peer can ask the state authority for a team. In Host mode the
+        /// server assigns at spawn, so this is a no-op there.
+        /// </summary>
+        public void RequestTeamAssignment()
+        {
+            if (Object.HasStateAuthority) AssignPlayerToTeam(Runner.LocalPlayer);
+            else RPC_RequestTeam();
+        }
+
+        [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
+        private void RPC_RequestTeam(RpcInfo info = default)
+        {
+            AssignPlayerToTeam(info.Source);
+        }
+
+        /// <summary>
         /// Removes a player from their team.
         /// </summary>
         public void RemovePlayerFromTeam(PlayerRef player)

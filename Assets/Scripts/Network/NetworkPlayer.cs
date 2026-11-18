@@ -40,6 +40,10 @@ namespace Ouroboros.Network
         [Networked] public float LookYaw { get; set; }
         [Networked] public float LookPitch { get; set; }
         [Networked] public NetworkString<_32> DisplayName { get; set; }
+        /// <summary>Bitmask of <see cref="Interaction.KeycardColor"/> carried (v0.7).</summary>
+        [Networked] public int KeycardMask { get; set; }
+        /// <summary>ID cards looted from dead players of other teams (v0.7).</summary>
+        [Networked] public int EnemyCards { get; set; }
 
         [Networked, Capacity(Core.GameConstants.MAX_ABILITY_SLOTS)]
         public NetworkArray<TickTimer> AbilityCooldowns => default;
@@ -58,6 +62,7 @@ namespace Ouroboros.Network
         [SerializeField] private float eyeHeight = 1.6f;
 
         private Core.BasePlayerClass currentClass;
+        private Equipment.NetworkLoadout loadout; // optional (v0.4)
         private ChangeDetector changeDetector;
 
         /// <summary>Fired on every peer when the class component is (re)created.</summary>
@@ -73,6 +78,12 @@ namespace Ouroboros.Network
         public static event Action<NetworkPlayer, PlayerRef> PlayerKilled;
         /// <summary>Fired on every peer when any player extracts (v0.3).</summary>
         public static event Action<NetworkPlayer> PlayerExtracted;
+        /// <summary>Fired on every peer when a player successfully uses an ability (player, slot) (v0.3).</summary>
+        public static event Action<NetworkPlayer, int> AbilityUsed;
+        /// <summary>Fired on every peer when this player's replicated health drops (player, amount lost) (v0.3).</summary>
+        public event Action<NetworkPlayer, float> Damaged;
+
+        private float lastRenderedHealth = -1f;
 
         public Core.BasePlayerClass CurrentClass => currentClass;
         public bool IsLocalPlayer => Object != null && Object.HasInputAuthority;
@@ -82,7 +93,24 @@ namespace Ouroboros.Network
         public float MaxStamina => currentClass != null ? currentClass.MaxStamina : 100f;
         public float MovementSpeed => currentClass != null ? currentClass.MovementSpeed : 5f;
         public float SprintSpeed => currentClass != null ? currentClass.SprintSpeed : 7f;
-        public float OutgoingDamageMultiplier => currentClass != null ? currentClass.OutgoingDamageMultiplier : 1f;
+        public float OutgoingDamageMultiplier =>
+            (currentClass != null ? currentClass.OutgoingDamageMultiplier : 1f) * (loadout != null ? loadout.OutgoingDamageMultiplier : 1f);
+        public Equipment.NetworkLoadout Loadout => loadout != null ? loadout : (loadout = GetComponent<Equipment.NetworkLoadout>());
+
+        /// <summary>Movement multiplier from carried loot and a carried case (v0.5). Read on every peer (prediction-safe).</summary>
+        public float CarryWeightSpeedMultiplier
+        {
+            get
+            {
+                var gm = GameMode.ExtractionHeistGameMode.Instance;
+                if (gm == null) return 1f;
+                var cfg = gm.Config;
+                float loot = cfg.lootWeightReference > 0 ? Mathf.Clamp01((float)CarriedLoot / cfg.lootWeightReference) : 0f;
+                float m = 1f - cfg.lootWeightMaxSlowdown * loot;
+                if (HasStatus(Core.StatusFlags.Encumbered)) m *= cfg.caseCarrySpeedMultiplier;
+                return Mathf.Clamp(m, 0.3f, 1f);
+            }
+        }
 
         // ---- IAbilityContext / IDamageable ----
         public Core.TeamID Team
@@ -105,6 +133,7 @@ namespace Ouroboros.Network
         public override void Spawned()
         {
             if (!All.Contains(this)) All.Add(this);
+            loadout = GetComponent<Equipment.NetworkLoadout>();
 
             changeDetector = GetChangeDetector(ChangeDetector.Source.SimulationState);
 
@@ -175,6 +204,13 @@ namespace Ouroboros.Network
                         break;
                     case nameof(Status):
                         StatusChanged?.Invoke(this, Status);
+                        break;
+                    case nameof(Health):
+                        if (lastRenderedHealth >= 0f && Health < lastRenderedHealth)
+                        {
+                            Damaged?.Invoke(this, lastRenderedHealth - Health);
+                        }
+                        lastRenderedHealth = Health;
                         break;
                 }
             }
@@ -292,7 +328,20 @@ namespace Ouroboros.Network
         {
             if (currentClass == null || !IsActiveInMatch) return false;
             if (HasStatus(Core.StatusFlags.EMPDisabled)) return false;
-            return currentClass.UseAbility(abilityIndex);
+
+            // v0.3: abilities are locked until the match is live unless the config allows them
+            var gm = GameMode.ExtractionHeistGameMode.Instance;
+            if (gm != null && gm.Object != null && !gm.IsMatchLive && !gm.Config.allowAbilitiesBeforeMatch) return false;
+
+            bool used = currentClass.UseAbility(abilityIndex);
+            if (used) RPC_OnAbilityUsed(abilityIndex);
+            return used;
+        }
+
+        [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+        private void RPC_OnAbilityUsed(int slot)
+        {
+            AbilityUsed?.Invoke(this, slot);
         }
 
         public bool IsAbilityReady(int slot)
@@ -468,6 +517,10 @@ namespace Ouroboros.Network
             {
                 damage *= attacker.OutgoingDamageMultiplier;
             }
+            if (!ignoreShield && loadout != null)
+            {
+                damage *= loadout.DamageTakenMultiplier; // v0.4: armor
+            }
 
             // [v0.1] currentClass.TakeDamage(damage);            // BUG: class kept a second health value
             // [v0.1] Health = Mathf.Max(0, Health - damage);     // ...and the shield modifier was ignored here
@@ -500,6 +553,8 @@ namespace Ouroboros.Network
             BurnTimer = TickTimer.None;
 
             currentClass?.OnOwnerDied();
+            KeycardMask = 0;   // v0.7: keys and looted cards are lost on death (your own ID card drops via the game mode)
+            EnemyCards = 0;
 
             if (killer != null && killer != this)
             {
@@ -578,6 +633,15 @@ namespace Ouroboros.Network
             // [v0.2] if (playerModel != null) playerModel.gameObject.SetActive(false); // now handled by PlayerPresentation
             PlayerExtracted?.Invoke(this);
         }
+
+        // ------------------------------------------------------------------
+        // Vault keys (v0.7)
+
+        public bool HasKeycard(Interaction.KeycardColor color) => (KeycardMask & (int)color) != 0;
+        public void AddKeycard(Interaction.KeycardColor color) { if (Object.HasStateAuthority) KeycardMask |= (int)color; }
+        public void ConsumeKeycard(Interaction.KeycardColor color) { if (Object.HasStateAuthority) KeycardMask &= ~(int)color; }
+        public void AddEnemyCard() { if (Object.HasStateAuthority) EnemyCards++; }
+        public void ConsumeEnemyCards(int count) { if (Object.HasStateAuthority) EnemyCards = Mathf.Max(0, EnemyCards - count); }
 
         // ------------------------------------------------------------------
         // Static helpers

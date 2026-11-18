@@ -28,6 +28,8 @@ namespace Ouroboros.GameMode
         [SerializeField] private NetworkPrefabRef lootDropPrefab;
         [Tooltip("Fallback direct prefab reference (filled by the Phase 0 scene builder).")]
         [SerializeField] private NetworkObject lootDropPrefabObject;
+        [Tooltip("(v0.7) Dead players drop their ID card; other teams swipe it at PlayerCard vault doors.")]
+        [SerializeField] private NetworkObject idCardPrefabObject;
 
         [Networked] public TickTimer MatchTimer { get; set; }
         /// <summary>Timer for the current phase (pre-match countdown, extraction window).</summary>
@@ -93,6 +95,23 @@ namespace Ouroboros.GameMode
         {
             Instance = this;
             changeDetector = GetChangeDetector(ChangeDetector.Source.SimulationState);
+
+            // (v0.8) editor-only fallbacks for references the scene builder normally fills (see Core.DevAssetFallback).
+            if (config == null) config = Core.DevAssetFallback.Load<Data.GameModeConfig>(Core.DevAssetFallback.ConfigPath, nameof(ExtractionHeistGameMode), nameof(config));
+            if (lootDropPrefabObject == null && !lootDropPrefab.IsValid) lootDropPrefabObject = Core.DevAssetFallback.LoadPrefab(Core.DevAssetFallback.LootDropPrefabPath, nameof(ExtractionHeistGameMode), nameof(lootDropPrefabObject));
+            if (idCardPrefabObject == null) idCardPrefabObject = Core.DevAssetFallback.LoadPrefab(Core.DevAssetFallback.IDCardPrefabPath, nameof(ExtractionHeistGameMode), nameof(idCardPrefabObject));
+
+            if (config == null)
+            {
+                Debug.LogError("[ExtractionHeist] No GameModeConfig assigned on ExtractionHeistGameMode: using built-in defaults " +
+                               "(minPlayersToStart = 8, so a solo match never starts). Assign Assets/Ouroboros/DevGameModeConfig.asset " +
+                               "or re-run Ouroboros > Setup > Create Dev Scene.");
+            }
+            else
+            {
+                Debug.Log($"[ExtractionHeist] Config '{config.name}': autoStart={config.autoStart}, minPlayers={config.minPlayersToStart}, " +
+                          $"countdown={config.preMatchCountdown}s, classChangeBeforeMatch={config.allowClassChangeBeforeMatch}");
+            }
 
             if (Object.HasStateAuthority)
             {
@@ -164,7 +183,10 @@ namespace Ouroboros.GameMode
         public void NotifyPlayerCountChanged(int playerCount)
         {
             if (!Object.HasStateAuthority) return;
-            if (CurrentState == GameState.WaitingForPlayers && Config.autoStart && playerCount >= Mathf.Max(1, Config.minPlayersToStart))
+            bool canAuto = CurrentState == GameState.WaitingForPlayers && Config.autoStart && playerCount >= Mathf.Max(1, Config.minPlayersToStart);
+            Debug.Log($"[ExtractionHeist] Players: {playerCount}, state: {CurrentState}, autoStart: {Config.autoStart}, need: {Config.minPlayersToStart} → " +
+                      (canAuto ? "starting countdown" : "waiting (use the lobby's Start button)"));
+            if (canAuto)
             {
                 StartMatch();
             }
@@ -316,6 +338,14 @@ namespace Ouroboros.GameMode
             {
                 AwardTeamScore(killer.Team, Config.pointsPerKill);
             }
+            AlarmSystem.Raise(Config.alarmOnKill, "gunfire");
+
+            if (idCardPrefabObject != null)
+            {
+                var team = victim.Team;
+                Runner.Spawn(idCardPrefabObject, victim.transform.position + Vector3.up * 0.3f + Vector3.right * 0.6f, Quaternion.identity, null,
+                    (runner, obj) => { var card = obj.GetComponent<Interaction.IDCardDrop>(); if (card != null) card.OwnerTeam = team; });
+            }
 
             int loot = victim.TakeAllLoot();
             if (loot > 0 && Config.dropLootOnDeath && (lootDropPrefab.IsValid || lootDropPrefabObject != null))
@@ -382,20 +412,30 @@ namespace Ouroboros.GameMode
             int bankedLoot = 0;
             int extractedNow = 0;
 
+            int caseLoot = 0;
             foreach (var member in members)
             {
                 if (member == null || !CanExtract(member)) continue;
                 bankedLoot += member.TakeAllLoot();
+                // v0.5: carried cases are banked with their carrier
+                for (int c = LootCase.All.Count - 1; c >= 0; c--)
+                {
+                    var lootCase = LootCase.All[c];
+                    if (lootCase != null && lootCase.Object != null) caseLoot += lootCase.BankFor(member);
+                }
                 member.MarkExtracted();
                 extractedNow++;
             }
 
             if (extractedNow == 0) return;
 
-            TeamLoot.Set(idx, TeamLoot[idx] + bankedLoot);
+            TeamLoot.Set(idx, TeamLoot[idx] + bankedLoot + caseLoot);
             TeamExtractedCount.Set(idx, TeamExtractedCount[idx] + extractedNow);
 
-            int points = extractedNow * Config.pointsPerTeamMemberExtracted + Mathf.RoundToInt(bankedLoot * Config.pointsPerLoot);
+            int points = extractedNow * Config.pointsPerTeamMemberExtracted
+                         + Mathf.RoundToInt(bankedLoot * Config.pointsPerLoot)
+                         + Mathf.RoundToInt(caseLoot * Config.pointsPerCaseLoot);
+            bankedLoot += caseLoot;
             if (!TeamExtracted[idx])
             {
                 // First successful extraction for this team

@@ -91,22 +91,52 @@ Still requires a machine with Unity + Fusion:
 
 - **Input System first** (`Core/LocalInputSource.cs`): keyboard, mouse and gamepad through `UnityEngine.InputSystem` when enabled, legacy Input Manager otherwise; HUD hints follow the last-used device.
 
-Still open in Phase 1: audio, real VFX/animation on the presentation hooks, a lobby class picker UI (`NetworkPlayer.RequestClass` exists), rebindable actions (an `InputActionAsset` can replace the direct device polling in `LocalInputSource` without touching callers).
+- **Rebindable actions** (`Core/HeistInputActions.cs`): the Input System actions are built in code (Keyboard and Gamepad binding groups), read by `LocalInputSource`, rebindable at runtime via `StartRebind` with overrides persisted in PlayerPrefs; HUD hints use the live binding display strings.
+- **Class picker** (`UI/ClassPickerUI.cs`): pre-match overlay with one card per class (stats and abilities from `ClassData`), click or press the ability key / D-pad to request a class; the state authority gets a "Start match now" button. Abilities are locked until the match is live (`GameModeConfig.allowAbilitiesBeforeMatch`).
+- **Feedback hooks**: `Data/FeedbackLibrary` (optional clips and VFX prefabs), `Player/PlayerFeedback` (ability use, hurt, death, respawn, extraction, shield/stealth, loot gain, spatialised for remote players) and `UI/MatchFeedback` (match start / extraction / objective / kill-confirm, 2D). New replicated events: `NetworkPlayer.AbilityUsed` and per-player `Damaged`; the HUD flashes red on damage.
 
-### Phase 2 — Weapons & equipment
-- Networked `BaseEquipment` with tick-timer cooldowns and server-side execution (currently local `Time.time`).
-- Hitscan primary + projectile secondary using `DamageUtil.Hitscan` / lag compensation.
-- Loadout selection in lobby and `EquipmentData` → runtime instantiation.
+Still open in Phase 1: actual audio/VFX assets in the FeedbackLibrary, a controls/rebind screen (API is ready), animations.
 
-### Phase 3 — Heist depth
-- Alarm system: cameras/guards raise an alarm level that spawns reinforcements and shortens extraction windows.
-- Objective variety (hack terminal, carry-the-case, multi-stage vault) behind the `IHackable`/`IBreachable` seams.
-- Loot weight: carried loot slows movement; encourages mid-match extraction decisions.
-- Shared-mode polish: team assignment via TeamManager RPC so a joining client can request a team.
+### Phase 2 — Weapons & equipment (implemented in v0.4, awaiting in-engine validation)
+- **NetworkLoadout** (`Equipment/NetworkLoadout.cs`, on the player prefab): replicated item id per slot, magazine, reserve, use cooldowns and reload timers; equips class defaults from `ClassData.startingEquipment`; lobby swaps via `RequestEquip`; `WeaponFired` / `ReloadStarted` events for cosmetics; summed passive modifiers (defense, damage, speed).
+- **EquipmentRegistry** asset gives every `EquipmentData` a network id; `EquipmentLoadout` builds the local `BaseEquipment` component per slot from the id (`EquipmentKind` → class).
+- **BaseEquipment v2**: owner/loadout context, press-vs-held use (automatic weapons), cooldown and ammo through the loadout, state-authority-only execution.
+- **HitscanWeapon**: lag-compensated raycast (`Runner.LagCompensation.Raycast`, PhysX colliders included), spread, pellets, damage to any `IDamageable`.
+- **ProjectileWeapon + Projectile**: server-simulated networked projectile with gravity, sphere-cast collision, direct or radial damage, optional fuse (bounces until it blows), `Exploded` event.
+- **PassiveGear**: armor / accessories as modifiers consulted by `NetworkPlayer.ApplyDamage` and `PlayerController` speed.
+- **Reload** input (R / Y), HUD ammo readout, lobby loadout cyclers (Primary / Secondary), feedback hooks (fire, impact, reload, explosion).
+- Scene builder creates ten starter items + registry + projectile prefab and arms each class.
 
-### Phase 4 — AI
-- AI spawner + pooling; `SniperGuard`, `Elite`; squad coordination via shared blackboard; alarm-driven aggression tiers.
-- NavMesh links for doors; `BreachableDoor` carves the NavMesh.
+Still open in Phase 2: `Hitbox`/`HitboxRoot` on the player prefab for full lag compensation (PhysX fallback works today), ammo pickups, deployables (`EquipmentKind.Deployable` is a placeholder), weapon viewmodels.
+
+### Phase 3 — Heist depth (implemented in v0.5, awaiting in-engine validation)
+- **AlarmSystem** (`GameMode/AlarmSystem.cs`): replicated level 0-100 with decay; tiers Quiet / Suspicious / Alert / Lockdown; raised by cameras spotting players, guards engaging, vault stages and completions, breaches and kills; lowered by hack terminals. Alert scales guard and camera detection range; Lockdown holds the level, lengthens extractions and triggers reinforcement waves. All amounts in `GameModeConfig`.
+- **AISpawner** (`AI/AISpawner.cs`): spawns the initial guards when the match goes live, replaces losses while Alert, and sends waves during Lockdown (capped). Guards get patrol routes from the spawner.
+- **HackTerminal** (`Interaction/HackTerminal.cs`): Hacker's System Hack activates instantly, anyone can hold Interact; unlocks / boosts linked vaults and lowers the alarm; re-arms on a cooldown.
+- **LootCase** (`GameMode/LootCase.cs`): carry-the-case hot potato: hold Interact to pick up, carrier is `Encumbered` (slowed), drops on death, banked with a bonus multiplier when the carrier extracts.
+- **Multi-stage vaults**: `LootObjective.stages`; intermediate stages reset progress and raise the alarm.
+- **Loot weight**: `NetworkPlayer.CarryWeightSpeedMultiplier` slows players by carried loot (and more with a case), applied in prediction.
+- **Shared mode**: `TeamManager.RequestTeamAssignment` RPC so a spawning client without state authority gets a team.
+- HUD: alarm meter + tier, case / terminal prompts, stage counter; builder adds the heist layer (alarm, spawner + routes, cameras, terminal, case, two-stage vault).
+
+Still open in Phase 3: guard NavMesh baking is manual (needs the AI Navigation package), alarm-driven music/VFX, objective variety beyond these three types.
+
+### Phase 4 — AI (implemented in v0.6, awaiting in-engine validation)
+- **AIBlackboard** (`AI/AIBlackboard.cs`): server-side shared memory of sightings (guards, cameras, snipers, getting shot) and gunfire noise (per-weapon `noiseRadius`), with expiry and scoring. Idle guards investigate the best point of interest; at Suspicious+ nearby guards adopt a teammate's live sighting as their own target (squad hand-off).
+- **Alarm-tier aggression** in `GuardAI`: movement speed, give-up time, hearing range and patrol tempo scale with the alarm tier.
+- **EliteGuard**: armoured, 3-round bursts, holds a preferred distance and strafes, spawned in waves once the alarm is at least Alert.
+- **SniperGuard**: stationary overwatch on raised posts; paints the target (`Revealed`) while aiming, then one heavy shot; scans toward blackboard points of interest.
+- **NavMesh-carving doors**: `BreachableDoor` toggles a `NavMeshObstacle` so guards path through only once it is hacked or breached.
+- `GuardAI` leaves are `protected virtual` so new guard types override just what they need (see `EliteGuard`).
+- Builder adds elite / sniper prefabs, two sniper posts and a breachable door in a wall; still needs the NavMesh baked (AI Navigation package).
+
+Still open in Phase 4: object pooling for guards, animation hooks, cover-seeking.
+
+### Phase 4b — Vaults, movement tech, visibility (implemented in v0.7, awaiting in-engine validation)
+- **Four-lock vaults** (`Interaction/VaultDoor.cs`): walled rooms whose interior objective is gated by an exterior door. Locks: **Keycard** (find the coloured card, consumed on use), **PlayerCard** (swipe an ID card looted from a dead rival; `IDCardDrop` spawns on every death), **Passcode** (4-digit code revealed to your team by a `CodeNote`; keypad UI; a wrong code slams the facility into lockdown and locks the keypad), **Lockdown** (forcing the override triggers a lockdown you must survive before the door opens). Hacker's System Hack reveals a passcode or shortens an active lockdown. Modelled on Hyenas-style vault runs: open the exterior, then crack the interior.
+- **Movement tech** (`Player/PlayerController.cs`): sprint-slide (Ctrl / B) with camera dip, mantle onto ledges by jumping into them, and class perks via `Core.MovementProfile` (ClassData can override): Agent double jump, Hacker glide (hold Jump), Saboteur wall climb (hold Jump on a wall, drains stamina), Demolitions grappling hook (G / R3). All tick-simulated with networked state for prediction.
+- **Vision cones** (`AI/VisionCone.cs`): translucent ground fans for cameras and guards, re-coloured by state (idle / searching / alert / disabled), scaled with the alarm tier.
+- **Guard spawn diagnostics**: the spawner logs its references and every spawn, places guards on the floor, and the builder verifies the prefab links.
 
 ### Phase 5 — Meta
 - Lobby scene with class picker (`NetworkPlayer.RequestClass` is in place), session browser, late-join handling, host migration.

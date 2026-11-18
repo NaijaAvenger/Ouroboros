@@ -22,15 +22,21 @@ namespace Ouroboros.UI
         [SerializeField] private int feedMaxEntries = 6;
         [SerializeField] private float bannerDuration = 3f;
 
+        private const string RootName = "heist-hud";
+
         private UIDocument document;
         private VisualElement root;
+        private VisualElement damageFlash;
+        private float damageFlashAlpha;
+        private Network.NetworkPlayer damageSubscribed;
 
         // Top
-        private Label stateLabel, timerLabel, bannerLabel;
+        private Label stateLabel, timerLabel, bannerLabel, alarmLabel;
+        private VisualElement alarmFill;
         // Scoreboard
         private readonly TeamRow[] teamRows = new TeamRow[Core.GameConstants.MAX_TEAMS];
         // Vitals
-        private Label nameLabel, healthText, staminaText, statusLabel, lootLabel, kdLabel;
+        private Label nameLabel, healthText, staminaText, statusLabel, lootLabel, kdLabel, weaponLabel, ammoLabel;
         private VisualElement healthFill, staminaFill;
         // Abilities
         private readonly AbilitySlotView[] slots = new AbilitySlotView[Core.GameConstants.MAX_ABILITY_SLOTS];
@@ -62,16 +68,24 @@ namespace Ouroboros.UI
         private void OnEnable()
         {
             document = GetComponent<UIDocument>();
-            root = document.rootVisualElement;
-            if (root == null)
+            var panelRoot = document.rootVisualElement;
+            if (panelRoot == null)
             {
-                Debug.LogWarning("[HeistHUD] UIDocument has no PanelSettings; run Ouroboros > Setup > Create Dev Scene.");
+                Debug.LogError("[HeistHUD] The HUD's UIDocument has no Panel Settings, so nothing can render. Assign " +
+                               "Assets/Ouroboros/UI/HeistPanelSettings.asset to it, or re-run Ouroboros > Setup > Create Dev Scene (it repairs this).");
                 enabled = false;
                 return;
             }
 
-            root.Clear();
+            // [v0.3] root.Clear() replaced: the HUD owns a named child so other panels (ClassPickerUI) can share the document
+            panelRoot.Q(RootName)?.RemoveFromHierarchy();
+            root = new VisualElement { name = RootName };
+            panelRoot.Add(root);
             Build();
+
+            var ps = document.panelSettings;
+            Debug.Log($"[HeistHUD] Enabled. PanelSettings='{(ps != null ? ps.name : "NONE")}', theme='{(ps != null && ps.themeStyleSheet != null ? ps.themeStyleSheet.name : "NONE")}', " +
+                      $"elements={root.childCount}, screen={Screen.width}x{Screen.height}");
 
             GameMode.ExtractionHeistGameMode.StateChanged += OnStateChanged;
             GameMode.ExtractionHeistGameMode.ExtractionOpened += OnExtractionOpened;
@@ -87,6 +101,8 @@ namespace Ouroboros.UI
             GameMode.ExtractionHeistGameMode.TeamExtractedEvent -= OnTeamExtracted;
             GameMode.LootObjective.Completed -= OnObjectiveCompleted;
             Network.NetworkPlayer.PlayerKilled -= OnPlayerKilled;
+            if (damageSubscribed != null) { damageSubscribed.Damaged -= OnLocalDamaged; damageSubscribed = null; }
+            root?.RemoveFromHierarchy();
         }
 
         private void Update()
@@ -101,6 +117,13 @@ namespace Ouroboros.UI
             if (bannerLabel.resolvedStyle.display == DisplayStyle.Flex && Time.unscaledTime > bannerUntil)
             {
                 bannerLabel.style.display = DisplayStyle.None;
+            }
+
+            if (damageFlashAlpha > 0f)
+            {
+                damageFlashAlpha = Mathf.Max(0f, damageFlashAlpha - Time.unscaledDeltaTime * 1.5f);
+                damageFlash.style.opacity = damageFlashAlpha;
+                damageFlash.style.display = damageFlashAlpha > 0f ? DisplayStyle.Flex : DisplayStyle.None;
             }
         }
 
@@ -123,6 +146,8 @@ namespace Ouroboros.UI
             stateLabel = Text("", 16, Color.white, bold: true);
             timerLabel = Text("", 22, Color.white, bold: true);
             top.Add(stateLabel); top.Add(timerLabel);
+            alarmFill = Bar(top, new Color(0.9f, 0.3f, 0.1f), out alarmLabel);
+            alarmFill.parent.style.width = 240;
             root.Add(top);
 
             // Banner under the timer
@@ -212,7 +237,10 @@ namespace Ouroboros.UI
             econ.style.alignItems = Align.FlexEnd;
             lootLabel = Text("", 20, LootColor, bold: true);
             kdLabel = Text("", 13, Color.white);
-            econ.Add(lootLabel); econ.Add(kdLabel);
+            weaponLabel = Text("", 13, new Color(1f, 1f, 1f, 0.8f), bold: true);
+            weaponLabel.style.marginTop = 6;
+            ammoLabel = Text("", 24, Color.white, bold: true);
+            econ.Add(lootLabel); econ.Add(kdLabel); econ.Add(weaponLabel); econ.Add(ammoLabel);
             root.Add(econ);
 
             // Centre-bottom: zone prompt
@@ -228,6 +256,11 @@ namespace Ouroboros.UI
             zoneFill = Bar(zonePanel, LootColor, out _);
             zonePanel.Add(zoneHint);
             root.Add(zonePanel);
+
+            // Damage flash (red vignette-ish full-screen tint)
+            damageFlash = Overlay(new Color(0.8f, 0f, 0f, 0.35f));
+            damageFlash.style.opacity = 0f;
+            root.Add(damageFlash);
 
             // Death overlay
             deathOverlay = Overlay(new Color(0.3f, 0f, 0f, 0.45f));
@@ -312,9 +345,24 @@ namespace Ouroboros.UI
         // ------------------------------------------------------------------
         // Refresh
 
+        private bool loggedFirstRefresh;
+
         private void Refresh()
         {
             if (local == null || local.Object == null) local = FindLocal();
+            if (!loggedFirstRefresh && local != null)
+            {
+                loggedFirstRefresh = true;
+                var gmLog = GameMode.ExtractionHeistGameMode.Instance;
+                Debug.Log($"[HeistHUD] Local player found: {local.DisplayName} ({local.Team}, {local.ClassType}); game mode state: " +
+                          $"{(gmLog != null && gmLog.Object != null ? gmLog.CurrentState.ToString() : "no game mode")}; panel size={root.resolvedStyle.width}x{root.resolvedStyle.height}");
+            }
+            if (local != damageSubscribed)
+            {
+                if (damageSubscribed != null) damageSubscribed.Damaged -= OnLocalDamaged;
+                damageSubscribed = local;
+                if (damageSubscribed != null) damageSubscribed.Damaged += OnLocalDamaged;
+            }
 
             RefreshMatch();
             RefreshTeams();
@@ -331,6 +379,19 @@ namespace Ouroboros.UI
                 stateLabel.text = "Connecting...";
                 timerLabel.text = "";
                 return;
+            }
+
+            var alarm = GameMode.AlarmSystem.Instance;
+            if (alarm != null && alarm.Object != null)
+            {
+                alarmFill.parent.style.display = DisplayStyle.Flex;
+                SetBar(alarmFill, alarm.Normalized, 1f);
+                alarmLabel.text = $"ALARM  {GameMode.AlarmSystem.TierName(alarm.Tier)}";
+                alarmFill.style.backgroundColor = alarm.Lockdown ? HealthColor : new Color(0.9f, 0.5f, 0.1f);
+            }
+            else
+            {
+                alarmFill.parent.style.display = DisplayStyle.None;
             }
 
             switch (gm.CurrentState)
@@ -392,9 +453,16 @@ namespace Ouroboros.UI
             SetBar(staminaFill, local.Stamina, local.MaxStamina);
             staminaText.text = $"{local.Stamina:0}";
 
-            statusLabel.text = StatusText(local.Status);
+            string keys = "";
+            foreach (Interaction.KeycardColor c in System.Enum.GetValues(typeof(Interaction.KeycardColor)))
+            {
+                if (c != Interaction.KeycardColor.None && local.HasKeycard(c)) keys += $"  [{c} keycard]";
+            }
+            if (local.EnemyCards > 0) keys += $"  [ID cards: {local.EnemyCards}]";
+            statusLabel.text = StatusText(local.Status) + keys;
             lootLabel.text = $"${local.CarriedLoot}";
             kdLabel.text = $"K {local.Kills}  D {local.Deaths}";
+            RefreshAmmo();
 
             var cls = local.CurrentClass;
             for (int i = 0; i < slots.Length; i++)
@@ -416,6 +484,28 @@ namespace Ouroboros.UI
                 view.Cost.style.color = affordable ? StaminaColor : HealthColor;
                 view.Root.style.opacity = local.HasStatus(Core.StatusFlags.EMPDisabled) ? 0.35f : 1f;
             }
+        }
+
+        private void RefreshAmmo()
+        {
+            var lo = local.Loadout;
+            if (lo == null || lo.Object == null) { weaponLabel.text = ""; ammoLabel.text = ""; return; }
+
+            int p = (int)Equipment.EquipmentSlotType.Primary, s = (int)Equipment.EquipmentSlotType.Secondary;
+            var primary = lo.GetData(p);
+            var secondary = lo.GetData(s);
+
+            string Line(Data.EquipmentData d, int slot, string key)
+            {
+                if (d == null) return "";
+                if (!d.UsesAmmo) return $"{key} {d.equipmentName}";
+                if (lo.IsReloading(slot)) return $"{key} {d.equipmentName}  reloading {lo.ReloadProgress(slot):P0}";
+                return $"{key} {d.equipmentName}  {lo.Magazine[slot]} / {lo.Reserve[slot]}";
+            }
+
+            weaponLabel.text = Line(secondary, s, Core.LocalInputSource.Hint(Core.InputButtons.Secondary));
+            ammoLabel.text = Line(primary, p, Core.LocalInputSource.Hint(Core.InputButtons.Primary));
+            ammoLabel.style.color = primary != null && primary.UsesAmmo && lo.Magazine[p] == 0 ? HealthColor : Color.white;
         }
 
         private void RefreshZone()
@@ -451,19 +541,91 @@ namespace Ouroboros.UI
                 }
             }
 
-            if (bestObj == null && bestEp == null)
+            // Terminals and cases (v0.5)
+            Interaction.HackTerminal bestTerm = null; float bestTermSq = float.MaxValue;
+            foreach (var t in Interaction.HackTerminal.All)
+            {
+                if (t == null || t.Object == null) continue;
+                float r = t.InteractRadius * 1.6f;
+                float dSq = (t.transform.position - pos).sqrMagnitude;
+                if (dSq <= r * r && dSq < bestTermSq) { bestTerm = t; bestTermSq = dSq; }
+            }
+            GameMode.LootCase bestCase = null; float bestCaseSq = float.MaxValue;
+            foreach (var c in GameMode.LootCase.All)
+            {
+                if (c == null || c.Object == null || c.IsCarried) continue;
+                float r = c.PickupRadius * 1.6f;
+                float dSq = (c.transform.position - pos).sqrMagnitude;
+                if (dSq <= r * r && dSq < bestCaseSq) { bestCase = c; bestCaseSq = dSq; }
+            }
+
+            // Vault doors, keycards, code notes (v0.7)
+            Interaction.VaultDoor bestDoor = null; float bestDoorSq = float.MaxValue;
+            foreach (var d in Interaction.VaultDoor.All)
+            {
+                if (d == null || d.Object == null || d.IsOpen) continue;
+                float r = d.InteractRadius * 1.6f;
+                float dSq = (d.transform.position - pos).sqrMagnitude;
+                if (dSq <= r * r && dSq < bestDoorSq) { bestDoor = d; bestDoorSq = dSq; }
+            }
+
+            if (bestObj == null && bestEp == null && bestTerm == null && bestCase == null && bestDoor == null)
             {
                 zonePanel.style.display = DisplayStyle.None;
                 return;
             }
 
             zonePanel.style.display = DisplayStyle.Flex;
+            string interact = Core.LocalInputSource.Hint(Core.InputButtons.Interact);
+
+            if (bestDoor != null && bestDoorSq <= Mathf.Min(Mathf.Min(bestObjSq, bestEpSq), Mathf.Min(bestTermSq, bestCaseSq)))
+            {
+                zoneTitle.text = $"{bestDoor.VaultName} - {bestDoor.LockType} lock";
+                switch (bestDoor.LockType)
+                {
+                    case Interaction.VaultLockType.Keycard:
+                        SetBar(zoneFill, local.HasKeycard(bestDoor.RequiredKeycard) ? 1f : 0f, 1f);
+                        zoneHint.text = local.HasKeycard(bestDoor.RequiredKeycard) ? $"Hold {interact} to swipe the {bestDoor.RequiredKeycard} keycard" : $"Needs the {bestDoor.RequiredKeycard} keycard - find it in the facility";
+                        break;
+                    case Interaction.VaultLockType.PlayerCard:
+                        SetBar(zoneFill, Mathf.Clamp01((float)local.EnemyCards / bestDoor.EnemyCardsRequired), 1f);
+                        zoneHint.text = local.EnemyCards >= bestDoor.EnemyCardsRequired ? $"Hold {interact} to swipe an enemy ID card" : $"Needs {bestDoor.EnemyCardsRequired} enemy ID card(s) - loot them from dead rivals (you have {local.EnemyCards})";
+                        break;
+                    case Interaction.VaultLockType.Passcode:
+                        SetBar(zoneFill, bestDoor.TeamKnowsCode(local.Team) ? 1f : 0f, 1f);
+                        zoneHint.text = bestDoor.IsLockedOut ? "Keypad locked out after a wrong code" : bestDoor.TeamKnowsCode(local.Team) ? $"Press {interact} - code {bestDoor.Passcode:0000}" : $"Press {interact} to use the keypad. Wrong code = LOCKDOWN. Find the code note.";
+                        break;
+                    case Interaction.VaultLockType.Lockdown:
+                        float? left = bestDoor.LockdownRemaining;
+                        SetBar(zoneFill, left.HasValue ? 1f - Mathf.Clamp01(left.Value / 45f) : 0f, 1f);
+                        zoneHint.text = left.HasValue ? $"LOCKDOWN - survive {Mathf.CeilToInt(left.Value)}s and the vault opens" : $"Hold {interact} to force the override - this triggers a LOCKDOWN";
+                        break;
+                }
+                return;
+            }
+
+            if (bestCase != null && bestCaseSq <= Mathf.Min(bestObjSq, Mathf.Min(bestEpSq, bestTermSq)))
+            {
+                zoneTitle.text = $"{bestCase.CaseName}  (${bestCase.Value})";
+                SetBar(zoneFill, 0f, 1f);
+                zoneHint.text = local.HasStatus(Core.StatusFlags.Encumbered) ? "You already carry a case" : $"Hold {interact} to pick up - carry it to extraction";
+                return;
+            }
+            if (bestTerm != null && bestTermSq <= Mathf.Min(bestObjSq, bestEpSq))
+            {
+                zoneTitle.text = bestTerm.TerminalName;
+                SetBar(zoneFill, bestTerm.ProgressNormalized, 1f);
+                zoneHint.text = !bestTerm.IsReady ? "Rebooting..." : bestTerm.WorkingTeam == Core.TeamID.None
+                    ? $"Hold {interact} to override (Hackers: System Hack)" : $"{TeamName(bestTerm.WorkingTeam)} overriding...";
+                return;
+            }
 
             if (bestObj != null && (bestEp == null || bestObjSq <= bestEpSq))
             {
-                zoneTitle.text = bestObj.ObjectiveName + $"  (${bestObj.LootValue})";
+                zoneTitle.text = bestObj.ObjectiveName + $"  (${bestObj.LootValue})" + (bestObj.Stages > 1 ? $"  stage {Mathf.Min(bestObj.StagesDone + 1, bestObj.Stages)}/{bestObj.Stages}" : "");
                 SetBar(zoneFill, bestObj.ProgressNormalized, 1f);
-                if (!bestObj.IsAvailable) zoneHint.text = "Depleted";
+                if (bestObj.IsGated) zoneHint.text = "Open the vault door first";
+                else if (!bestObj.IsAvailable) zoneHint.text = "Depleted";
                 else if (!bestObj.IsUnlocked) zoneHint.text = "Locked - needs a Hacker";
                 else if (bestObj.CapturingTeam == Core.TeamID.None) zoneHint.text = $"Hold {Core.LocalInputSource.Hint(Core.InputButtons.Interact)} to crack";
                 else if (bestObj.IsContested) zoneHint.text = $"{TeamName(bestObj.CapturingTeam)} cracking - CONTESTED";
@@ -565,6 +727,11 @@ namespace Ouroboros.UI
             AddFeed($"{killerName}  ✕  {victim.DisplayName}", color);
         }
 
+        private void OnLocalDamaged(Network.NetworkPlayer who, float amount)
+        {
+            damageFlashAlpha = Mathf.Clamp01(Mathf.Max(damageFlashAlpha, 0.35f + amount / 100f));
+        }
+
         private void ShowBanner(string text)
         {
             bannerLabel.text = text;
@@ -641,6 +808,11 @@ namespace Ouroboros.UI
             if ((status & Core.StatusFlags.Burning) != 0)     parts.Add("BURNING");
             if ((status & Core.StatusFlags.Sprinting) != 0)   parts.Add("sprint");
             if ((status & Core.StatusFlags.Interacting) != 0) parts.Add("interact");
+            if ((status & Core.StatusFlags.Encumbered) != 0)  parts.Add("CARRYING CASE");
+            if ((status & Core.StatusFlags.Sliding) != 0)     parts.Add("slide");
+            if ((status & Core.StatusFlags.Gliding) != 0)     parts.Add("GLIDING");
+            if ((status & Core.StatusFlags.Climbing) != 0)    parts.Add("CLIMBING");
+            if ((status & Core.StatusFlags.Grappling) != 0)   parts.Add("GRAPPLE");
             return string.Join("  ", parts);
         }
 

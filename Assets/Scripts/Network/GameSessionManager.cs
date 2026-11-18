@@ -31,10 +31,19 @@ namespace Ouroboros.Network
         [SerializeField] private bool autoStartOnPlay = true;
         [SerializeField] private NetworkRunner runnerPrefab;
 
-        [Header("Prefabs")]
-        [SerializeField] private NetworkPrefabRef playerPrefab;
-        [Tooltip("Fallback used when playerPrefab is unset: a direct prefab reference (the Phase 0 scene builder fills this).")]
+        [Header("Player Prefab")]
+        [Tooltip("Assign Assets/Ouroboros/Prefabs/Player.prefab here (direct reference; the scene builder fills it). Used when the NetworkPrefabRef below is empty.")]
         [SerializeField] private NetworkObject playerPrefabObject;
+        [Tooltip("Optional Fusion prefab reference. If Fusion shows an error here, re-run Tools > Fusion > Rebuild Prefab Table or just use the field above.")]
+        [SerializeField] private NetworkPrefabRef playerPrefab;
+
+        [Header("Feedback (optional)")]
+        [Tooltip("Audio/VFX library used by PlayerFeedback and MatchFeedback when they have no override.")]
+        [SerializeField] private Data.FeedbackLibrary feedbackLibrary;
+
+        [Header("Equipment (optional)")]
+        [Tooltip("Ordered item list used for networked equipment ids. Published as EquipmentRegistry.Active.")]
+        [SerializeField] private Data.EquipmentRegistry equipmentRegistry;
 
         [Header("Class Data (optional)")]
         [Tooltip("Designer stats / ability numbers / class prefabs. Published to every peer as ClassRegistry.Active.")]
@@ -44,6 +53,10 @@ namespace Ouroboros.Network
         [SerializeField] private Core.PlayerClassType defaultClass = Core.PlayerClassType.Agent;
         [Tooltip("Cycle through classes for successive joins so a dev lobby exercises every class.")]
         [SerializeField] private bool rotateDefaultClass = true;
+
+        [Header("Spectator")]
+        [Tooltip("Scene camera shown while there is no local player (lobby before spawn, after despawn). Auto-found by SpectatorCamera if unset.")]
+        [SerializeField] private Player.SpectatorCamera spectatorCamera;
 
         [Header("Local Input")]
         [Tooltip("Mouse look multiplier (Input System deltas are pre-scaled to match the legacy axes).")]
@@ -61,8 +74,11 @@ namespace Ouroboros.Network
         private float accumulatedYaw;
         private float accumulatedPitch;
         private int pressedSinceLastTick;
+        /// <summary>Set when a click was used to re-lock the cursor; that press must not also fire the weapon.</summary>
+        private bool swallowPrimaryUntilRelease;
 
         public NetworkRunner Runner => runner;
+        public static Data.FeedbackLibrary FeedbackLibrary { get; private set; }
         public bool IsSessionRunning => runner != null && runner.IsRunning;
         public IReadOnlyDictionary<PlayerRef, NetworkObject> SpawnedPlayers => spawnedPlayers;
 
@@ -75,7 +91,16 @@ namespace Ouroboros.Network
             }
             Instance = this;
             spawnPoints = new TeamSpawnPointCache();
+
+            // (v0.8) editor-only fallbacks for references the scene builder normally fills (see Core.DevAssetFallback).
+            if (classRegistry == null) classRegistry = Core.DevAssetFallback.Load<Data.ClassRegistry>(Core.DevAssetFallback.ClassRegistryPath, nameof(GameSessionManager), nameof(classRegistry));
+            if (feedbackLibrary == null) feedbackLibrary = Core.DevAssetFallback.Load<Data.FeedbackLibrary>(Core.DevAssetFallback.FeedbackPath, nameof(GameSessionManager), nameof(feedbackLibrary));
+            if (equipmentRegistry == null) equipmentRegistry = Core.DevAssetFallback.Load<Data.EquipmentRegistry>(Core.DevAssetFallback.EquipmentRegistryPath, nameof(GameSessionManager), nameof(equipmentRegistry));
+            if (playerPrefabObject == null && !playerPrefab.IsValid) playerPrefabObject = Core.DevAssetFallback.LoadPrefab(Core.DevAssetFallback.PlayerPrefabPath, nameof(GameSessionManager), nameof(playerPrefabObject));
+
             if (classRegistry != null) Data.ClassRegistry.Active = classRegistry;
+            FeedbackLibrary = feedbackLibrary;
+            if (equipmentRegistry != null) Data.EquipmentRegistry.Active = equipmentRegistry;
         }
 
         private void OnDestroy()
@@ -95,6 +120,32 @@ namespace Ouroboros.Network
         {
             if (runner == null || !runner.IsRunning || runner.LocalPlayer == default) return;
             SampleLocalInput();
+            UpdateCursorLock();
+        }
+
+        /// <summary>
+        /// Re-locks the cursor when the player clicks into the game while playing (the editor releases the lock on
+        /// Esc / focus loss). Never locks while the class picker owns the cursor or there is no local player.
+        /// </summary>
+        private void UpdateCursorLock()
+        {
+            if (Cursor.lockState == CursorLockMode.Locked) return;
+            if (UI.ClassPickerUI.IsShown || UI.KeypadUI.IsShown) return;
+            if (!runner.TryGetPlayerObject(runner.LocalPlayer, out NetworkObject local) || local == null) return;
+            if (Core.LocalInputSource.Pressed(Core.InputButtons.Primary))
+            {
+                Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible = false;
+                swallowPrimaryUntilRelease = true;
+                pressedSinceLastTick &= ~(1 << (int)Core.InputButtons.Primary);
+            }
+        }
+
+        /// <summary>Called by PlayerController when the local player's object spawns / despawns.</summary>
+        public static void NotifyLocalPlayer(bool present)
+        {
+            var cam = Instance != null && Instance.spectatorCamera != null ? Instance.spectatorCamera : Player.SpectatorCamera.Instance;
+            if (cam != null) cam.SetActiveView(!present);
         }
 
         // ------------------------------------------------------------------
@@ -168,7 +219,8 @@ namespace Ouroboros.Network
         {
             if (!playerPrefab.IsValid && playerPrefabObject == null)
             {
-                Debug.LogError("[GameSessionManager] Player prefab not assigned (set playerPrefab or playerPrefabObject)");
+                Debug.LogError("[GameSessionManager] No player prefab: assign Assets/Ouroboros/Prefabs/Player.prefab to 'Player Prefab Object' " +
+                               "on the GameSessionManager (or re-run Ouroboros > Setup > Create Dev Scene). Nothing will spawn.");
                 return;
             }
 
@@ -211,6 +263,12 @@ namespace Ouroboros.Network
 
             r.SetPlayerObject(player, obj);
             spawnedPlayers[player] = obj;
+
+            // Shared mode: the spawner is not the TeamManager's authority, so ask for a team (v0.5)
+            if (team == Core.TeamID.None && teamManager != null && teamManager.Object != null && !teamManager.Object.HasStateAuthority)
+            {
+                teamManager.RequestTeamAssignment();
+            }
 
             Debug.Log($"[GameSessionManager] Spawned {player} on {team} as {classType}");
         }
@@ -265,12 +323,12 @@ namespace Ouroboros.Network
             }
 
             // Edge-triggered buttons are latched here (Update runs more often than OnInput) so no press is lost.
-            for (int b = 0; b <= (int)Core.InputButtons.Gadget; b++)
+            for (int b = 0; b < Core.GameConstants.INPUT_BUTTON_COUNT; b++)
             {
                 if (Core.LocalInputSource.Pressed((Core.InputButtons)b)) pressedSinceLastTick |= 1 << b;
             }
 
-            if (Core.LocalInputSource.CursorTogglePressed())
+            if (!UI.KeypadUI.IsShown && Core.LocalInputSource.CursorTogglePressed())
             {
                 Cursor.lockState = Cursor.lockState == CursorLockMode.Locked ? CursorLockMode.None : CursorLockMode.Locked;
                 Cursor.visible = Cursor.lockState != CursorLockMode.Locked;
@@ -296,10 +354,26 @@ namespace Ouroboros.Network
             };
 
             // [v0.2] data.Buttons.Set(..., Input.GetKey(KeyCode.X) || WasPressed(...)) per button (legacy only)
-            for (int b = 0; b <= (int)Core.InputButtons.Gadget; b++)
+            for (int b = 0; b < Core.GameConstants.INPUT_BUTTON_COUNT; b++)
             {
                 var button = (Core.InputButtons)b;
                 data.Buttons.Set(b, Core.LocalInputSource.Held(button) || WasPressed(button));
+            }
+
+            if (UI.KeypadUI.IsShown)
+            {
+                // Typing a code must not fire abilities (1-4) or weapons
+                for (int b = (int)Core.InputButtons.Ability1; b <= (int)Core.InputButtons.Ability4; b++) data.Buttons.Set(b, false);
+                data.Buttons.Set((int)Core.InputButtons.Primary, false);
+                data.Buttons.Set((int)Core.InputButtons.Secondary, false);
+                data.Buttons.Set((int)Core.InputButtons.Interact, false);
+                data.Move = Vector2.zero;
+            }
+
+            if (swallowPrimaryUntilRelease)
+            {
+                data.Buttons.Set((int)Core.InputButtons.Primary, false);
+                if (!Core.LocalInputSource.Held(Core.InputButtons.Primary)) swallowPrimaryUntilRelease = false;
             }
 
             pressedSinceLastTick = 0;
