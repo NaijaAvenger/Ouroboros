@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using Ouroboros.Core;
@@ -203,6 +204,101 @@ namespace Ouroboros.Tests
             Assert.That(onTarget, Is.GreaterThanOrEqualTo(0f));
             Assert.That(nearMiss, Is.GreaterThanOrEqualTo(0f));
             Assert.That(onTarget, Is.LessThan(nearMiss), "aim beats proximity");
+        }
+
+        // ---- Pulse puzzles (v0.12) ----
+
+        [Test]
+        public void KindFor_FixedModesNeverChange_MixedAlternates()
+        {
+            for (int step = 0; step < 8; step++)
+            {
+                Assert.That(HackRules.KindFor(HackRules.ModeSigns, 99, step), Is.EqualTo(HackRules.PuzzleKind.Signs));
+                Assert.That(HackRules.KindFor(HackRules.ModePulse, 99, step), Is.EqualTo(HackRules.PuzzleKind.Pulse));
+                Assert.That(HackRules.KindFor(HackRules.ModeMixed, 99, step), Is.Not.EqualTo(HackRules.KindFor(HackRules.ModeMixed, 99, step + 1)));
+            }
+        }
+
+        [Test]
+        public void KindFor_MixedSessionsDoNotAllStartOnTheSameKind()
+        {
+            var firsts = new HashSet<HackRules.PuzzleKind>();
+            for (int seed = 0; seed < 40; seed++) firsts.Add(HackRules.KindFor(HackRules.ModeMixed, seed, 0));
+            Assert.That(firsts.Count, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void Pulse_GetsFasterAndNarrowerWithDifficulty()
+        {
+            Assert.That(HackRules.PulsePeriodSeconds(2), Is.LessThan(HackRules.PulsePeriodSeconds(0)));
+            Assert.That(HackRules.PulseWindowWidth(2), Is.LessThan(HackRules.PulseWindowWidth(0)));
+            Assert.That(HackRules.PulseWindowWidth(9), Is.GreaterThan(0.1f), "never impossibly thin");
+        }
+
+        [Test]
+        public void PulseWindow_StaysInsideTheBar()
+        {
+            for (int seed = -50; seed < 400; seed += 3)
+            {
+                for (int step = 0; step < 5; step++)
+                {
+                    float centre = HackRules.PulseWindowCentre(seed, step);
+                    float half = HackRules.PulseWindowWidth(0) * 0.5f;
+                    Assert.That(centre - half, Is.GreaterThanOrEqualTo(0f));
+                    Assert.That(centre + half, Is.LessThanOrEqualTo(1f));
+                }
+            }
+        }
+
+        [Test]
+        public void PulsePosition_SweepsTheWholeBar_AndRepeatsEveryPeriod()
+        {
+            const float period = 1.5f;
+            float min = 1f, max = 0f;
+            for (int i = 0; i <= 300; i++)
+            {
+                float pos = HackRules.PulsePosition(7, 2, i * period / 300f, period);
+                Assert.That(pos, Is.InRange(0f, 1f));
+                min = Math.Min(min, pos); max = Math.Max(max, pos);
+            }
+            Assert.That(min, Is.LessThan(0.02f));
+            Assert.That(max, Is.GreaterThan(0.98f));
+            Assert.That(HackRules.PulsePosition(7, 2, 0.4f + period, period), Is.EqualTo(HackRules.PulsePosition(7, 2, 0.4f, period)).Within(1e-3f));
+        }
+
+        [Test]
+        public void PulsePosition_StartsSomewhereDifferentEachPuzzle()
+        {
+            var starts = new HashSet<int>();
+            for (int step = 0; step < 30; step++) starts.Add((int)(HackRules.PulsePosition(11, step, 0f, 1.5f) * 20f));
+            Assert.That(starts.Count, Is.GreaterThan(8));
+        }
+
+        [Test]
+        public void IsPulseHit_OnlyInsideTheWindow_PlusTolerance()
+        {
+            Assert.That(HackRules.IsPulseHit(0.50f, 0.5f, 0.2f), Is.True);
+            Assert.That(HackRules.IsPulseHit(0.59f, 0.5f, 0.2f), Is.True);
+            Assert.That(HackRules.IsPulseHit(0.62f, 0.5f, 0.2f), Is.False);
+            Assert.That(HackRules.IsPulseHit(0.62f, 0.5f, 0.2f, tolerance: 0.03f), Is.True);
+        }
+
+        [Test]
+        public void StrikingAtRandom_LosesGround()
+        {
+            // The marker spends a fraction of its time in the window equal to the window's width.
+            const float captureTime = 8f;
+            float pHit = HackRules.PulseWindowWidth(0);
+            float expected = pHit * HackRules.CorrectGain(captureTime, false) - (1f - pHit) * HackRules.WrongLoss(captureTime);
+            Assert.That(expected, Is.LessThan(0f));
+        }
+
+        [Test]
+        public void Jam_DisablesGearLongerThanWeapons_AndCannotBeChained()
+        {
+            Assert.That(HackRules.JamWeaponSeconds, Is.LessThan(HackRules.JamSeconds));
+            Assert.That(HackRules.JamImmunitySeconds, Is.GreaterThan(HackRules.JamSeconds + HackRules.JamHackSeconds),
+                "a jammed player must get clear time before the next jam can land");
         }
     }
 }

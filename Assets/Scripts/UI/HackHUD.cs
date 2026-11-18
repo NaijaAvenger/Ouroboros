@@ -97,6 +97,14 @@ namespace Ouroboros.UI
         private bool answeredCorrect;
         private float flashUntil;
 
+        // Pulse puzzle (v0.12)
+        private VisualElement signsPanel, pulsePanel, pulseWindow, pulseMarker;
+        private const float PulseTrackWidth = 380f;
+
+        // Being hacked by a rival (v0.12)
+        private VisualElement warningPanel, warningFill;
+        private Label warningLabel;
+
         // Net Sight
         private readonly Label[] markers = new Label[MarkerCount];
 
@@ -119,6 +127,7 @@ namespace Ouroboros.UI
             BuildMarkers();
             BuildPrompt();
             BuildConsole();
+            BuildWarning();
 
             if (audioSource == null)
             {
@@ -194,9 +203,32 @@ namespace Ouroboros.UI
             track.Add(consoleFill);
             console.Add(track);
 
-            console.Add(Caption("MATCH THIS SIGN"));
+            // [v0.11] console.Add(Caption("MATCH THIS SIGN")); targetSign added straight to the console
+            // (v0.12) two task panels share the console; only the one for the current puzzle is shown
+            signsPanel = new VisualElement { pickingMode = PickingMode.Ignore };
+            signsPanel.style.alignItems = Align.Center;
+            console.Add(signsPanel);
+            signsPanel.Add(Caption("MATCH THIS SIGN"));
             targetSign = new SignView(1.5f);
-            console.Add(targetSign.Root);
+            signsPanel.Add(targetSign.Root);
+
+            pulsePanel = new VisualElement { pickingMode = PickingMode.Ignore };
+            pulsePanel.style.alignItems = Align.Center;
+            pulsePanel.style.display = DisplayStyle.None;
+            console.Add(pulsePanel);
+            pulsePanel.Add(Caption("STRIKE WHEN THE PULSE IS IN THE WINDOW"));
+            var pulseTrack = new VisualElement();
+            pulseTrack.style.width = PulseTrackWidth; pulseTrack.style.height = 30; pulseTrack.style.marginTop = 10; pulseTrack.style.marginBottom = 6;
+            pulseTrack.style.backgroundColor = new Color(1f, 1f, 1f, 0.1f);
+            pulseWindow = new VisualElement();
+            pulseWindow.style.position = Position.Absolute; pulseWindow.style.top = 0; pulseWindow.style.height = 30;
+            pulseWindow.style.backgroundColor = new Color(TargetColor.r, TargetColor.g, TargetColor.b, 0.55f);
+            pulseMarker = new VisualElement();
+            pulseMarker.style.position = Position.Absolute; pulseMarker.style.top = -4; pulseMarker.style.height = 38; pulseMarker.style.width = 6;
+            pulseMarker.style.backgroundColor = SignColor;
+            pulseTrack.Add(pulseWindow);
+            pulseTrack.Add(pulseMarker);
+            pulsePanel.Add(pulseTrack);
 
             var row = new VisualElement();
             row.style.flexDirection = FlexDirection.Row;
@@ -217,12 +249,60 @@ namespace Ouroboros.UI
                 candidateFrames[i] = frame;
                 row.Add(frame);
             }
-            console.Add(row);
+            // [v0.11] console.Add(row);
+            signsPanel.Add(row);
 
             consoleHint = Text(12, new Color(1f, 1f, 1f, 0.7f), false);
             consoleHint.style.marginTop = 10;
             console.Add(consoleHint);
             root.Add(console);
+        }
+
+        /// <summary>(v0.12) Top-centre warning while a rival's tether is on you.</summary>
+        private void BuildWarning()
+        {
+            warningPanel = new VisualElement { pickingMode = PickingMode.Ignore };
+            warningPanel.style.position = Position.Absolute;
+            warningPanel.style.left = Length.Percent(50); warningPanel.style.top = 120;
+            warningPanel.style.translate = new Translate(Length.Percent(-50), 0);
+            warningPanel.style.minWidth = 320;
+            warningPanel.style.backgroundColor = new Color(0.25f, 0.02f, 0.02f, 0.9f);
+            warningPanel.style.paddingLeft = 12; warningPanel.style.paddingRight = 12; warningPanel.style.paddingTop = 6; warningPanel.style.paddingBottom = 7;
+            warningPanel.style.display = DisplayStyle.None;
+
+            warningLabel = Text(15, BadColor, true);
+            warningPanel.Add(warningLabel);
+            var track = new VisualElement();
+            track.style.height = 5; track.style.marginTop = 4;
+            track.style.backgroundColor = new Color(1f, 1f, 1f, 0.15f);
+            warningFill = new VisualElement();
+            warningFill.style.height = 5; warningFill.style.width = Length.Percent(0);
+            warningFill.style.backgroundColor = BadColor;
+            track.Add(warningFill);
+            warningPanel.Add(track);
+            root.Add(warningPanel);
+        }
+
+        private void UpdateWarning(bool playing)
+        {
+            Network.NetworkPlayer hacker = playing ? local.FindHacker() : null;
+            bool jammed = playing && local.HasStatus(Core.StatusFlags.EMPDisabled);
+            if (hacker == null && !jammed)
+            {
+                warningPanel.style.display = DisplayStyle.None;
+                return;
+            }
+            warningPanel.style.display = DisplayStyle.Flex;
+            if (hacker != null)
+            {
+                warningLabel.text = $"BEING HACKED by {hacker.DisplayName}  -  break line of sight or shoot them";
+                warningFill.style.width = Length.Percent(hacker.HackProgress01 * 100f);
+            }
+            else
+            {
+                warningLabel.text = "JAMMED  -  abilities and hacking offline";
+                warningFill.style.width = Length.Percent(100f);
+            }
         }
 
         private void BuildMarkers()
@@ -272,6 +352,7 @@ namespace Ouroboros.UI
             IsConsoleShown = jacked;
 
             UpdateConsole(jacked);
+            UpdateWarning(playing);
             UpdatePrompt(playing && !jacked);
             UpdateMarkers(playing && local.HasStatus(Core.StatusFlags.NetSight));
         }
@@ -320,6 +401,20 @@ namespace Ouroboros.UI
 
             int difficulty = station.HackDifficultyFor(local);
             int seed = local.JackSeed, step = local.JackStep;
+            // (v0.12) which task this puzzle is
+            bool pulse = station.PuzzleKindFor(local) == Core.HackRules.PuzzleKind.Pulse;
+            signsPanel.style.display = pulse ? DisplayStyle.None : DisplayStyle.Flex;
+            pulsePanel.style.display = pulse ? DisplayStyle.Flex : DisplayStyle.None;
+            float pulsePosition = 0f, pulseCentre = 0f, pulseWidth = 0f;
+            if (pulse)
+            {
+                pulseCentre = Core.HackRules.PulseWindowCentre(seed, step);
+                pulseWidth = Core.HackRules.PulseWindowWidth(difficulty);
+                pulsePosition = Core.HackRules.PulsePosition(seed, step, local.JackStepSeconds, Core.HackRules.PulsePeriodSeconds(difficulty));
+                pulseWindow.style.left = (pulseCentre - pulseWidth * 0.5f) * PulseTrackWidth;
+                pulseWindow.style.width = pulseWidth * PulseTrackWidth;
+                pulseMarker.style.left = pulsePosition * PulseTrackWidth - 3f;
+            }
             if (seed != shownSeed || step != shownStep || difficulty != shownDifficulty)
             {
                 shownSeed = seed; shownStep = step; shownDifficulty = difficulty;
@@ -354,13 +449,29 @@ namespace Ouroboros.UI
                 if (flashing && i == answeredChoice) c = answeredCorrect ? GoodColor : BadColor;
                 candidateFrames[i].style.borderBottomColor = c;
             }
+            // [v0.11] : $"1-4 to answer    [{...Interact}] jack out    stay close to the vault";
+            string how = pulse ? $"[{Core.LocalInputSource.Hint(Core.InputButtons.Jump)}] strike" : "1-4 to answer";
             consoleHint.text = flashing && !answeredCorrect
-                ? "WRONG  -  the alarm heard that"
-                : $"1-4 to answer    [{Core.LocalInputSource.Hint(Core.InputButtons.Interact)}] jack out    stay close to the vault";
+                ? (pulse && answeredChoice < 0 ? "MISSED  -  the alarm heard that" : "WRONG  -  the alarm heard that")
+                : $"{how}    [{Core.LocalInputSource.Hint(Core.InputButtons.Interact)}] jack out    stay close to the vault";
             consoleHint.style.color = flashing && !answeredCorrect ? BadColor : new Color(1f, 1f, 1f, 0.7f);
+            if (pulse) pulseMarker.style.backgroundColor = flashing ? (answeredCorrect ? GoodColor : BadColor) : SignColor;
 
             // Input: one answer per puzzle. The server ignores anything sent for a step that has passed.
             if (answeredStep == step || local.IsJackLockedOut) return;
+
+            if (pulse)
+            {
+                if (!Core.LocalInputSource.Pressed(Core.InputButtons.Jump)) return;
+                answeredStep = step;
+                answeredChoice = -1;
+                answeredCorrect = Core.HackRules.IsPulseHit(pulsePosition, pulseCentre, pulseWidth);
+                flashUntil = Time.unscaledTime + (answeredCorrect ? 0.25f : 0.8f);
+                local.SubmitPulseStrike();
+                if (audioSource != null) audioSource.PlayOneShot(answeredCorrect ? Core.ProceduralSfx.HitTick : Core.ProceduralSfx.EmptyClick, 0.7f);
+                return;
+            }
+
             for (int i = 0; i < Core.HackRules.CandidateCount; i++)
             {
                 if (!Core.LocalInputSource.Pressed((Core.InputButtons)((int)Core.InputButtons.Ability1 + i))) continue;

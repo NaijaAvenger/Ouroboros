@@ -274,6 +274,20 @@ namespace Ouroboros.Equipment
             UseTimers.Set(slot, TickTimer.CreateFromSeconds(Runner, seconds));
         }
 
+        /// <summary>
+        /// (v0.12) A rival's jam: every slot refuses to fire for <paramref name="seconds"/>. State authority only.
+        /// </summary>
+        public void Jam(float seconds)
+        {
+            if (!Object.HasStateAuthority || seconds <= 0f) return;
+            for (int i = 0; i < SLOTS; i++)
+            {
+                if (SlotItemIds[i] == 0) continue;
+                float remaining = UseTimers[i].RemainingTime(Runner) ?? 0f;
+                if (seconds > remaining) UseTimers.Set(i, TickTimer.CreateFromSeconds(Runner, seconds));
+            }
+        }
+
         /// <summary>Spends one round. Auto-starts a reload when the magazine is empty. Returns false if nothing was spent.</summary>
         public bool ConsumeAmmo(int slot)
         {

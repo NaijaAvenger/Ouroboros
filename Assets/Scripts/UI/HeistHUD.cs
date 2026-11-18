@@ -103,6 +103,8 @@ namespace Ouroboros.UI
             GameMode.LootObjective.TakenOver += OnVaultTakenOver; // (v0.11)
             Interaction.PowerNode.PowerCut += OnPowerCut;
             Interaction.QuickHack.Completed += OnQuickHack;
+            Interaction.GravityZone.Switched += OnGravitySwitched; // (v0.12)
+            Network.NetworkPlayer.Jammed += OnJammed;
         }
 
         private void OnDisable()
@@ -110,6 +112,8 @@ namespace Ouroboros.UI
             GameMode.LootObjective.TakenOver -= OnVaultTakenOver;
             Interaction.PowerNode.PowerCut -= OnPowerCut;
             Interaction.QuickHack.Completed -= OnQuickHack;
+            Interaction.GravityZone.Switched -= OnGravitySwitched;
+            Network.NetworkPlayer.Jammed -= OnJammed;
             GameMode.ExtractionHeistGameMode.GetawayCalled -= OnGetawayCalled;
             GameMode.ExtractionHeistGameMode.CrewWiped -= OnCrewWiped;
             GameMode.LootDrop.PickedUp -= OnLootPickedUp;
@@ -785,6 +789,19 @@ namespace Ouroboros.UI
             // Rivals' turret hijacks are worth knowing about; the rest would only be noise.
             if (by == null || string.IsNullOrEmpty(what) || !what.Contains("turret")) return;
             AddFeed($"{by.DisplayName}: {what.ToLowerInvariant()}", Player.TeamSpawnPoint.TeamColor(by.Team));
+        }
+
+        private void OnGravitySwitched(Interaction.GravityZone zone, Core.TeamID team, bool gravityOff)
+        {
+            AddFeed(gravityOff ? $"{TeamName(team)} killed the gravity: {zone.ZoneName}" : $"Gravity restored: {zone.ZoneName}", Player.TeamSpawnPoint.TeamColor(team));
+            if (gravityOff && local != null && local.Object != null && zone.Bounds.Contains(local.Position + Vector3.up)) ShowBanner("ZERO-G  -  fly where you look, Jump up, Slide down");
+        }
+
+        private void OnJammed(Network.NetworkPlayer victim, Network.NetworkPlayer hacker)
+        {
+            if (victim == null) return;
+            string by = hacker != null ? hacker.DisplayName.ToString() : "someone";
+            AddFeed($"{by} jammed {victim.DisplayName}", hacker != null ? Player.TeamSpawnPoint.TeamColor(hacker.Team) : Color.gray);
         }
 
         // ---- (v0.10) The Run ----

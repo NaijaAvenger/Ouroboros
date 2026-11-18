@@ -96,6 +96,82 @@ namespace Ouroboros.Core
         }
 
         // ------------------------------------------------------------------
+        // Pulse puzzles (v0.12): the second deep-hack task. A marker sweeps back and forth along a bar; strike
+        // while it is inside the lit window. Signs test reading, pulses test timing, and a vault can mix both.
+
+        public enum PuzzleKind
+        {
+            Signs,
+            Pulse
+        }
+
+        /// <summary>Station setting: which puzzle kinds a vault serves.</summary>
+        public const int ModeSigns = 0, ModePulse = 1, ModeMixed = 2;
+
+        /// <summary>Which puzzle is shown at <paramref name="step"/>. Mixed vaults alternate, starting on either kind.</summary>
+        public static PuzzleKind KindFor(int mode, int seed, int step)
+        {
+            if (mode == ModeSigns) return PuzzleKind.Signs;
+            if (mode == ModePulse) return PuzzleKind.Pulse;
+            int first = (int)(Mix(unchecked((uint)seed)) & 1u);
+            return ((step + first) & 1) == 0 ? PuzzleKind.Signs : PuzzleKind.Pulse;
+        }
+
+        /// <summary>Seconds for the marker to cross the bar and come back. Faster on harder vaults.</summary>
+        public static float PulsePeriodSeconds(int difficulty)
+        {
+            int d = difficulty < 0 ? 0 : (difficulty > MaxDifficulty ? MaxDifficulty : difficulty);
+            return 1.6f - 0.25f * d;
+        }
+
+        /// <summary>Width of the window as a fraction of the bar. Narrower on harder vaults.</summary>
+        public static float PulseWindowWidth(int difficulty)
+        {
+            int d = difficulty < 0 ? 0 : (difficulty > MaxDifficulty ? MaxDifficulty : difficulty);
+            return 0.24f - 0.05f * d;
+        }
+
+        /// <summary>Centre of the window (0..1 along the bar), kept clear of both ends.</summary>
+        public static float PulseWindowCentre(int seed, int step)
+        {
+            uint state = Mix(unchecked((uint)seed * 2246822519u) ^ unchecked((uint)step * 3266489917u + 0x85EBCA6Bu));
+            float r = (Next(ref state) >> 8) / 16777216f;
+            return 0.18f + r * 0.64f;
+        }
+
+        /// <summary>
+        /// Marker position (0..1) a given time after the puzzle appeared. A triangle wave with a per-puzzle
+        /// starting phase, so the right moment is never "the same beat as last time".
+        /// </summary>
+        public static float PulsePosition(int seed, int step, float secondsSinceStart, float periodSeconds)
+        {
+            if (periodSeconds <= 0f) return 0f;
+            uint state = Mix(unchecked((uint)seed * 374761393u) ^ unchecked((uint)step * 668265263u + 0xC2B2AE35u));
+            float phase = (Next(ref state) >> 8) / 16777216f;
+            float t = secondsSinceStart / periodSeconds + phase;
+            t -= (float)Math.Floor(t);
+            return t < 0.5f ? t * 2f : 2f - t * 2f;
+        }
+
+        /// <summary>True when a strike at <paramref name="position"/> lands in the window. <paramref name="tolerance"/> widens it a little for latency.</summary>
+        public static bool IsPulseHit(float position, float centre, float width, float tolerance = 0f)
+        {
+            return Math.Abs(position - centre) <= width * 0.5f + Math.Max(0f, tolerance);
+        }
+
+        // ------------------------------------------------------------------
+        // Jamming a rival (v0.12): a quick hack whose target is a player
+
+        /// <summary>Seconds a jammed player cannot use abilities, hack or interact.</summary>
+        public const float JamSeconds = 4f;
+        /// <summary>Seconds their weapons refuse to fire: shorter, so a jam opens a window rather than deciding the fight.</summary>
+        public const float JamWeaponSeconds = 2f;
+        /// <summary>Seconds after being jammed during which the same player cannot be jammed again.</summary>
+        public const float JamImmunitySeconds = 14f;
+        /// <summary>Seconds of tether needed on a moving, shooting target.</summary>
+        public const float JamHackSeconds = 2.2f;
+
+        // ------------------------------------------------------------------
         // Deep hack progress (in the same seconds as the vault's capture time)
 
         /// <summary>Progress added by one right answer: a bit over a fifth of the crack, nearly a third for the specialist.</summary>

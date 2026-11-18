@@ -548,6 +548,19 @@ namespace Ouroboros.AI
                 lookPoint = alertPoint;
             }
 
+            // (v0.12) Floating: thrust goes where the bot looks, so look at where it wants to be (height included),
+            //         and use the lift keys when the way on is mostly up or down.
+            bool floating = !fighting && hasGoal && me.Controller != null && me.Controller.IsFloating;
+            if (floating)
+            {
+                Vector3 next = cornerCount > 0 ? corners[Mathf.Min(cornerIndex, cornerCount - 1)] : goal;
+                if (Flat(next - pos).magnitude < 1.5f) next = goal;
+                lookPoint = next + Vector3.up * 1.2f;
+                float rise = next.y + 1f - pos.y;
+                if (rise > 1f) input.Buttons.Set((int)Core.InputButtons.Jump, true);
+                else if (rise < -1f) input.Buttons.Set((int)Core.InputButtons.Slide, true);
+            }
+
             Aim(lookPoint, eye, dt, fighting);
             input.Yaw = yaw;
             input.Pitch = pitch;

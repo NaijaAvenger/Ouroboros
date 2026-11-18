@@ -48,6 +48,10 @@ namespace Ouroboros.GameMode
         [Tooltip("Seconds spilled items stay before they disappear.")]
         [SerializeField] private float lootLifetime = 240f;
 
+        [Header("Deep hack (v0.12)")]
+        [Tooltip("Signs: match the pattern. Pulse: strike on the beat. Mixed alternates the two.")]
+        [SerializeField] private HackPuzzleMode puzzleMode = HackPuzzleMode.Mixed;
+
         [Networked] public NetworkBool IsAvailable { get; set; }
         [Networked] public NetworkBool IsUnlocked { get; set; }
         [Networked] public Core.TeamID CapturingTeam { get; set; }
@@ -276,6 +280,12 @@ namespace Ouroboros.GameMode
         /// <summary>Fired on every peer when a rival crew counter-hacks a vault away from its owner (objective, new owner).</summary>
         public static event System.Action<LootObjective, Core.TeamID> TakenOver;
 
+        /// <summary>(v0.12) Which deep-hack puzzle this vault serves to <paramref name="player"/> right now.</summary>
+        public Core.HackRules.PuzzleKind PuzzleKindFor(Network.NetworkPlayer player)
+        {
+            return player != null ? Core.HackRules.KindFor((int)puzzleMode, player.JackSeed, player.JackStep) : Core.HackRules.PuzzleKind.Signs;
+        }
+
         /// <summary>How hard this vault's signs are to read: its loot tier.</summary>
         public int HackDifficulty => (int)lootTier;
         public int HackDifficultyFor(Network.NetworkPlayer player) =>
@@ -448,5 +458,13 @@ namespace Ouroboros.GameMode
             Gizmos.color = new Color(1f, 0.8f, 0f, 0.4f);
             Gizmos.DrawWireSphere(transform.position, interactRadius);
         }
+    }
+
+    /// <summary>(v0.12) Deep-hack task a vault serves. Values match Core.HackRules.ModeSigns / ModePulse / ModeMixed.</summary>
+    public enum HackPuzzleMode
+    {
+        Signs = 0,
+        Pulse = 1,
+        Mixed = 2
     }
 }

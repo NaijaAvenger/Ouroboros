@@ -465,6 +465,7 @@ namespace Ouroboros.EditorTools
             }
 
             BuildFreeportDevices(); // (v0.11, M3)
+            BuildFreeportGravityZones(); // (v0.12)
 
             TryBakeNavMesh();
 
@@ -503,6 +504,86 @@ namespace Ouroboros.EditorTools
             Turret(devices, "Customs Turret", new Vector3(-41f, 0f, -24f));
 
             Debug.Log("[Ouroboros] Freeport devices ready: 3 shutter gates, 3 power junctions, 3 lifts, 3 sentry turrets.");
+        }
+
+        /// <summary>
+        /// (v0.12) Two volumes whose gravity can be hacked off: the air over the central getaway, and the
+        /// container yard. Added to an existing Freeport scene on the next run of the menu.
+        /// </summary>
+        private static void BuildFreeportGravityZones()
+        {
+            if (Object.FindFirstObjectByType<Interaction.GravityZone>() != null) return;
+            var parent = new GameObject("Gravity Zones").transform;
+
+            // Over the plaza: whoever holds the getaway can be lifted off it, and so can whoever comes for them.
+            GravityControl(parent, "Atrium Gravity", new Vector3(7f, 4.2f, 5.9f), new Vector3(0f, 9f, 0f), new Vector3(24f, 12f, 24f));
+            // Over the containers: the quick way to the case and the code note on the high stacks.
+            GravityControl(parent, "Docks Gravity", new Vector3(-40f, 1.2f, -5.6f), new Vector3(-48f, 6f, 0f), new Vector3(26f, 12f, 34f));
+
+            Debug.Log("[Ouroboros] Freeport gravity zones ready: Atrium (over the central getaway) and Docks (over the containers).");
+        }
+
+        private static void GravityControl(Transform parent, string name, Vector3 controlPosition, Vector3 zoneCenter, Vector3 zoneSize)
+        {
+            var box = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            box.name = name;
+            box.transform.SetParent(parent);
+            box.transform.position = controlPosition;
+            box.transform.localScale = new Vector3(0.6f, 0.6f, 0.4f);
+            Tint(box, new Color(0.35f, 0.35f, 0.45f));
+
+            // The volume is shown as its twelve edges while gravity is off, so players can see where it ends.
+            var frame = new GameObject(name + " Volume");
+            frame.transform.SetParent(parent);
+            frame.transform.position = zoneCenter;
+            var purple = new Color(0.75f, 0.4f, 1f);
+            Vector3 h = zoneSize * 0.5f;
+            const float t = 0.12f;
+            foreach (float sy in new[] { -1f, 1f })
+            {
+                foreach (float s in new[] { -1f, 1f })
+                {
+                    Edge(frame.transform, zoneCenter + new Vector3(0f, sy * h.y, s * h.z), new Vector3(zoneSize.x, t, t), purple);
+                    Edge(frame.transform, zoneCenter + new Vector3(s * h.x, sy * h.y, 0f), new Vector3(t, t, zoneSize.z), purple);
+                }
+            }
+            foreach (float sx in new[] { -1f, 1f })
+            {
+                foreach (float sz in new[] { -1f, 1f })
+                {
+                    Edge(frame.transform, zoneCenter + new Vector3(sx * h.x, 0f, sz * h.z), new Vector3(t, zoneSize.y, t), purple);
+                }
+            }
+            frame.SetActive(false);
+
+            box.AddComponent<NetworkObject>();
+            var zone = box.AddComponent<Interaction.GravityZone>();
+            SetString(zone, "zoneName", name);
+            SetVector3(zone, "zoneCenter", zoneCenter);
+            SetVector3(zone, "zoneSize", zoneSize);
+            SetReference(zone, "zoneVisual", frame);
+            SetReference(zone, "indicator", box.GetComponent<Renderer>());
+        }
+
+        private static void Edge(Transform parent, Vector3 center, Vector3 size, Color color)
+        {
+            var edge = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            edge.name = "Edge";
+            edge.transform.SetParent(parent);
+            edge.transform.position = center;
+            edge.transform.localScale = size;
+            Object.DestroyImmediate(edge.GetComponent<Collider>()); // visual only: must not block movement, shots or the NavMesh
+            Tint(edge, color);
+        }
+
+        private static void SetVector3(Object target, string field, Vector3 value)
+        {
+            var so = new SerializedObject(target);
+            var prop = so.FindProperty(field);
+            if (prop == null) return;
+            prop.vector3Value = value;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(target);
         }
 
         /// <summary>A 12 m wall with a 4 m doorway that a shutter can close. The control box beside the doorway is what you aim at.</summary>

@@ -49,6 +49,12 @@ namespace Ouroboros.Player
         [SerializeField] private LayerMask worldMask = ~0;
         [SerializeField] private float cameraStandHeight = 1.6f;
         [SerializeField] private float cameraSlideHeight = 1.0f;
+
+        [Header("Zero gravity (v0.12)")]
+        [SerializeField] private float zeroGAcceleration = 14f;
+        [SerializeField] private float zeroGMaxSpeed = 8f;
+        [Tooltip("Fraction of speed lost per second while floating. Low: you keep drifting.")]
+        [SerializeField] private float zeroGDrag = 0.5f;
         
         private Network.NetworkPlayer networkPlayer;
         private Core.BasePlayerClass currentClass;
@@ -86,6 +92,10 @@ namespace Ouroboros.Player
         [Networked] private NetworkBool GroundedState { get; set; }
         /// <summary>(v0.9) Velocity over the last simulated tick (for spread, AI aim and, later, animation).</summary>
         [Networked] private Vector3 SimVelocity { get; set; }
+        /// <summary>(v0.12) Floating in a zero-gravity zone this tick.</summary>
+        [Networked] private NetworkBool Floating { get; set; }
+        /// <summary>(v0.12) Momentum while floating. Kept between ticks: in zero-g you drift.</summary>
+        [Networked] private Vector3 FloatVelocity { get; set; }
 
         // [v0.1] private Vector3 velocity;
         // [v0.1] private float verticalRotation = 0f;
@@ -104,6 +114,8 @@ namespace Ouroboros.Player
         public bool IsGrounded => characterSync != null ? (bool)GroundedState : (characterController != null && characterController.isGrounded);
         /// <summary>(v0.9) Velocity over the last simulated tick.</summary>
         public Vector3 Velocity => SimVelocity;
+        /// <summary>(v0.12) True while floating in a zero-gravity zone.</summary>
+        public bool IsFloating => Floating;
 
         private Core.MovementProfile Profile => currentClass != null ? currentClass.Movement : Core.MovementProfile.Default;
         
@@ -261,6 +273,21 @@ namespace Ouroboros.Player
 
             // Yaw comes from input so server and client agree on facing.
             transform.rotation = Quaternion.Euler(0f, input.Yaw, 0f);
+
+            // (v0.12) Gravity off here: a different way of moving altogether.
+            if (Interaction.GravityZone.IsZeroGAt(transform.position + Vector3.up))
+            {
+                SimulateZeroG(input);
+                return;
+            }
+            if (Floating)
+            {
+                // Gravity is back (the zone was switched, or we drifted out): fall from wherever we are.
+                Floating = false;
+                VerticalVelocity = FloatVelocity.y;
+                FloatVelocity = Vector3.zero;
+                JumpsUsed = 1;
+            }
 
             float dt = Runner.DeltaTime;
             var profile = Profile;
@@ -424,6 +451,55 @@ namespace Ouroboros.Player
             characterController.Move(Vector3.up * VerticalVelocity * dt);
         }
 
+        /// <summary>
+        /// (v0.12) Movement with gravity off. You fly where you look: forward and strafe follow the camera
+        /// (pitch included), Jump thrusts up and Slide thrusts down. Speed is kept between ticks and only bleeds
+        /// off slowly, so stopping takes a counter-thrust. Hitting something kills the speed into it.
+        /// </summary>
+        private void SimulateZeroG(Core.NetworkInputData input)
+        {
+            float dt = Runner.DeltaTime;
+            Vector3 velocity = FloatVelocity;
+
+            if (!Floating)
+            {
+                // Leaving the floor: keep what you were doing, plus a little lift so you actually leave it.
+                Floating = true;
+                velocity = SimVelocity;
+                velocity.y = Mathf.Max(velocity.y, 1.5f);
+                velocity = Vector3.ClampMagnitude(velocity, zeroGMaxSpeed);
+                SlideTimer = TickTimer.None;
+                MantleTimer = TickTimer.None;
+                Grappling = false;
+                SetControllerHeight(standHeight);
+                if (Object.HasStateAuthority)
+                {
+                    networkPlayer.SetStatus(Core.StatusFlags.Sliding, false);
+                    networkPlayer.SetStatus(Core.StatusFlags.Sprinting, false);
+                    networkPlayer.SetStatus(Core.StatusFlags.Gliding, false);
+                    networkPlayer.SetStatus(Core.StatusFlags.Climbing, false);
+                    networkPlayer.SetStatus(Core.StatusFlags.Grappling, false);
+                }
+            }
+
+            Vector2 axes = Vector2.ClampMagnitude(input.Move, 1f);
+            Vector3 look = Quaternion.Euler(input.Pitch, input.Yaw, 0f) * Vector3.forward;
+            float lift = (input.Buttons.IsSet((int)Core.InputButtons.Jump) ? 1f : 0f) - (input.Buttons.IsSet((int)Core.InputButtons.Slide) ? 1f : 0f);
+            Vector3 wish = Vector3.ClampMagnitude(look * axes.y + transform.right * axes.x + Vector3.up * lift, 1f);
+
+            velocity += wish * zeroGAcceleration * dt;
+            velocity *= Mathf.Clamp01(1f - zeroGDrag * dt);
+            velocity = Vector3.ClampMagnitude(velocity, zeroGMaxSpeed * networkPlayer.CarryWeightSpeedMultiplier);
+
+            Vector3 before = transform.position;
+            characterController.Move(velocity * dt);
+            // What we actually moved is the velocity we keep: walls and floors stop the part that ran into them.
+            Vector3 moved = (transform.position - before) / Mathf.Max(0.0001f, dt);
+            FloatVelocity = Vector3.Lerp(velocity, moved, 0.85f);
+            VerticalVelocity = FloatVelocity.y;
+            JumpsUsed = 1;
+        }
+
         private bool WallAhead(out RaycastHit hit)
         {
             Vector3 origin = transform.position + Vector3.up * (standHeight * 0.5f);
@@ -551,6 +627,8 @@ namespace Ouroboros.Player
             Grappling = false;
             MantleTimer = TickTimer.None;
             SlideTimer = TickTimer.None;
+            Floating = false;                 // (v0.12)
+            FloatVelocity = Vector3.zero;
             GroundedState = false;
             SimVelocity = Vector3.zero;
             if (characterController != null) characterController.enabled = wasEnabled;

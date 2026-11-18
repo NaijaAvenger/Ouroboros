@@ -41,6 +41,62 @@ namespace Ouroboros.Network
         [Networked] public int JackStep { get; set; }
         /// <summary>Running while input is refused after an answer (longer after a wrong one).</summary>
         [Networked] public TickTimer JackLockout { get; set; }
+        /// <summary>(v0.12) Tick at which the puzzle on screen appeared. Pulse puzzles are timed from it.</summary>
+        [Networked] public int JackStepTick { get; set; }
+
+        // ---- Being hacked (v0.12) ----
+        /// <summary>Running after this player was jammed: they cannot be jammed again until it expires.</summary>
+        [Networked] private TickTimer JamImmunity { get; set; }
+
+        /// <summary>Fired on every peer when a player's gear is jammed by a rival (victim, hacker).</summary>
+        public static event Action<NetworkPlayer, NetworkPlayer> Jammed;
+
+        public bool IsJamImmune => JamImmunity.IsRunning && !JamImmunity.Expired(Runner);
+
+        // IQuickHackable: the "device" is this player's gear.
+        public Vector3 HackPoint => transform.position + Vector3.up * 1.2f;
+        public float HackSeconds => Core.HackRules.JamHackSeconds;
+
+        public string HackPrompt(NetworkPlayer by)
+        {
+            if (by == null || by == this || by.Team == Team || !IsActiveInMatch) return null;
+            if (HasStatus(Core.StatusFlags.EMPDisabled) || IsJamImmune) return null;
+            if (HasStatus(Core.StatusFlags.Stealthed) && !HasStatus(Core.StatusFlags.Revealed)) return null;
+            return "Jam gear";
+        }
+
+        /// <summary>
+        /// A rival finished a tether on this player: abilities, hacking and interaction are dead for a few
+        /// seconds, weapons for a shorter moment, and any hack this player had running is cut.
+        /// </summary>
+        public void CompleteHack(NetworkPlayer by)
+        {
+            if (!Object.HasStateAuthority || string.IsNullOrEmpty(HackPrompt(by))) return;
+            ApplyTimedStatus(Core.StatusFlags.EMPDisabled, Core.HackRules.JamSeconds);
+            var gear = Loadout;
+            if (gear != null) gear.Jam(Core.HackRules.JamWeaponSeconds);
+            ClearHackState();
+            JamImmunity = TickTimer.CreateFromSeconds(Runner, Core.HackRules.JamImmunitySeconds);
+            RPC_Jammed(by.PlayerRef);
+        }
+
+        [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+        private void RPC_Jammed(PlayerRef by)
+        {
+            Jammed?.Invoke(this, Resolve(by));
+        }
+
+        /// <summary>The rival currently tethering this player, if any (for the victim's warning). Works on every peer.</summary>
+        public NetworkPlayer FindHacker()
+        {
+            if (Object == null) return null;
+            for (int i = 0; i < All.Count; i++)
+            {
+                var p = All[i];
+                if (p != null && p != this && p.Object != null && p.HackTarget == Object.Id) return p;
+            }
+            return null;
+        }
 
         /// <summary>Fired on every peer when a player answers a sign puzzle (player, was it right).</summary>
         public static event Action<NetworkPlayer, bool> HackAnswered;
@@ -171,6 +227,7 @@ namespace Ouroboros.Network
             jackedObjective = station;
             JackSeed = unchecked((int)Runner.Tick * 7919 + PlayerRef.RawEncoded * 104729 + station.ObjectiveName.GetHashCode());
             JackStep = 0;
+            JackStepTick = (int)Runner.Tick; // (v0.12)
             JackLockout = TickTimer.CreateFromSeconds(Runner, 0.25f); // a beat to read the first sign
         }
 
@@ -212,8 +269,50 @@ namespace Ouroboros.Network
             if (!IsJackedIn || step != JackStep || IsJackLockedOut || !IsActiveInMatch) return;
             var station = JackedObjective;
             if (station == null) { JackOut(); return; }
+            if (station.PuzzleKindFor(this) != Core.HackRules.PuzzleKind.Signs) return; // (v0.12) wrong kind of answer
             bool correct = Core.HackRules.IsCorrect(JackSeed, JackStep, station.HackDifficultyFor(this), choice);
             ResolveAnswer(station, correct);
+        }
+
+        // ---- Pulse puzzles (v0.12) ----
+
+        /// <summary>Seconds the puzzle on screen has been up, as this peer's simulation sees it (smoothed between ticks).</summary>
+        public float JackStepSeconds => Runner != null ? ((int)Runner.Tick - JackStepTick + Runner.LocalAlpha) * Runner.DeltaTime : 0f;
+
+        /// <summary>Call from the owning client's UI: strike the pulse now.</summary>
+        public void SubmitPulseStrike()
+        {
+            if (!IsJackedIn) return;
+            int tick = (int)Runner.Tick;
+            if (Object.HasStateAuthority) HandlePulseStrike(JackStep, tick);
+            else if (Object.HasInputAuthority) RPC_PulseStrike(JackStep, tick);
+        }
+
+        [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+        private void RPC_PulseStrike(int step, int tick)
+        {
+            HandlePulseStrike(step, tick);
+        }
+
+        private void HandlePulseStrike(int step, int tick)
+        {
+            if (!IsJackedIn || step != JackStep || IsJackLockedOut || !IsActiveInMatch) return;
+            var station = JackedObjective;
+            if (station == null) { JackOut(); return; }
+            if (station.PuzzleKindFor(this) != Core.HackRules.PuzzleKind.Pulse) return;
+
+            // The client reports the tick it struck on. Its simulation runs slightly ahead of ours, so accept a
+            // tick near the present; anything further off is judged at the present instead.
+            int now = (int)Runner.Tick;
+            int maxSkew = Mathf.CeilToInt(0.25f / Runner.DeltaTime);
+            if (Mathf.Abs(tick - now) > maxSkew) tick = now;
+
+            int difficulty = station.HackDifficultyFor(this);
+            float seconds = Mathf.Max(0, tick - JackStepTick) * Runner.DeltaTime;
+            float position = Core.HackRules.PulsePosition(JackSeed, JackStep, seconds, Core.HackRules.PulsePeriodSeconds(difficulty));
+            bool hit = Core.HackRules.IsPulseHit(position, Core.HackRules.PulseWindowCentre(JackSeed, JackStep),
+                Core.HackRules.PulseWindowWidth(difficulty), tolerance: 0.035f);
+            ResolveAnswer(station, hit);
         }
 
         /// <summary>A bot's answer: it has no screen, so its brain just reports whether it got the sign right. State authority only.</summary>
@@ -228,6 +327,7 @@ namespace Ouroboros.Network
         private void ResolveAnswer(GameMode.LootObjective station, bool correct)
         {
             JackStep++;
+            JackStepTick = (int)Runner.Tick; // (v0.12)
             JackLockout = TickTimer.CreateFromSeconds(Runner, correct ? 0.15f : 0.8f);
             station.ApplyHackAnswer(this, correct);
             RPC_HackAnswered(correct);

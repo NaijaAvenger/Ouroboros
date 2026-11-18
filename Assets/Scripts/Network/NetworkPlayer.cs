@@ -17,7 +17,9 @@ namespace Ouroboros.Network
     /// </summary>
     // [v0.10] public class NetworkPlayer : NetworkBehaviour, Core.IAbilityContext, Combat.IDamageable
     // (v0.11) partial: hacking state and rules live in NetworkPlayer.Hacking.cs
-    public partial class NetworkPlayer : NetworkBehaviour, Core.IAbilityContext, Combat.IDamageable
+    // [v0.11] public partial class NetworkPlayer : NetworkBehaviour, Core.IAbilityContext, Combat.IDamageable
+    // (v0.12) IQuickHackable: a rival can tether a player and jam their gear (see NetworkPlayer.Hacking.cs)
+    public partial class NetworkPlayer : NetworkBehaviour, Core.IAbilityContext, Combat.IDamageable, Interaction.IQuickHackable
     {
         /// <summary>Live registry of every spawned player on this peer. Cheap radius queries iterate this.</summary>
         public static readonly List<NetworkPlayer> All = new List<NetworkPlayer>();
@@ -163,6 +165,7 @@ namespace Ouroboros.Network
         public override void Spawned()
         {
             if (!All.Contains(this)) All.Add(this);
+            Interaction.QuickHack.Register(this); // (v0.12)
             loadout = GetComponent<Equipment.NetworkLoadout>();
 
             changeDetector = GetChangeDetector(ChangeDetector.Source.SimulationState);
@@ -190,6 +193,7 @@ namespace Ouroboros.Network
         public override void Despawned(NetworkRunner runner, bool hasState)
         {
             All.Remove(this);
+            Interaction.QuickHack.Unregister(this);
         }
 
         public override void FixedUpdateNetwork()
