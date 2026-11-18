@@ -1,0 +1,29 @@
+# Checks that need no Unity licence: unit tests and an offline C# type-check. See Tools/README.md.
+name: checks
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Unit tests
+        run: dotnet test Tools/tests --nologo
+
+      - name: Cache type-check references
+        uses: actions/cache@v4
+        with:
+          path: Tools/typecheck/.cache
+          key: typecheck-refs-${{ hashFiles('Packages/manifest.json', 'Tools/typecheck/run.sh') }}
+
+      - name: Type-check game scripts
+        run: Tools/typecheck/run.sh

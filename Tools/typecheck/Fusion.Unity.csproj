@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Mirrors Assets/Photon/Fusion/Runtime/Fusion.Unity.asmdef (statistics UI left out: it needs uGUI). -->
+  <PropertyGroup>
+    <WarningLevel>0</WarningLevel>
+    <DefineConstants>$(UnityDefines)</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="$(RepoRoot)Assets/Photon/Fusion/Assemblies/*.dll" />
+    <Reference Include="$(RepoRoot)Assets/Photon/PhotonLibs/netstandard2.0/release/PhotonClient.dll" />
+    <Reference Include="$(BuildRoot)Photon.Realtime/default/bin/Photon.Realtime.dll" />
+    <Compile Include="$(RepoRoot)Assets/Photon/Fusion/Runtime/*.cs" />
+    <Compile Include="$(RepoRoot)Assets/Photon/Fusion/Runtime/Utilities/**/*.cs" />
+  </ItemGroup>
+</Project>

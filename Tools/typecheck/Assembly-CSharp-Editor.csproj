@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The game's editor scripts (Assets/**/Editor/**), compiled against the "editor" variant of Assembly-CSharp. -->
+  <PropertyGroup>
+    <DefineConstants>$(UnityDefines);ENABLE_INPUT_SYSTEM;ENABLE_LEGACY_INPUT_MANAGER;UNITY_EDITOR</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="$(RepoRoot)Assets/Photon/Fusion/Assemblies/*.dll" />
+    <Reference Include="$(RepoRoot)Assets/Photon/PhotonLibs/netstandard2.0/release/PhotonClient.dll" />
+    <Reference Include="$(BuildRoot)Photon.Realtime/default/bin/Photon.Realtime.dll" />
+    <Reference Include="$(BuildRoot)Fusion.Unity/default/bin/Fusion.Unity.dll" />
+    <Reference Include="$(BuildRoot)Unity.InputSystem/default/bin/Unity.InputSystem.dll" />
+    <Reference Include="$(BuildRoot)Assembly-CSharp/editor/bin/Assembly-CSharp.dll" />
+    <Reference Include="$(CacheRoot)unity3d.sdk/lib/UnityEditor.dll" />
+    <Reference Include="$(CacheRoot)unity3d.unityengine.ui/lib/UnityEngine.UI.dll" />
+    <Compile Include="EditorStubs.cs" />
+    <Compile Include="$(RepoRoot)Assets/**/Editor/**/*.cs"
+             Exclude="$(RepoRoot)Assets/Photon/**;$(RepoRoot)Assets/TextMesh Pro/**" />
+  </ItemGroup>
+</Project>

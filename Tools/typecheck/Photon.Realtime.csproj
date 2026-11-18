@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Mirrors Assets/Photon/PhotonRealtime/Code/Photon.Realtime.asmdef. -->
+  <PropertyGroup>
+    <WarningLevel>0</WarningLevel>
+    <DefineConstants>$(UnityDefines)</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="$(RepoRoot)Assets/Photon/PhotonLibs/netstandard2.0/release/PhotonClient.dll" />
+    <Compile Include="$(RepoRoot)Assets/Photon/PhotonRealtime/Code/**/*.cs" />
+  </ItemGroup>
+</Project>

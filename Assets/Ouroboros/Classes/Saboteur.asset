@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dd4a7c37877836f4ba55066e34996b38, type: 3}
+  m_Name: Saboteur
+  m_EditorClassIdentifier: Assembly-CSharp::Ouroboros.Data.ClassData
+  className: Saboteur
+  description: Stealth operative skilled in setting traps, sabotaging equipment,
+    and silent elimination.
+  classType: 2
+  classIcon: {fileID: 0}
+  maxHealth: 90
+  maxStamina: 100
+  movementSpeed: 6
+  sprintSpeed: 8.5
+  abilities:
+  - abilityName: Place Trap
+    description: 
+    abilityIcon: {fileID: 0}
+    cooldown: 6
+    duration: 0
+    energyCost: 10
+    effectType: 0
+  - abilityName: Stealth Mode
+    description: 
+    abilityIcon: {fileID: 0}
+    cooldown: 25
+    duration: 10
+    energyCost: 25
+    effectType: 0
+  - abilityName: Sabotage
+    description: 
+    abilityIcon: {fileID: 0}
+    cooldown: 18
+    duration: 8
+    energyCost: 15
+    effectType: 0
+  - abilityName: Smoke Bomb
+    description: 
+    abilityIcon: {fileID: 0}
+    cooldown: 15
+    duration: 8
+    energyCost: 10
+    effectType: 0
+  startingEquipment: []
+  damageMultiplier: 1
+  defenseMultiplier: 1
+  stealthMultiplier: 1
+  hackingMultiplier: 1
+  trapPrefab: {fileID: 2490149309073407769, guid: 84e1dd39bb485bb498f1ead7c9505127, type: 3}
+  extraPrefabs: []

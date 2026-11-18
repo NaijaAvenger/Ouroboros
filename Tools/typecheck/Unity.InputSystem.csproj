@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Builds the Input System package source (cloned by run.sh) into a reference assembly. -->
+  <PropertyGroup>
+    <WarningLevel>0</WarningLevel>
+    <NoWarn>$(NoWarn);CS0282;CS1587;CS1570;CS1572;CS1573;CS1574;CS0419;CS1584;CS1658</NoWarn>
+    <DefineConstants>$(UnityDefines);ENABLE_INPUT_SYSTEM;ENABLE_LEGACY_INPUT_MANAGER;UNITY_INPUT_SYSTEM_ENABLE_PHYSICS;HAS_SET_LOCAL_POSITION_AND_ROTATION</DefineConstants>
+    <Src>$(InputSystemSrc)/Packages/com.unity.inputsystem/InputSystem</Src>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(Src)/**/*.cs" Exclude="$(Src)/Editor/**;$(Src)/**/Editor/**" />
+  </ItemGroup>
+</Project>

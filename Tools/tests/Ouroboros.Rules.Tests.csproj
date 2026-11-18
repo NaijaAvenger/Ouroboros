@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Unit tests for the engine-free parts of the game (rules arithmetic, behaviour tree, constants).
+    The sources are compiled straight from Assets/Scripts, so there is no second copy to keep in sync.
+    Run: dotnet test Tools/tests
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <RepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../'))</RepoRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Code under test: only files with no Unity or Fusion dependency belong here. -->
+    <Compile Include="$(RepoRoot)Assets/Scripts/Core/MatchRules.cs" Link="UnderTest/MatchRules.cs" />
+    <Compile Include="$(RepoRoot)Assets/Scripts/Core/GameConstants.cs" Link="UnderTest/GameConstants.cs" />
+    <Compile Include="$(RepoRoot)Assets/Scripts/AI/BehaviorTree.cs" Link="UnderTest/BehaviorTree.cs" />
+    <Compile Include="*.cs" />
+  </ItemGroup>
+</Project>

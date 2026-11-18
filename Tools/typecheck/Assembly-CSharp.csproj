@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The game's runtime scripts: everything under Assets/ that Unity would put in Assembly-CSharp
+    (no asmdef, not in an Editor folder). Variants (-p:Variant=...):
+      both      Input System + legacy input (the project's "Both" setting)   [player build]
+      editor    as "both", plus UNITY_EDITOR and UnityEditor.dll              [what the editor compiles]
+      inputsys  Input System only
+      legacy    legacy Input Manager only
+  -->
+  <PropertyGroup>
+    <InputDefines Condition="'$(Variant)' == 'legacy'">ENABLE_LEGACY_INPUT_MANAGER</InputDefines>
+    <InputDefines Condition="'$(Variant)' == 'inputsys'">ENABLE_INPUT_SYSTEM</InputDefines>
+    <InputDefines Condition="'$(InputDefines)' == ''">ENABLE_INPUT_SYSTEM;ENABLE_LEGACY_INPUT_MANAGER</InputDefines>
+    <EditorDefines Condition="'$(Variant)' == 'editor'">UNITY_EDITOR</EditorDefines>
+    <DefineConstants>$(UnityDefines);$(InputDefines);$(EditorDefines)</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="$(RepoRoot)Assets/Photon/Fusion/Assemblies/*.dll" />
+    <Reference Include="$(RepoRoot)Assets/Photon/PhotonLibs/netstandard2.0/release/PhotonClient.dll" />
+    <Reference Include="$(BuildRoot)Photon.Realtime/default/bin/Photon.Realtime.dll" />
+    <Reference Include="$(BuildRoot)Fusion.Unity/default/bin/Fusion.Unity.dll" />
+    <Reference Include="$(BuildRoot)Unity.InputSystem/default/bin/Unity.InputSystem.dll" Condition="'$(Variant)' != 'legacy'" />
+    <Reference Include="$(CacheRoot)unity3d.sdk/lib/UnityEditor.dll" Condition="'$(Variant)' == 'editor'" />
+    <Compile Include="$(RepoRoot)Assets/**/*.cs"
+             Exclude="$(RepoRoot)Assets/Photon/**;$(RepoRoot)Assets/TextMesh Pro/**;$(RepoRoot)Assets/**/Editor/**" />
+  </ItemGroup>
+</Project>

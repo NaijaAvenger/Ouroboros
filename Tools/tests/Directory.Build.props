@@ -1,0 +1,7 @@
+<Project>
+  <!-- Keep build output out of the source tree (ignored via .gitignore). Must be set before the SDK props load. -->
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory).build/obj/</BaseIntermediateOutputPath>
+    <OutputPath>$(MSBuildThisFileDirectory).build/bin/</OutputPath>
+  </PropertyGroup>
+</Project>

@@ -97,3 +97,8 @@ InitTestScene*.unity*
 
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+# Offline type-check and unit tests (Tools/): keep the hand-written project files, ignore their output
+!/Tools/**/*.csproj
+/Tools/**/.build/
+/Tools/**/.cache/

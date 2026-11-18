@@ -1,0 +1,30 @@
+<Project>
+  <!-- Shared settings for the offline type-check projects. See README.md in this folder. -->
+  <PropertyGroup>
+    <RepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../'))</RepoRoot>
+    <Variant Condition="'$(Variant)' == ''">default</Variant>
+    <BuildRoot>$(MSBuildThisFileDirectory).build/</BuildRoot>
+    <CacheRoot>$(MSBuildThisFileDirectory).cache/</CacheRoot>
+    <BaseIntermediateOutputPath>$(BuildRoot)$(MSBuildProjectName)/$(Variant)/obj/</BaseIntermediateOutputPath>
+    <OutputPath>$(BuildRoot)$(MSBuildProjectName)/$(Variant)/bin/</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Nullable>disable</Nullable>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- Noise that Unity itself does not report as errors. -->
+    <NoWarn>CS0649;CS0414;CS0169;CS0067;CS1591;CS0618;CS0108;CS0114;CS8632;CS0436;CS1701;CS1702;NU1701</NoWarn>
+
+    <!-- Unity version symbols. The reference assemblies are 2021.3; UNITY_2023_1_OR_NEWER is defined because the
+         project targets Unity 6 and the guarded APIs (FindObjectsByType etc.) also exist in 2021.3.18+. -->
+    <UnityDefines>UNITY_5_3_OR_NEWER;UNITY_2019_4_OR_NEWER;UNITY_2020_1_OR_NEWER;UNITY_2021_3_OR_NEWER;UNITY_2022_3_OR_NEWER;UNITY_2023_1_OR_NEWER;UNITY_6000_0_OR_NEWER;UNITY_STANDALONE</UnityDefines>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Unofficial NuGet redistribution of Unity's module reference assemblies. Downloaded at check time, never committed. -->
+    <PackageReference Include="UnityEngine.Modules" Version="2021.3.33" IncludeAssets="compile" />
+  </ItemGroup>
+</Project>

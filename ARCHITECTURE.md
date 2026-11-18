@@ -1,346 +1,121 @@
 # Ouroboros - 4v4v4v4 Extraction Heist Game Architecture
 
 ## Overview
-Ouroboros is a team-based extraction heist game built on **Photon Fusion 2** networking, designed for 4 teams of 4 players each (16 players total). The architecture is built with modularity in mind, allowing easy expansion of classes, equipment, tech, and AI.
+Ouroboros is a team-based extraction heist game built on **Photon Fusion 2** networking, designed for 4 teams of 4 players each (16 players total). The architecture is built with modularity in mind, allowing easy expansion of classes, equipment, interactables, and AI.
 
 ## Architecture Principles
 1. **Modularity** - Systems are decoupled and can be extended independently
-2. **Data-Driven Design** - ScriptableObjects for easy designer configuration
-3. **Network-First** - All core systems integrate with Photon Fusion 2
-4. **Future-Proof** - Designed with expansion buffer for new content
+2. **Data-Driven Design** - ScriptableObjects for designer configuration
+3. **Network-First** - One authoritative copy of every piece of state; peers react to replicated changes
+4. **Tick-Deterministic** - All gameplay timing uses Fusion `TickTimer`s and runs in `FixedUpdateNetwork`
+
+## Runtime Topology
+
+```
+GameSessionManager (MonoBehaviour, INetworkRunnerCallbacks)
+ ├─ starts NetworkRunner, samples local input → NetworkInputData
+ ├─ OnPlayerJoined → TeamManager.AssignPlayerToTeam → Runner.Spawn(playerPrefab)
+ └─ RespawnPlayer()
+
+Scene NetworkObjects
+ ├─ TeamManager            NetworkDictionary<PlayerRef, TeamID>
+ ├─ ExtractionHeistGameMode state machine, scores, loot banking, winner
+ ├─ ExtractionPoint ×N     per-tick zone scan, contested progress
+ ├─ LootObjective ×N       hold-to-crack, loot split
+ ├─ SecurityCamera / BreachableDoor / GuardAI
+ └─ (spawned) LootDrop, ProximityTrap
+
+Player prefab
+ ├─ NetworkObject + NetworkTransform + CharacterController
+ ├─ NetworkPlayer   ← source of truth (IAbilityContext, IDamageable)
+ │    └─ BasePlayerClass component (added locally from replicated ClassType)
+ ├─ PlayerController  GetInput() → movement/abilities/interact
+ └─ EquipmentLoadout
+```
 
 ## Core Systems
 
-### 1. Player Class System (`Assets/Scripts/Classes/`)
-The class system is built on interfaces and abstract base classes for maximum flexibility.
+### 1. Player Class System (`Core/`, `Classes/`)
+- **IPlayerClass / BasePlayerClass** — stats, ability slot table, `UseAbility` gate (slot valid → alive → cooldown → stamina) → `ExecuteAbility`. Returns `false` to refund the cooldown when nothing happened.
+- **IAbilityContext** — the owner's services: `Runner`, team, stamina spend, cooldown start, status flags, tick timers, aim data. `NetworkPlayer` implements it; tests can fake it.
+- **AbilitySlot** — `(Name, Cooldown, StaminaCost, Duration)` registered in `OnInitialize` via `DefineAbility`.
+- Timed effects (shield, stealth, boost) use `TickTimer`s checked in `OnUpdate`; their visibility is a `StatusFlags` bit on `NetworkPlayer`.
+- Damage hooks: `ModifyIncomingDamage(float)` and `OutgoingDamageMultiplier`.
 
-#### Base Components:
-- **IPlayerClass** - Interface defining all class requirements
-- **BasePlayerClass** - Abstract base providing common functionality
-- **GameConstants.cs** - Core game constants and enums
+#### Adding New Classes
+1. Add the enum value to `PlayerClassType`
+2. Create a class inheriting `BasePlayerClass`; call `DefineAbility` for each slot in `OnInitialize`; implement `ExecuteAbility`
+3. Add one line to `NetworkPlayer.ClassComponentType`
+4. (Optional) create a `ClassData` asset for designer tuning
 
-#### Initial Classes:
-1. **Hacker** - Electronic warfare specialist
-   - Lower health (85), higher speed (5.5)
-   - Abilities: System Hack, Camera Disable, EMP Blast, Data Mine
-   
-2. **Saboteur** - Stealth and trap specialist
-   - Balanced stats (90 health, 6.0 speed)
-   - Abilities: Place Trap, Stealth Mode, Sabotage, Smoke Bomb
-   
-3. **Demolitions** - Explosives expert
-   - High health (110), lower speed (4.5)
-   - Abilities: Place Explosive, Detonate, Breaching Charge, Incendiary
-   
-4. **Agent** - Versatile balanced operative
-   - Balanced stats (100 health, 5.2 speed)
-   - Abilities: Tactical Shield, Damage Boost, Recon Drone, Flashbang
+### 2. Network System (`Network/`)
+- **NetworkPlayer** — replicated: `ClassType`, `Health`, `Stamina`, `IsAlive`, `IsExtracted`, `Status` (flags), `CarriedLoot`, `Kills/Deaths/RespawnsUsed`, `RespawnTimer`, `LookYaw/Pitch`, `AbilityCooldowns[4]`, per-flag status timers, burning DOT. Class component is rebuilt on every peer through `ChangeDetector`. C# events (`ClassChanged`, `Died`, `Respawned`, `StatusChanged`) feed presentation.
+- **TeamManager** — replicated assignments; `GetTeamStatus` / `IsTeamFinished` derive match state from the live player registry.
+- **GameSessionManager** — runner lifecycle, spawning, respawn placement, input sampling (accumulated per frame, emitted per tick).
 
-#### Adding New Classes:
-1. Add new enum to `PlayerClassType` in `GameConstants.cs`
-2. Create new class inheriting from `BasePlayerClass`
-3. Implement `UseAbility()` method with class-specific abilities
-4. Update `NetworkPlayer.RPC_AssignClass()` to handle new class
-5. Create corresponding `ClassData` ScriptableObject
+#### Authority rules
+- `[Networked]` writes only under `Object.HasStateAuthority`.
+- Input-authority clients predict movement (`GetInput` runs on both sides); abilities, interaction and equipment dispatch only on the state authority.
+- RPCs are used for one-shot notifications (logs, VFX hooks), never to carry state late joiners would need.
 
-### 2. Network System (`Assets/Scripts/Network/`)
+### 3. Game Mode System (`GameMode/`)
+- **ExtractionHeistGameMode** — `WaitingForPlayers → PreMatch → InProgress → Extraction → MatchEnded`. Reads every tunable from `GameModeConfig`. Scores kills, objectives, extractions, banked loot. Decides respawn and extraction eligibility. Early-ends when every team is finished. Picks the winner with tiebreaks. Spawns `LootDrop` on death.
+- **ExtractionPoint** — scans `NetworkPlayer.All` each tick; the lowest-id eligible team starts; enemies pause progress (contested); completion extracts the members present and closes the point for `extractionReactivationDelay`.
+- **LootObjective** — players holding **Interact** inside the radius crack it; contested by enemies; more workers crack faster; `IHackable` for the Hacker; loot split among workers; respawns.
+- **LootDrop** — picked up by any living player after a short delay.
 
-#### Components:
-- **NetworkPlayer** - Core networked player with Fusion integration
-  - Syncs health, stamina, team, class type
-  - Handles RPCs for abilities and damage
-  - Manages player state across network
+### 4. Interaction & Combat (`Interaction/`, `Combat/`)
+- `IHackable`, `ISecurityDevice`, `IBreachable` are the seams abilities talk to. Implementations: `BreachableDoor`, `SecurityCamera`, `LootObjective`, `ProximityTrap`.
+- `IDamageable` unifies players and AI; `DamageUtil` provides radial (falloff, optional LOS) and hitscan damage.
 
-- **TeamManager** - Manages 4-team system
-  - Auto-balances teams
-  - Tracks team player counts
-  - Network-synchronized team assignments
+### 5. Equipment System (`Equipment/`)
+Unchanged structurally (6 slots, `BaseEquipment`, `BaseTech`). Equipment use is dispatched from `PlayerController` on the state authority. Networking the equipment itself (tick-timer cooldowns, projectiles) is Phase 2.
 
-#### Key Features:
-- State authority pattern for authoritative server
-- RPC methods for client-server communication
-- Network-synchronized properties using `[Networked]` attribute
-- Tick-based timing with `TickTimer`
+### 6. AI System (`AI/`)
+- **BaseAIAgent** — `NetworkBehaviour`; ticks on the state authority; replicated `Health`, `IsAlive`, `NetworkedState`; perception (`Perception.FindVisiblePlayer`: range, FOV, occlusion, stealth/reveal aware); last-known-position memory; `MoveTo`, `FaceTowards`, hitscan `TryAttackTarget` with cooldown. Proxies disable their `NavMeshAgent` and follow `NetworkTransform`.
+- **BehaviorTree** — `Sequence`, `Selector` (reactive, resets displaced branches), `Inverter`, `ConditionNode`/`ActionNode`, and delegate-based `ConditionFunc`/`ActionFunc`.
+- **GuardAI** — priority selector: fight visible target → investigate last-known position → patrol.
 
-### 3. Game Mode System (`Assets/Scripts/GameMode/`)
+#### Adding New AI
+1. Inherit `BaseAIAgent`; build a tree in `OnInitialize`; evaluate it in `UpdateBehavior`
+2. Override `TryAttackTarget` / `UpdatePerception` for different weapons or senses
+3. Add an `AIAgentType` if needed
 
-#### Components:
-- **ExtractionHeistGameMode** - Core game loop manager
-  - Match timer (default: 15 minutes)
-  - Objective tracking
-  - Team scoring system
-  - Extraction phase management
-  
-- **ExtractionPoint** - Physical extraction locations
-  - Trigger-based detection
-  - Team-specific extraction timing
-  - Network-synchronized extraction state
+### 7. Data System (`Data/`)
+- **GameModeConfig** — the only place match rules live (durations, extraction rules, scoring, respawns, friendly fire).
+- **ClassData / EquipmentData** — designer-facing definitions (wiring `ClassData` into `BasePlayerClass` is on the roadmap).
 
-#### Game Flow:
-1. **WaitingForPlayers** - Lobby phase
-2. **PreMatch** - Countdown before start
-3. **InProgress** - Active gameplay
-4. **Extraction** - Teams rush to extraction points
-5. **MatchEnded** - Results and scoring
+### 8. Player System (`Player/`)
+- **PlayerController** — consumes `NetworkInputData`; yaw from input, pitch replicated for aim; sprint with stamina drain; jump; `Teleport` for spawns.
+- **TeamSpawnPoint** — scene marker with team and radius.
 
-### 4. Equipment System (`Assets/Scripts/Equipment/`)
-
-#### Components:
-- **IEquipment** - Equipment interface
-- **BaseEquipment** - Abstract equipment implementation
-- **EquipmentLoadout** - Per-player equipment management
-- **BaseTech** - Special tech/ability system
-
-#### Equipment Slots:
-1. Primary
-2. Secondary
-3. Utility
-4. Gadget
-5. Armor
-6. Accessory
-
-#### Adding New Equipment:
-1. Create class inheriting from `BaseEquipment`
-2. Override `OnUse()` method
-3. Create `EquipmentData` ScriptableObject
-4. Equipment automatically integrates with loadout system
-
-### 5. AI System (`Assets/Scripts/AI/`)
-
-#### Components:
-- **IAIAgent** - AI agent interface
-- **BaseAIAgent** - Abstract AI implementation with NavMesh
-- **BehaviorTree.cs** - Behavior tree node system
-
-#### AI States:
-- Idle, Patrol, Alert, Combat, Fleeing, Investigating
-
-#### AI Types (Expandable):
-- Guard, Patrol, Elite, Boss, Civilian
-
-#### Behavior Tree Nodes:
-- **SequenceNode** - Execute children in order
-- **SelectorNode** - Try children until success
-- **ConditionNode** - Boolean condition checks
-- **ActionNode** - Executable actions
-
-#### Adding New AI:
-1. Create class inheriting from `BaseAIAgent`
-2. Implement state-specific behavior methods
-3. Build behavior tree using node system
-4. Add new `AIAgentType` if needed
-
-### 6. Data System (`Assets/Scripts/Data/`)
-
-#### ScriptableObjects:
-- **ClassData** - Player class configuration
-- **EquipmentData** - Equipment configuration
-- **GameModeConfig** - Game mode settings
-
-#### Benefits:
-- Designer-friendly configuration
-- No code changes for balance tweaks
-- Runtime data loading
-- Easy testing of variations
-
-### 7. Player System (`Assets/Scripts/Player/`)
-
-#### Components:
-- **PlayerController** - Input handling and player control
-  - WASD movement
-  - Mouse look
-  - Ability keys (1-4)
-  - Equipment keys (LMB, RMB, Q, E)
-
-## Network Integration
-
-### Photon Fusion 2 Usage:
-- **NetworkBehaviour** - Base for all networked components
-- **[Networked]** - Property synchronization
-- **[Rpc]** - Remote procedure calls
-- **TickTimer** - Network-synchronized timing
-- **PlayerRef** - Unique player identification
-- **NetworkArray** - Fixed-size network arrays
-
-### Authority Model:
-- **StateAuthority** - Server-side authority for game state
-- **InputAuthority** - Client-side input ownership
-- **Proxies** - Other clients observing
-
-## Expansion Guidelines
-
-### Adding New Classes:
-1. Define in `PlayerClassType` enum
-2. Create class file in `Assets/Scripts/Classes/`
-3. Implement unique abilities
-4. Update network assignment logic
-5. Create ScriptableObject data
-
-### Adding New Equipment:
-1. Inherit from `BaseEquipment`
-2. Implement `OnUse()` logic
-3. Create `EquipmentData` asset
-4. Equipment slots auto-handle integration
-
-### Adding New Tech:
-1. Inherit from `BaseTech`
-2. Implement `OnActivate()` and `OnDeactivate()`
-3. Add to tech slots (max 3)
-
-### Adding New AI Types:
-1. Add to `AIAgentType` enum
-2. Create class inheriting from `BaseAIAgent`
-3. Build behavior tree
-4. Configure spawning in game mode
-
-### Adding New Game Modes:
-1. Create `GameModeConfig` ScriptableObject
-2. Inherit from or modify `ExtractionHeistGameMode`
-3. Customize objectives and win conditions
+## Network Integration (Photon Fusion 2)
+- `NetworkBehaviour`, `[Networked]`, `NetworkArray`, `NetworkDictionary`, `TickTimer`, `ChangeDetector`, `NetworkButtons`, `INetworkInput`, `INetworkRunnerCallbacks`, `NetworkPrefabRef`, `Runner.Spawn/Despawn`, `SetPlayerObject`.
+- Supported topologies: **Host/Server** (fully); **Shared** (spawns per-client; team assignment on the master client — see roadmap).
 
 ## File Structure
 ```
-Assets/
-├── Scripts/
-│   ├── Core/              # Base interfaces and constants
-│   │   ├── IPlayerClass.cs
-│   │   ├── BasePlayerClass.cs
-│   │   └── GameConstants.cs
-│   ├── Classes/           # Player class implementations
-│   │   ├── HackerClass.cs
-│   │   ├── SaboteurClass.cs
-│   │   ├── DemolitionsClass.cs
-│   │   └── AgentClass.cs
-│   ├── Network/           # Photon Fusion integration
-│   │   ├── NetworkPlayer.cs
-│   │   └── TeamManager.cs
-│   ├── GameMode/          # Game mode and objectives
-│   │   ├── ExtractionHeistGameMode.cs
-│   │   └── ExtractionPoint.cs
-│   ├── Equipment/         # Equipment and tech systems
-│   │   ├── BaseEquipment.cs
-│   │   ├── EquipmentLoadout.cs
-│   │   └── BaseTech.cs
-│   ├── AI/                # AI and behavior trees
-│   │   ├── BaseAIAgent.cs
-│   │   └── BehaviorTree.cs
-│   ├── Data/              # ScriptableObject definitions
-│   │   ├── ClassData.cs
-│   │   ├── EquipmentData.cs
-│   │   └── GameModeConfig.cs
-│   └── Player/            # Player control and input
-│       └── PlayerController.cs
+Assets/Scripts/
+├── Core/         GameConstants, IPlayerClass, BasePlayerClass, IAbilityContext, NetworkInputData, SceneUtil
+├── Classes/      HackerClass, SaboteurClass, DemolitionsClass, AgentClass
+├── Network/      NetworkPlayer, TeamManager, GameSessionManager
+├── GameMode/     ExtractionHeistGameMode, ExtractionPoint, LootObjective, LootDrop
+├── Interaction/  Interfaces, ProximityTrap, SecurityCamera, BreachableDoor
+├── Combat/       IDamageable, DamageUtil
+├── Equipment/    BaseEquipment, EquipmentLoadout, BaseTech
+├── AI/           BaseAIAgent, Perception, BehaviorTree, GuardAI
+├── Data/         ClassData, EquipmentData, GameModeConfig
+└── Player/       PlayerController, TeamSpawnPoint
 ```
 
-## Key Design Patterns
-
-1. **Interface Segregation** - Small, focused interfaces (IPlayerClass, IEquipment, IAIAgent)
-2. **Template Method** - Abstract base classes with customizable hooks
-3. **Strategy Pattern** - Swappable class behaviors
-4. **Observer Pattern** - Event-driven ability triggers
-5. **Command Pattern** - Network RPC calls
-6. **Composite Pattern** - Behavior tree nodes
-7. **Data-Driven Design** - ScriptableObjects for configuration
-
-## Constants and Configuration
-
-### Team System:
-- Max Teams: 4
-- Players Per Team: 4
-- Total Max Players: 16
-
-### Ability System:
-- Max Ability Slots: 4
-- Max Equipment Slots: 6
-- Max Tech Slots: 3
-
-## Network Synchronization
-
-All player state is synchronized via:
-- Health/Stamina via `[Networked]`
-- Abilities via RPC calls
-- Team assignments via TeamManager
-- Match state via GameMode
-
-## Performance Considerations
-
-1. **Network Optimization**
-   - Use NetworkArray for fixed-size collections
-   - Minimize RPC calls
-   - Batch state updates
-
-2. **Memory Management**
-   - Object pooling for projectiles/effects
-   - ScriptableObjects for shared data
-   - Efficient collision detection
-
-3. **Scalability**
-   - Modular systems support easy additions
-   - Data-driven approach reduces code changes
-   - Clear separation of concerns
-
 ## Testing Strategy
-
-1. Test individual classes in isolation
-2. Test network synchronization with multiple clients
-3. Test team balancing with various player counts
-4. Test extraction mechanics under load
-5. Test AI behavior in different scenarios
+1. Host + client: spawn, team assignment, class component on both peers, late join
+2. Movement prediction / sprint drain / jump
+3. Abilities: cooldown gating, stamina cost, status flags visible on proxies
+4. Objective crack → loot → death drop → pickup → extraction → score → winner
+5. Extraction contest pause and reactivation
+6. GuardAI: patrol, detection, chase, attack, investigate, give-up
+7. Respawn limits and extraction-phase lockout
 
 ## Future Expansion Points
-
-### Ready for Expansion:
-- ✅ New player classes (extend PlayerClassType enum)
-- ✅ New equipment types (inherit BaseEquipment)
-- ✅ New tech abilities (inherit BaseTech)
-- ✅ New AI types (inherit BaseAIAgent)
-- ✅ New game modes (inherit or configure GameMode)
-- ✅ Progression systems (add to ClassData)
-- ✅ Skill trees (extend ClassData)
-- ✅ Crafting systems (use EquipmentData)
-
-### Architecture Supports:
-- Dynamic loadouts
-- Cosmetic systems
-- Achievement tracking
-- Matchmaking integration
-- Replay systems
-- Spectator mode
-- Tournament features
-
-## Getting Started
-
-1. **Setup Photon Fusion 2**
-   - Import Photon Fusion 2 SDK
-   - Configure App ID
-   - Set up network scene
-
-2. **Create Class Data Assets**
-   - Right-click → Create → Ouroboros → Class Data
-   - Configure stats and abilities
-
-3. **Setup Network Prefabs**
-   - Add NetworkPlayer component
-   - Add PlayerController component
-   - Configure in Fusion settings
-
-4. **Create Game Mode**
-   - Add ExtractionHeistGameMode to scene
-   - Configure TeamManager
-   - Place ExtractionPoints
-
-5. **Test Locally**
-   - Build and test with multiple instances
-   - Verify network synchronization
-   - Test class abilities
-
-## Support and Contribution
-
-For adding new features:
-1. Follow the modular architecture patterns
-2. Use interfaces for extensibility
-3. Create ScriptableObjects for data
-4. Integrate with Photon Fusion properly
-5. Document expansion points
-
-This architecture provides a solid foundation for a 4v4v4v4 extraction heist game with room to grow into a full-featured multiplayer experience.
+See [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) for the phased roadmap.
