@@ -684,6 +684,9 @@ namespace Ouroboros.EditorTools
             if (ground == null) return;
 
             var surface = ground.GetComponent(surfaceType) ?? ground.AddComponent(surfaceType);
+            // (v0.13) decoration lives on the Ignore Raycast layer and must not shape where guards can walk
+            var layerMask = surfaceType.GetProperty("layerMask");
+            if (layerMask != null && layerMask.CanWrite) layerMask.SetValue(surface, (LayerMask)(~(1 << DecorLayer)));
             var bake = surfaceType.GetMethod("BuildNavMesh");
             if (bake != null)
             {
@@ -1538,11 +1541,15 @@ namespace Ouroboros.EditorTools
         {
             var renderer = go.GetComponent<Renderer>();
             if (renderer == null) return;
-            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            if (shader == null) return;
-            var mat = new Material(shader) { color = color };
-            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
-            renderer.sharedMaterial = mat;
+            // [v0.12] every tinted object got its own material, which stopped them batching:
+            // [v0.12] var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            // [v0.12] if (shader == null) return;
+            // [v0.12] var mat = new Material(shader) { color = color };
+            // [v0.12] if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
+            // [v0.12] renderer.sharedMaterial = mat;
+            // (v0.13) one saved material per colour, shared by everything of that colour
+            var mat = SharedMaterial(color);
+            if (mat != null) renderer.sharedMaterial = mat;
         }
     }
 }

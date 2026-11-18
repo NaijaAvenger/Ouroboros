@@ -388,6 +388,7 @@ namespace Ouroboros.EditorTools
         {
             var box = Box(parent, name, center, size, color);
             box.isStatic = false;
+            box.layer = DecorLayer; // (v0.13) kept out of the NavMesh bake
             var collider = box.GetComponent<Collider>();
             if (collider != null) Object.DestroyImmediate(collider);
             return box;

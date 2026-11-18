@@ -158,6 +158,9 @@ namespace Ouroboros.EditorTools
             // (v0.12, M4) one dressed district, and a banner at each crew dock
             DressGallery(level);
             DressCrewDocks(level);
+
+            // (v0.13, M5) the wider freeport: props in every district and three new areas
+            BuildFreeportExpansion(level);
         }
 
         /// <summary>Centre: a 22 m raised plaza, 3 m up, with a ramp on each side and four pillars for cover on top.</summary>
