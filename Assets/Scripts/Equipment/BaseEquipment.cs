@@ -36,7 +36,8 @@ namespace Ouroboros.Equipment
     ///
     /// v0.4: equipment is a local MonoBehaviour created on every peer from the replicated
     /// <see cref="NetworkLoadout"/> slot ids, configured by <see cref="Data.EquipmentData"/>. Cooldowns and
-    /// ammo are replicated through the loadout; <see cref="OnUse"/> runs only on the state authority.
+    /// ammo are replicated through the loadout. v0.9: <see cref="OnUse"/> runs on the state authority and, as
+    /// prediction, on the owning client; gate world-changing effects on <see cref="HasAuthority"/>.
     /// </summary>
     public abstract class BaseEquipment : MonoBehaviour, IEquipment
     {
@@ -118,7 +119,10 @@ namespace Ouroboros.Equipment
             if (!OnUse()) return;
 
             if (IsNetworked) loadout.StartCooldown(slotIndex, cooldown);
-            if (maxUses > 0) currentUses--;
+            // [v0.8] if (maxUses > 0) currentUses--;
+            // (v0.9) the use counter is plain local state, so only the authority may change it: a predicting
+            //        client re-runs ticks and would count the same use several times.
+            if (maxUses > 0 && (!IsNetworked || HasAuthority)) currentUses--;
         }
 
         protected virtual bool CanUse()
@@ -128,7 +132,9 @@ namespace Ouroboros.Equipment
 
             if (IsNetworked)
             {
-                if (owner == null || owner.Object == null || !owner.Object.HasStateAuthority) return false;
+                // [v0.8] if (owner == null || owner.Object == null || !owner.Object.HasStateAuthority) return false;
+                // (v0.9) the owning client simulates its own equipment as prediction; see NetworkLoadout.CanSimulate.
+                if (owner == null || owner.Object == null || !loadout.CanSimulate) return false;
                 if (!owner.IsActiveInMatch) return false;
                 if (!loadout.CanUse(slotIndex)) return false;
 
@@ -140,6 +146,12 @@ namespace Ouroboros.Equipment
         }
 
         protected Fusion.NetworkRunner Runner => owner != null ? owner.Runner : null;
+
+        /// <summary>
+        /// (v0.9) True on the state authority. <see cref="OnUse"/> also runs on the owning client as prediction;
+        /// anything that changes the world for other players (damage, spawning, noise) must check this first.
+        /// </summary>
+        protected bool HasAuthority => owner != null && owner.Object != null && owner.Object.HasStateAuthority;
 
         protected virtual void OnInitialized() { }
         protected virtual void OnEquipped() { }

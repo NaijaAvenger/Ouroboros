@@ -52,6 +52,9 @@ namespace Ouroboros.Network
         [Networked, Capacity(STATUS_TIMER_SLOTS)]
         private NetworkArray<TickTimer> StatusTimers => default;
 
+        /// <summary>(v0.9) World position the most recent damage came from. Read it when <see cref="Damaged"/> fires.</summary>
+        [Networked] public Vector3 LastDamageOrigin { get; set; }
+
         [Networked] private TickTimer StaminaRegenDelay { get; set; }
         [Networked] private TickTimer BurnTimer { get; set; }
         [Networked] private float BurnDamagePerSecond { get; set; }
@@ -83,7 +86,19 @@ namespace Ouroboros.Network
         /// <summary>Fired on every peer when this player's replicated health drops (player, amount lost) (v0.3).</summary>
         public event Action<NetworkPlayer, float> Damaged;
 
+        /// <summary>
+        /// (v0.9) Fired on the shooter's own peer when one of their shots damaged something
+        /// (shooter, damage dealt, was a headshot, killed the target). Drives hit markers.
+        /// </summary>
+        public static event Action<NetworkPlayer, float, bool, bool> HitConfirmed;
+
         private float lastRenderedHealth = -1f;
+        private Player.PlayerController controller;
+
+        /// <summary>(v0.9) Movement component on the same object (null on prefabs without one).</summary>
+        public Player.PlayerController Controller => controller != null ? controller : (controller = GetComponent<Player.PlayerController>());
+        /// <summary>(v0.9) Current simulated velocity; zero when unknown.</summary>
+        public Vector3 Velocity => Controller != null ? Controller.Velocity : Vector3.zero;
 
         public Core.BasePlayerClass CurrentClass => currentClass;
         public bool IsLocalPlayer => Object != null && Object.HasInputAuthority;
@@ -485,7 +500,9 @@ namespace Ouroboros.Network
                 return;
             }
             NetworkPlayer attacker = Resolve(BurnAttacker);
+            float healthBeforeBurn = Health;
             ApplyDamage(BurnDamagePerSecond * Runner.DeltaTime, attacker, ignoreShield: true);
+            if (Health < healthBeforeBurn) LastDamageOrigin = transform.position; // (v0.9) fire has no direction
         }
 
         // ------------------------------------------------------------------
@@ -498,7 +515,19 @@ namespace Ouroboros.Network
         /// </summary>
         public void ApplyDamage(float amount, NetworkPlayer attacker)
         {
+            // [v0.8] ApplyDamage(amount, attacker, ignoreShield: false);
+            // (v0.9) no explicit source: point at the attacker if there is one, otherwise at ourselves, which the
+            //        HUD reads as "no direction" (traps, fire, falling).
+            ApplyDamage(amount, attacker, attacker != null && attacker != this ? attacker.EyePosition : transform.position);
+        }
+
+        /// <summary>(v0.9) Damage with a known source position, for the victim's damage-direction indicator.</summary>
+        public void ApplyDamage(float amount, NetworkPlayer attacker, Vector3 origin)
+        {
+            if (!Object.HasStateAuthority) return;
+            float before = Health;
             ApplyDamage(amount, attacker, ignoreShield: false);
+            if (Health < before) LastDamageOrigin = origin;
         }
 
         private void ApplyDamage(float amount, NetworkPlayer attacker, bool ignoreShield)
@@ -534,6 +563,22 @@ namespace Ouroboros.Network
             {
                 Die(attacker);
             }
+        }
+
+        /// <summary>
+        /// (v0.9) Tells the shooter's own client that a shot landed. Called by weapons on the state authority,
+        /// once per trigger pull (pellets are summed).
+        /// </summary>
+        public void NotifyHitConfirm(float damage, bool headshot, bool killed)
+        {
+            if (!Object.HasStateAuthority || damage <= 0f) return;
+            RPC_HitConfirm(damage, headshot, killed);
+        }
+
+        [Rpc(RpcSources.StateAuthority, RpcTargets.InputAuthority)]
+        private void RPC_HitConfirm(float damage, NetworkBool headshot, NetworkBool killed)
+        {
+            HitConfirmed?.Invoke(this, damage, headshot, killed);
         }
 
         /// <summary>Legacy entry point kept for callers that have no attacker reference.</summary>

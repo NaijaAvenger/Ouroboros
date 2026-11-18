@@ -69,7 +69,8 @@ namespace Ouroboros.Combat
                 scaled = Mathf.Lerp(damage, damage * 0.25f, t);
             }
 
-            target.ApplyDamage(scaled, attacker);
+            // [v0.8] target.ApplyDamage(scaled, attacker);
+            target.ApplyDamage(scaled, attacker, origin); // (v0.9) the blast centre, so the victim's HUD points at it
             return true;
         }
 

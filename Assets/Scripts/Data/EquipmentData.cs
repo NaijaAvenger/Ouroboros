@@ -64,6 +64,29 @@ namespace Ouroboros.Data
         [Tooltip("(v0.6) How far guards hear this weapon. Suppressed weapons: small values.")]
         public float noiseRadius = 25f;
 
+        [Header("Weapon feel (v0.9)")]
+        [Tooltip("Damage multiplier for hits on a Head hit zone.")]
+        public float headshotMultiplier = 1.5f;
+        [Tooltip("Full damage up to this distance (metres). Leave start and end at 0 for no falloff.")]
+        public float falloffStart = 0f;
+        [Tooltip("Damage has dropped to the minimum fraction at this distance.")]
+        public float falloffEnd = 0f;
+        [Range(0f, 1f)] public float falloffMinFraction = 0.5f;
+        [Tooltip("Degrees of spread added by each shot.")]
+        public float bloomPerShot = 0.35f;
+        [Tooltip("Most spread sustained fire can add, in degrees.")]
+        public float bloomMax = 3f;
+        [Tooltip("Degrees of bloom lost per second while not firing.")]
+        public float bloomRecoveryPerSecond = 6f;
+        [Tooltip("Degrees the view kicks upward per shot.")]
+        public float recoilPitch = 0.6f;
+        [Tooltip("Largest sideways kick per shot, in degrees (random left or right).")]
+        public float recoilYaw = 0.25f;
+        [Tooltip("How quickly the view settles back after firing (higher = snappier).")]
+        public float recoilRecoveryPerSecond = 9f;
+        [Tooltip("Set by the scene builder once it has applied a per-weapon feel profile. 0 = defaults above.")]
+        public int feelVersion = 0;
+
         [Header("Projectile (v0.4, kind = ProjectileWeapon)")]
         public Fusion.NetworkObject projectilePrefab;
         public float projectileSpeed = 25f;

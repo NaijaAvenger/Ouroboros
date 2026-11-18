@@ -74,6 +74,20 @@ namespace Ouroboros.Network
         private float accumulatedYaw;
         private float accumulatedPitch;
         private int pressedSinceLastTick;
+
+        // (v0.9) Recoil is a view punch layered on top of the player's own aim: each shot kicks the offset, and
+        // it settles back to zero on its own. The offset is part of the aim sent to the server, so recoil moves
+        // where bullets go and the player has to pull against sustained fire.
+        private float recoilPitch;   // degrees; negative = up, like accumulatedPitch
+        private float recoilYaw;
+        private float recoilRecovery = 9f;
+        private int recoilBurstShots;
+        private float lastRecoilTime = -10f;
+        /// <summary>Seconds without firing after which the recoil ramp starts over.</summary>
+        private const float RecoilBurstResetSeconds = 0.35f;
+
+        private float AimYaw => accumulatedYaw + recoilYaw;
+        private float AimPitch => Mathf.Clamp(accumulatedPitch + recoilPitch, -pitchLimit, pitchLimit);
         /// <summary>Set when a click was used to re-lock the cursor; that press must not also fire the weapon.</summary>
         private bool swallowPrimaryUntilRelease;
 
@@ -101,11 +115,31 @@ namespace Ouroboros.Network
             if (classRegistry != null) Data.ClassRegistry.Active = classRegistry;
             FeedbackLibrary = feedbackLibrary;
             if (equipmentRegistry != null) Data.EquipmentRegistry.Active = equipmentRegistry;
+
+            Equipment.NetworkLoadout.WeaponFired += OnWeaponFired; // (v0.9) recoil
         }
 
         private void OnDestroy()
         {
+            Equipment.NetworkLoadout.WeaponFired -= OnWeaponFired;
             if (Instance == this) Instance = null;
+        }
+
+        /// <summary>(v0.9) Kicks the local view when the local player's weapon fires (predicted, so it is immediate).</summary>
+        private void OnWeaponFired(Equipment.NetworkLoadout loadout, int slot, Vector3 point, bool hit)
+        {
+            if (loadout == null || loadout.Owner == null || !loadout.Owner.IsLocalPlayer) return;
+            var data = loadout.GetData(slot);
+            if (data == null || (data.recoilPitch <= 0f && data.recoilYaw <= 0f)) return;
+
+            if (Time.unscaledTime - lastRecoilTime > RecoilBurstResetSeconds) recoilBurstShots = 0;
+            lastRecoilTime = Time.unscaledTime;
+
+            Core.CombatRules.RecoilKick(recoilBurstShots, data.recoilPitch, data.recoilYaw, loadout.FireCount * 7919 + slot, out float up, out float yaw);
+            recoilBurstShots++;
+            recoilPitch -= up;
+            recoilYaw += yaw;
+            recoilRecovery = Mathf.Max(1f, data.recoilRecoveryPerSecond);
         }
 
         private async void Start()
@@ -322,6 +356,10 @@ namespace Ouroboros.Network
                 accumulatedPitch = Mathf.Clamp(accumulatedPitch, -pitchLimit, pitchLimit);
             }
 
+            // (v0.9) the recoil punch settles back toward the player's own aim
+            recoilPitch = Core.CombatRules.RecoverRecoil(recoilPitch, recoilRecovery, Time.unscaledDeltaTime);
+            recoilYaw = Core.CombatRules.RecoverRecoil(recoilYaw, recoilRecovery, Time.unscaledDeltaTime);
+
             // Edge-triggered buttons are latched here (Update runs more often than OnInput) so no press is lost.
             for (int b = 0; b < Core.GameConstants.INPUT_BUTTON_COUNT; b++)
             {
@@ -338,7 +376,8 @@ namespace Ouroboros.Network
             if (runner.TryGetPlayerObject(runner.LocalPlayer, out NetworkObject local) && local != null)
             {
                 var controller = local.GetComponent<Player.PlayerController>();
-                controller?.SetLocalPitch(accumulatedPitch);
+                // [v0.8] controller?.SetLocalPitch(accumulatedPitch);
+                controller?.SetLocalPitch(AimPitch); // (v0.9) includes recoil
             }
         }
 
@@ -349,8 +388,9 @@ namespace Ouroboros.Network
             var data = new Core.NetworkInputData
             {
                 Move = Core.LocalInputSource.Move(),
-                Yaw = accumulatedYaw,
-                Pitch = accumulatedPitch
+                // [v0.8] Yaw = accumulatedYaw, Pitch = accumulatedPitch
+                Yaw = AimYaw,       // (v0.9) the player's aim plus the current recoil punch
+                Pitch = AimPitch
             };
 
             // [v0.2] data.Buttons.Set(..., Input.GetKey(KeyCode.X) || WasPressed(...)) per button (legacy only)
