@@ -632,7 +632,7 @@ namespace Ouroboros.Network
             RPC_DamageDealt(point, damage, headshot, killed);
         }
 
-        [Rpc(RpcSources.StateAuthority, RpcTargets.InputAuthority, Channel = RpcChannel.Unreliable)]
+        [Rpc(RpcSources.StateAuthority, RpcTargets.InputAuthority)]
         private void RPC_DamageDealt(Vector3 point, float damage, NetworkBool headshot, NetworkBool killed)
         {
             DamageDealt?.Invoke(this, point, damage, headshot, killed);

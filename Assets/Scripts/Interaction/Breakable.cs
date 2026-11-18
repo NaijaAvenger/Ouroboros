@@ -221,7 +221,7 @@ namespace Ouroboros.Interaction
             if (looseCash > 0) gm.SpawnLoot(Spot(), looseCash, 0);
         }
 
-        [Rpc(RpcSources.StateAuthority, RpcTargets.All, Channel = RpcChannel.Unreliable)]
+        [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
         private void RPC_Deflected(Vector3 point)
         {
             Art.BreakableModels.DeflectEffect(point);

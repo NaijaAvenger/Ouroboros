@@ -418,7 +418,9 @@ namespace Ouroboros.EditorTools
                     case "Counter":    ShopCounter(props, item.X, item.Z, item.Yaw); break;
                     case "Table":      FoodTable(props, item.X, item.Z, item.Yaw); break;
                     case "Bench":      Bench(props, item.X, item.Z, item.Yaw); break;
-                    case "Planter":    Planter(props, item.X, item.Z, item.Yaw, item.Arg != "shrub" && item.Level == 0); break;
+                    case "Planter":    // a tree needs the open atrium above it; under a ceiling it is a shrub
+                        Planter(props, item.X, item.Z, item.Yaw, item.Arg != "shrub" && item.Level == 0 && Mathf.Abs(item.X) < 18f && Mathf.Abs(item.Z) < 18f);
+                        break;
                     case "Kiosk":      Kiosk(props, item.X, item.Z, item.Yaw); break;
                     case "Rack":       ClothesRack(props, item.X, item.Z, item.Yaw); break;
                     case "Mannequin":  Mannequin(props, item.X, item.Z, item.Yaw); break;

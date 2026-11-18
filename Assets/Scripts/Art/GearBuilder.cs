@@ -220,7 +220,40 @@ namespace Ouroboros.Art
             if (model == null || model.Torso == null || data == null) return null;
             var root = Prim.Group(model.Torso, "Gear (" + data.equipmentName + ")");
 
-            if (data.defenseModifier > 0f)
+            if (data.kind == Data.EquipmentKind.Gadget)
+            {
+                // (v0.14) Gadgets hang on the left hip, each with its own shape and light, so a crew can read
+                // at a glance who is carrying the breaching kit and who has the key.
+                var body = ArtMaterials.Colour(Polymer);
+                var hip = new Vector3(-0.24f, -0.26f, 0.02f);
+                switch (data.gadget)
+                {
+                    case Data.GadgetType.BreachingKit:
+                        Track(model, Prim.Box(root, "Charge", hip, new Vector3(0.12f, 0.2f, 0.26f), ArtMaterials.Colour(new Color(0.75f, 0.7f, 0.55f))));
+                        Track(model, Prim.Box(root, "Tape", hip, new Vector3(0.125f, 0.05f, 0.27f), ArtMaterials.Colour(crew)));
+                        Track(model, Prim.Ball(root, "Light", hip + new Vector3(-0.07f, 0.06f, 0f), new Vector3(0.04f, 0.04f, 0.04f), ArtMaterials.Emissive(Warning)));
+                        break;
+                    case Data.GadgetType.EmpEmitter:
+                        Track(model, Prim.Rod(root, "Emitter", hip, new Vector3(0.14f, 0.09f, 0.14f), body));
+                        Track(model, Prim.Rod(root, "Coil", hip + new Vector3(0f, 0.1f, 0f), new Vector3(0.1f, 0.02f, 0.1f), ArtMaterials.Emissive(new Color(0.35f, 0.75f, 1f))));
+                        Track(model, Prim.Rod(root, "Aerial", hip + new Vector3(0f, 0.2f, 0f), new Vector3(0.012f, 0.1f, 0.012f), ArtMaterials.Colour(Steel)));
+                        break;
+                    case Data.GadgetType.BypassKey:
+                        Track(model, Prim.Box(root, "Reader", hip, new Vector3(0.05f, 0.18f, 0.12f), body));
+                        Track(model, Prim.Box(root, "Card", hip + new Vector3(-0.03f, 0.02f, 0f), new Vector3(0.01f, 0.1f, 0.07f), ArtMaterials.Emissive(new Color(0.3f, 1f, 0.5f))));
+                        break;
+                    case Data.GadgetType.LootScanner:
+                        Track(model, Prim.Box(root, "Scanner", hip, new Vector3(0.06f, 0.2f, 0.13f), body));
+                        Track(model, Prim.Box(root, "Screen", hip + new Vector3(-0.032f, 0.03f, 0f), new Vector3(0.005f, 0.1f, 0.1f), ArtMaterials.Emissive(new Color(0.3f, 0.95f, 1f))));
+                        Track(model, Prim.Rod(root, "Dish", hip + new Vector3(0f, 0.14f, 0f), new Vector3(0.09f, 0.01f, 0.09f), ArtMaterials.Colour(Steel)));
+                        break;
+                    case Data.GadgetType.GrappleLine:
+                        Track(model, Prim.Rod(root, "Coil", hip, new Vector3(0.2f, 0.035f, 0.2f), ArtMaterials.Colour(new Color(0.3f, 0.3f, 0.32f)), new Vector3(0f, 0f, 90f)));
+                        Track(model, Prim.Box(root, "Hook", hip + new Vector3(-0.05f, 0.14f, 0f), new Vector3(0.03f, 0.12f, 0.1f), ArtMaterials.Colour(Steel)));
+                        break;
+                }
+            }
+            else if (data.defenseModifier > 0f)
             {
                 var plate = ArtMaterials.Colour(new Color(0.3f, 0.32f, 0.36f));
                 Track(model, Prim.Box(root, "Chest Plate", new Vector3(0f, 0.08f, 0.17f), new Vector3(0.36f, 0.34f, 0.05f), plate));

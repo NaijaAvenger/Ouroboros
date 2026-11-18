@@ -150,7 +150,8 @@ namespace Ouroboros.Player
             {
                 if (Equipment.NetworkLoadout.IsWeaponSlot(slot)) continue;
                 var data = loadout.GetData(slot);
-                if (data == null || data.kind != Data.EquipmentKind.PassiveGear) continue;
+                // [v0.13] if (data == null || data.kind != Data.EquipmentKind.PassiveGear) continue;
+                if (data == null || (data.kind != Data.EquipmentKind.PassiveGear && data.kind != Data.EquipmentKind.Gadget)) continue; // (v0.14) gadgets too
                 var piece = Art.GearBuilder.BuildWornGear(model, data, crew);
                 if (piece != null) wornGear.Add(piece);
             }

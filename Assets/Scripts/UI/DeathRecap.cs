@@ -105,7 +105,8 @@ namespace Ouroboros.UI
             line.style.flexDirection = FlexDirection.Row; line.style.justifyContent = Justify.SpaceBetween;
             string what = string.IsNullOrEmpty(entry.Means) || entry.Means == entry.Source ? entry.Source : $"{entry.Source}   {entry.Means}";
             line.Add(Text(what + (final ? "   (final blow)" : ""), 13, final ? Accent : Color.white, final));
-            line.Add(Text($"{entry.Total:0}   {entry.Hits} hit{(entry.Hits == 1 ? "" : "s")}   {share:P0}", 13, Soft, false));
+            string hits = entry.Hits > 25 ? "sustained" : $"{entry.Hits} hit{(entry.Hits == 1 ? "" : "s")}"; // fire and lasers tick, they do not hit
+            line.Add(Text($"{entry.Total:0}   {hits}   {share:P0}", 13, Soft, false));
             row.Add(line);
 
             var track = new VisualElement { pickingMode = PickingMode.Ignore };
