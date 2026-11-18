@@ -3,8 +3,19 @@
 
 A modular multiplayer extraction heist game built with **Photon Fusion 2**, featuring 4 teams of 4 players competing to crack objectives, hold onto the loot, and extract before the window closes.
 
+> **Status: v0.9 — networked rules prototype.** The systems below exist in code and pass an offline C# type-check
+> and unit tests (`Tools/`). They have not all been validated in play mode, and there is no art, audio or real map yet.
+> A ✅ in the feature list means "implemented in code", not "tested and fun".
+>
+> - Where the game stands and where it is going: [GAME_AUDIT_AND_ROADMAP.md](GAME_AUDIT_AND_ROADMAP.md) (current plan, milestones M0 to M6)
+> - History of what was built in each version: [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md)
+> - First-run and two-client checklist: [PHASE0_BRINGUP.md](PHASE0_BRINGUP.md)
+> - Checks that run without Unity: [Tools/README.md](Tools/README.md)
+
+<!-- [v0.2 status, superseded]
 > **Status: v0.2 — architecture + gameplay loop implemented, awaiting first in-engine bring-up.**
 > See [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) for the audit, what changed, and the roadmap, and [PHASE0_BRINGUP.md](PHASE0_BRINGUP.md) for the first-run checklist.
+-->
 
 ## Overview
 - **4 Teams** of 4 players each (16 players total)
@@ -69,7 +80,7 @@ Assets/Scripts/
 - **Unity 6000.4** (project settings are committed; built-in render pipeline, Input System + legacy "Both")
 - **Input System** (`com.unity.inputsystem`) and **uGUI** (`com.unity.ugui`, provides TextMeshPro for the Fusion Menu) — both in `Packages/manifest.json`
 - **Photon Fusion 2.1.3** (committed under `Assets/Photon`) + your Photon App ID
-- **AI Navigation** package (`com.unity.ai.navigation`) for NavMesh baking (GuardAI)
+- **AI Navigation** package (`com.unity.ai.navigation`, in `Packages/manifest.json` since v0.9) for NavMesh baking (GuardAI)
 
 ### Scene Setup
 **Fast path:** menu **Ouroboros > Setup > Create Dev Scene (Phase 0)** generates the config asset, prefabs and a playable `DevArena` scene (see [PHASE0_BRINGUP.md](PHASE0_BRINGUP.md)); **Ouroboros > Setup > Rebuild Scene References** re-applies the asset references if any field in the scene comes up empty. Manual equivalent:
@@ -114,7 +125,15 @@ Input goes through the **Input System** package (keyboard, mouse, gamepad) when 
 - **Ability Slots**: 4 per class · **Equipment Slots**: 6 · **Tech Slots**: 3
 
 ## Roadmap
-See [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) — Phase 0 (engine bring-up) through Phase 5 (meta).
+See [GAME_AUDIT_AND_ROADMAP.md](GAME_AUDIT_AND_ROADMAP.md) for the current plan (milestones M0 to M6).
+[DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) keeps the earlier Phase 0 to Phase 5 history.
+
+## Checks without Unity
+```
+dotnet test Tools/tests        # unit tests for rules arithmetic, constants, behaviour tree
+Tools/typecheck/run.sh         # compiles every game script against Unity / Fusion / Input System references
+```
+Both run in CI on every push. See [Tools/README.md](Tools/README.md) for what they do and do not prove.
 
 ## Contributing
 1. Write `[Networked]` state only on the state authority
