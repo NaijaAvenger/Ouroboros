@@ -83,6 +83,8 @@ namespace Ouroboros.Data
         public float alarmOnCameraSpotPerSecond = 8f;
         public float alarmOnGuardEngaged = 15f;
         public float alarmOnKill = 10f;
+        [Tooltip("(v0.11) Alarm added by a wrong answer in a deep hack. Mistakes cost heat, not a lockout.")]
+        public float alarmOnHackMistake = 6f;
 
         [Header("Carry Weight (v0.5)")]
         [Tooltip("Max movement slowdown fraction from carried loot (0.25 = 25% slower at the reference amount).")]

@@ -85,6 +85,8 @@ namespace Ouroboros.UI
 
             // (v0.9) crosshair, hit markers and damage direction live in their own component on the same document
             if (GetComponent<CombatHUD>() == null) gameObject.AddComponent<CombatHUD>();
+            // (v0.11) quick-hack prompt, deep-hack console and Net Sight markers
+            if (GetComponent<HackHUD>() == null) gameObject.AddComponent<HackHUD>();
 
             var ps = document.panelSettings;
             Debug.Log($"[HeistHUD] Enabled. PanelSettings='{(ps != null ? ps.name : "NONE")}', theme='{(ps != null && ps.themeStyleSheet != null ? ps.themeStyleSheet.name : "NONE")}', " +
@@ -98,10 +100,16 @@ namespace Ouroboros.UI
             GameMode.ExtractionHeistGameMode.GetawayCalled += OnGetawayCalled; // (v0.10)
             GameMode.ExtractionHeistGameMode.CrewWiped += OnCrewWiped;
             GameMode.LootDrop.PickedUp += OnLootPickedUp;
+            GameMode.LootObjective.TakenOver += OnVaultTakenOver; // (v0.11)
+            Interaction.PowerNode.PowerCut += OnPowerCut;
+            Interaction.QuickHack.Completed += OnQuickHack;
         }
 
         private void OnDisable()
         {
+            GameMode.LootObjective.TakenOver -= OnVaultTakenOver;
+            Interaction.PowerNode.PowerCut -= OnPowerCut;
+            Interaction.QuickHack.Completed -= OnQuickHack;
             GameMode.ExtractionHeistGameMode.GetawayCalled -= OnGetawayCalled;
             GameMode.ExtractionHeistGameMode.CrewWiped -= OnCrewWiped;
             GameMode.LootDrop.PickedUp -= OnLootPickedUp;
@@ -660,9 +668,14 @@ namespace Ouroboros.UI
                 if (bestObj.IsGated) zoneHint.text = "Open the vault door first";
                 else if (!bestObj.IsAvailable) zoneHint.text = "Depleted";
                 else if (!bestObj.IsUnlocked) zoneHint.text = "Locked - needs a Hacker";
-                else if (bestObj.CapturingTeam == Core.TeamID.None) zoneHint.text = $"Hold {Core.LocalInputSource.Hint(Core.InputButtons.Interact)} to crack";
-                else if (bestObj.IsContested) zoneHint.text = $"{TeamName(bestObj.CapturingTeam)} cracking - CONTESTED";
-                else zoneHint.text = bestObj.CapturingTeam == local.Team ? $"Cracking... keep holding {Core.LocalInputSource.Hint(Core.InputButtons.Interact)}" : $"{TeamName(bestObj.CapturingTeam)} is cracking it!";
+                // [v0.10] else if (bestObj.CapturingTeam == Core.TeamID.None) zoneHint.text = $"Hold {Core.LocalInputSource.Hint(Core.InputButtons.Interact)} to crack";
+                // [v0.10] else if (bestObj.IsContested) zoneHint.text = $"{TeamName(bestObj.CapturingTeam)} cracking - CONTESTED";
+                // [v0.10] else zoneHint.text = bestObj.CapturingTeam == local.Team ? $"Cracking... keep holding {Core.LocalInputSource.Hint(Core.InputButtons.Interact)}" : $"{TeamName(bestObj.CapturingTeam)} is cracking it!";
+                // (v0.11) vaults are deep hacks: press once to jack in, answer signs, press again to jack out
+                else if (local.IsJackedIn) zoneHint.text = "Jacked in - answer the signs";
+                else if (bestObj.CapturingTeam == Core.TeamID.None) zoneHint.text = $"Press {Core.LocalInputSource.Hint(Core.InputButtons.Interact)} to jack in";
+                else if (bestObj.CapturingTeam == local.Team) zoneHint.text = $"Your crew is cracking it - press {Core.LocalInputSource.Hint(Core.InputButtons.Interact)} to jack in and help";
+                else zoneHint.text = $"{TeamName(bestObj.CapturingTeam)} crew holds it - press {Core.LocalInputSource.Hint(Core.InputButtons.Interact)} to counter-hack";
             }
             else
             {
@@ -753,6 +766,26 @@ namespace Ouroboros.UI
         }
 
         private void OnExtractionOpened() => ShowBanner("Extraction points are open");
+
+        // ---- (v0.11) Hacking ----
+
+        private void OnVaultTakenOver(GameMode.LootObjective objective, Core.TeamID team)
+        {
+            AddFeed($"{TeamName(team)} counter-hacked {objective.ObjectiveName}", Player.TeamSpawnPoint.TeamColor(team));
+            if (local != null && local.JackedObjective == objective && local.Team != team) ShowBanner("COUNTER-HACKED - take it back");
+        }
+
+        private void OnPowerCut(Interaction.PowerNode node, Core.TeamID team)
+        {
+            AddFeed($"{TeamName(team)} cut the power: {node.NodeName}", Player.TeamSpawnPoint.TeamColor(team));
+        }
+
+        private void OnQuickHack(Network.NetworkPlayer by, string what)
+        {
+            // Rivals' turret hijacks are worth knowing about; the rest would only be noise.
+            if (by == null || string.IsNullOrEmpty(what) || !what.Contains("turret")) return;
+            AddFeed($"{by.DisplayName}: {what.ToLowerInvariant()}", Player.TeamSpawnPoint.TeamColor(by.Team));
+        }
 
         // ---- (v0.10) The Run ----
 

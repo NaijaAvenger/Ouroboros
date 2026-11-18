@@ -206,6 +206,7 @@ namespace Ouroboros.AI
         {
             var alarm = GameMode.AlarmSystem.Instance;
             float range = detectionRange * (alarm != null && alarm.Object != null ? alarm.DetectionMultiplier : 1f);
+            if (Interaction.PowerNode.IsBlackedOut(transform.position)) range *= 0.5f; // (v0.11) lights out
             var seen = Perception.FindVisiblePlayer(EyePosition, transform.forward, range, fieldOfView, visionOccluders, faction);
 
             if (seen != null)

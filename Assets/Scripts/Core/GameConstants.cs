@@ -112,7 +112,9 @@ namespace Ouroboros.Core
         Sliding      = 1 << 11,
         Gliding      = 1 << 12,
         Climbing     = 1 << 13,
-        Grappling    = 1 << 14
+        Grappling    = 1 << 14,
+        /// <summary>(v0.11) Sees hackable devices through walls. Uses the last status timer slot: adding another flag means raising STATUS_TIMER_SLOTS.</summary>
+        NetSight     = 1 << 15
     }
 
     /// <summary>

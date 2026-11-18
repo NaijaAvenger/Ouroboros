@@ -8,8 +8,23 @@ namespace Ouroboros.Interaction
     /// it temporarily. Any collider/renderer on <see cref="doorVisual"/> is toggled with the state so the
     /// door blocks movement while closed.
     /// </summary>
-    public class BreachableDoor : NetworkBehaviour, IBreachable, IHackable
+    // [v0.10] public class BreachableDoor : NetworkBehaviour, IBreachable, IHackable
+    public class BreachableDoor : NetworkBehaviour, IBreachable, IHackable, IQuickHackable
     {
+        [Tooltip("(v0.11) Seconds a quick hack holds the door open.")]
+        [SerializeField] private float quickHackOpenSeconds = 20f;
+
+        // ---- IQuickHackable (v0.11) ----
+        public Vector3 HackPoint => doorVisual != null ? doorVisual.transform.position : transform.position;
+        public float HackSeconds => 2f;
+        public string HackPrompt(Network.NetworkPlayer by)
+        {
+            if (IsOpen) return null;
+            if (ownerTeam != Core.TeamID.None && by != null && ownerTeam != by.Team) return null;
+            return "Open door";
+        }
+        public void CompleteHack(Network.NetworkPlayer by) => OnHacked(by != null ? by.Team : Core.TeamID.None, quickHackOpenSeconds);
+
         [SerializeField] private GameObject doorVisual;
         [Tooltip("(v0.6) Optional NavMeshObstacle (carving) that blocks guards while the door is closed.")]
         [SerializeField] private UnityEngine.AI.NavMeshObstacle navObstacle;
@@ -24,7 +39,13 @@ namespace Ouroboros.Interaction
 
         public override void Spawned()
         {
+            QuickHack.Register(this); // (v0.11)
             ApplyVisual();
+        }
+
+        public override void Despawned(NetworkRunner runner, bool hasState)
+        {
+            QuickHack.Unregister(this);
         }
 
         public override void FixedUpdateNetwork()

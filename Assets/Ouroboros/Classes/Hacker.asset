@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dd4a7c37877836f4ba55066e34996b38, type: 3}
   m_Name: Hacker
   m_EditorClassIdentifier: Assembly-CSharp::Ouroboros.Data.ClassData
-  className: Hacker
+  className: Cipher
   description: Electronic warfare specialist capable of disabling security systems
     and hacking enemy equipment.
   classType: 1
@@ -22,14 +22,14 @@ MonoBehaviour:
   movementSpeed: 5.5
   sprintSpeed: 7.8
   abilities:
-  - abilityName: System Hack
+  - abilityName: Remote Hack
     description: 
     abilityIcon: {fileID: 0}
     cooldown: 15
     duration: 5
     energyCost: 15
     effectType: 0
-  - abilityName: Disable Camera
+  - abilityName: Net Sight
     description: 
     abilityIcon: {fileID: 0}
     cooldown: 20

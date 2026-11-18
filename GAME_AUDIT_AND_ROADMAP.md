@@ -23,6 +23,24 @@ before M0 started; where M0 has already changed a finding, it is marked **(fixed
 
 The offline type-check is described in `Tools/README.md`, including what a pass does not prove.
 
+### M3 progress (code complete, not yet play-tested)
+
+Compiles against the real Fusion and Input System APIs; the puzzle and progress arithmetic is unit-tested.
+Not run in Unity. The checklist is section 7g of `PHASE0_BRINGUP.md`.
+
+| M3 item | State |
+|---------|-------|
+| Quick hacks for everyone | Done in code. Hold Interact while aiming at a device; a visible tether, a prompt and a progress bar; breaks on lost line of sight or damage |
+| Devices | Done in code. Cameras, doors and rival traps became hackable; new shutter gates, power junctions (blackout), lift pads and sentry turrets (hijack). Twelve are placed on Freeport |
+| Deep hack | Done in code. Vaults are jacked into with one press and cracked by matching eight-mark signs on keys 1 to 4. Answers are checked on the host from a shared seed. Being jacked in also trickles progress, so a vault always opens eventually |
+| Counter-hack | Done in code. A rival jacked into the same vault pushes its progress back and takes it over past zero. An abandoned crack drains instead of resetting |
+| The Cipher | Done in code. The Hacker class is now the hack specialist: longer reach, half the hack time, chaining, easier signs, Remote Hack (instant, aimed, 40 m) and Net Sight (devices through walls) |
+| Bots | Done in code. They jack in and answer on a timer, fight hostile turrets, and may trip devices by accident. They do not quick-hack on purpose |
+| Sign visuals | Placeholder. Plain open and closed bars; the art direction for the glyph language is an M4 decision and needs the cultural review noted in 4.1 |
+
+Not in this slice: zero-gravity zones, hacking rival players' gear directly (the EMP still does that job),
+and a second deep-hack task type.
+
 ### M2 progress (code complete, not yet play-tested)
 
 Compiles against the real Fusion and Input System APIs; the new rules arithmetic is unit-tested. Not run in
@@ -302,8 +320,11 @@ Decision 2 affects the local `ViewMode.cs`: if it is a first/third-person toggle
 2. Run **Ouroboros > Setup > Create Freeport Map (M2)**. It also applies the M1 prefab upgrades, which the
    committed `Player.prefab` does not have yet.
 3. Work through sections 7e (M1) and 7f (M2) of `PHASE0_BRINGUP.md` and list what breaks.
-4. With those results: fix what the playtest finds, tune the weapon and quota numbers, then finish M1
-   (ADS and weapon switching, a third-person body) and move to M3, hacking.
+4. With those results: fix what the playtest finds, tune the weapon, quota and hack numbers, then finish M1
+   (ADS and weapon switching, a third-person body). Section 7g is the M3 checklist.
+
+M1, M2 and M3 are now all code complete and none has been play-tested. M4 (the identity slice) is mostly art,
+audio and writing, which need people and assets rather than code, so the next useful step is the playtest.
 
 Notes on the repository as of the M2 work:
 - `main` holds M0, M1 and your Unity project state ("Squashed local work"). M2 is on `claude/awesome-darwin-awl360`.

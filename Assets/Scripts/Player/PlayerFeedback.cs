@@ -29,6 +29,7 @@ namespace Ouroboros.Player
                 audioSource.playOnAwake = false;
             }
 
+            if (GetComponent<HackTether>() == null) gameObject.AddComponent<HackTether>(); // (v0.11) no prefab change needed
             player.Died += OnDied;
             player.Respawned += OnRespawned;
             player.Damaged += OnDamaged;

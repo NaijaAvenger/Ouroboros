@@ -183,6 +183,16 @@ namespace Ouroboros.Player
             }
             else if (!GetInput(out input)) return;
 
+            // (v0.11) jacked into a vault: the player is at the console. Only Interact gets through (it jacks out);
+            //         the number keys go to the sign puzzle, not to abilities.
+            if (networkPlayer.IsJackedIn)
+            {
+                bool interact = input.Buttons.IsSet((int)Core.InputButtons.Interact);
+                input.Move = default;
+                input.Buttons = default;
+                input.Buttons.Set((int)Core.InputButtons.Interact, interact);
+            }
+
             NetworkButtons pressed = input.Buttons.GetPressed(PreviousButtons);
             PreviousButtons = input.Buttons;
 
@@ -207,6 +217,8 @@ namespace Ouroboros.Player
             {
                 HandleAbilities(pressed);
                 HandleInteract(input.Buttons);
+                // (v0.11) quick hacks (hold Interact while aiming at a device) and deep hacks (press it at a vault)
+                networkPlayer.TickHacking(input.Buttons.IsSet((int)Core.InputButtons.Interact), pressed.IsSet((int)Core.InputButtons.Interact));
                 // [v0.8] HandleEquipment(pressed, input.Buttons);   // ran on the state authority only
             }
         }
@@ -495,6 +507,21 @@ namespace Ouroboros.Player
         public void SetPlayerClass(Core.BasePlayerClass playerClass)
         {
             currentClass = playerClass;
+        }
+
+        /// <summary>
+        /// (v0.11) Throws the player upward (grav lifts). Applied on the state authority; the owning client's
+        /// prediction picks the new vertical velocity up from the next state it receives.
+        /// </summary>
+        public void Launch(float upwardSpeed)
+        {
+            if (!Object.HasStateAuthority || upwardSpeed <= 0f) return;
+            VerticalVelocity = Mathf.Max(VerticalVelocity, upwardSpeed);
+            GroundedState = false;
+            JumpsUsed = 1; // the launch counts as the first jump, so double-jumpers keep one in the air
+            SlideTimer = TickTimer.None;
+            MantleTimer = TickTimer.None;
+            Grappling = false;
         }
 
         /// <summary>

@@ -52,7 +52,7 @@ A modular multiplayer extraction heist game built with **Photon Fusion 2**, feat
 
 | Class | HP | Speed / Sprint | Abilities (1–4) |
 |-------|----|----------------|-----------------|
-| **Hacker** | 85 | 5.5 / 7.8 | System Hack, Disable Camera, EMP Blast, Data Mine |
+| **Cipher** (hack specialist; `Hacker` in code) | 85 | 5.5 / 7.8 | Remote Hack, Net Sight, EMP Blast, Data Mine |
 | **Saboteur** | 90 | 6.0 / 8.5 | Place Trap, Stealth Mode, Sabotage, Smoke Bomb |
 | **Demolitions** | 110 | 4.5 / 6.5 | Place Explosive, Detonate, Breaching Charge, Incendiary |
 | **Agent** | 100 | 5.2 / 7.5 | Tactical Shield, Damage Boost, Recon Drone, Flashbang |
@@ -111,7 +111,7 @@ Input goes through the **Input System** package (keyboard, mouse, gamepad) when 
 | Move / Look | WASD / Mouse | Left stick / Right stick |
 | Sprint (drains stamina) | Shift | L3 (left stick click) |
 | Jump | Space | A |
-| Interact (hold to crack vaults) | F | X |
+| Interact: **hold** while aiming at a device to quick-hack it; **press** at a vault to jack in (then 1-4 answer the signs, press again to jack out); hold for cards, notes and doors | F | X |
 | Abilities 1–4 | 1 2 3 4 | D-pad ↑ → ↓ ← |
 | Primary / Secondary | LMB / RMB | RT / LT |
 | Utility / Gadget | Q / E | LB / RB |

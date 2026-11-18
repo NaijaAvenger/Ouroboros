@@ -32,6 +32,17 @@ namespace Ouroboros.UI
             Network.NetworkPlayer.PlayerKilled += OnPlayerKilled;
             Equipment.Projectile.Exploded += OnExploded;
             AI.BaseAIAgent.AgentFired += OnAgentFired; // (v0.9)
+            Interaction.SentryTurret.Fired += OnTurretFired; // (v0.11)
+        }
+
+        /// <summary>(v0.11) Sentry turret shots: tracer in the owner's colour (red for the facility) and a positional shot sound.</summary>
+        private void OnTurretFired(Interaction.SentryTurret turret, Vector3 from, Vector3 to, bool hit)
+        {
+            Color c = turret != null && turret.Object != null && turret.IsHijacked ? Player.TeamSpawnPoint.TeamColor(turret.OwnerTeam) : GuardTracerColor;
+            c.a = 0.9f;
+            Combat.ShotTracer.Spawn(from, to, c, 0.03f, 0.08f);
+            var lib = Library;
+            AudioSource.PlayClipAtPoint(Core.ProceduralSfx.GuardShot, from, (lib != null ? lib.matchVolume : 1f) * 0.7f);
         }
 
         private static readonly Color GuardTracerColor = new Color(1f, 0.35f, 0.25f, 0.9f);
@@ -58,6 +69,7 @@ namespace Ouroboros.UI
         private void OnDisable()
         {
             AI.BaseAIAgent.AgentFired -= OnAgentFired;
+            Interaction.SentryTurret.Fired -= OnTurretFired;
             Equipment.Projectile.Exploded -= OnExploded;
             GameMode.ExtractionHeistGameMode.StateChanged -= OnStateChanged;
             GameMode.ExtractionHeistGameMode.ExtractionOpened -= OnExtractionOpened;

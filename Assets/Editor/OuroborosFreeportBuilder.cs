@@ -464,12 +464,151 @@ namespace Ouroboros.EditorTools
                 inst.transform.position = new Vector3(-58f, 4.3f, -18f);
             }
 
+            BuildFreeportDevices(); // (v0.11, M3)
+
             TryBakeNavMesh();
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ScenePath);
             Debug.Log("[Ouroboros] Freeport content ready: 7 vaults (keycard, passcode, lockdown, ID card, 3 open), 6 guards + 2 snipers, " +
                       "5 cameras, terminal, case, 1 central getaway and 3 side exits.");
+        }
+
+        // ------------------------------------------------------------------
+        // Hackable devices (v0.11, milestone M3). Added to an existing Freeport scene on the next run of the menu.
+
+        private static void BuildFreeportDevices()
+        {
+            if (Object.FindFirstObjectByType<Interaction.PowerNode>() != null) return;
+            var devices = new GameObject("Devices").transform;
+
+            // Shutter gates on three approaches to the atrium: close one behind you, or open the one a rival closed.
+            Gatehouse(devices, "South Gate", new Vector3(0f, 0f, -40f), alongX: true);
+            Gatehouse(devices, "East Gate", new Vector3(28f, 0f, -14f), alongX: false);
+            Gatehouse(devices, "West Gate", new Vector3(-28f, 0f, 14f), alongX: false);
+
+            // One power junction per district: cameras and turrets nearby go dark, guards see half as far.
+            PowerJunction(devices, "Gallery Power", new Vector3(2f, 0f, 35f));
+            PowerJunction(devices, "Archive Power", new Vector3(38f, 0f, -10f));
+            PowerJunction(devices, "Docks Power", new Vector3(-33f, 0f, 16f));
+
+            // Lifts: a second way up to each high level, for whoever starts them.
+            LiftPad(devices, "Mezzanine Lift", new Vector3(-14f, 0.05f, 53.5f), 4f);
+            LiftPad(devices, "Catwalk Lift", new Vector3(57.5f, 0.05f, -23f), 4f);
+            LiftPad(devices, "Plaza Lift", new Vector3(13.5f, 0.05f, 13.5f), 3f);
+
+            // Sentry turrets on three vault fronts. Hijack one and it holds the door for you.
+            Turret(devices, "Gallery Turret", new Vector3(12f, 0f, 33f));
+            Turret(devices, "Archive Turret", new Vector3(41f, 0f, 2f));
+            Turret(devices, "Customs Turret", new Vector3(-41f, 0f, -24f));
+
+            Debug.Log("[Ouroboros] Freeport devices ready: 3 shutter gates, 3 power junctions, 3 lifts, 3 sentry turrets.");
+        }
+
+        /// <summary>A 12 m wall with a 4 m doorway that a shutter can close. The control box beside the doorway is what you aim at.</summary>
+        private static void Gatehouse(Transform parent, string name, Vector3 center, bool alongX)
+        {
+            const float height = 3.5f, thick = 0.5f, gap = 4f, segment = 4f;
+            var gate = Group(parent, name);
+            Vector3 along = alongX ? Vector3.right : Vector3.forward;
+            Vector3 SizeAlong(float length, float h, float t) => alongX ? new Vector3(length, h, t) : new Vector3(t, h, length);
+
+            foreach (float sign in new[] { -1f, 1f })
+            {
+                Box(gate, "Gate Wall", center + along * sign * (gap * 0.5f + segment * 0.5f) + Vector3.up * (height * 0.5f), SizeAlong(segment, height, thick), WallColor);
+            }
+            Box(gate, "Lintel", center + Vector3.up * (height + 0.2f), SizeAlong(gap + segment * 2f, 0.4f, thick), WallColor);
+
+            // The barrier: off while open, carves the NavMesh while closed.
+            var barrier = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            barrier.name = "Barrier";
+            barrier.transform.SetParent(gate);
+            barrier.transform.position = center + Vector3.up * (height * 0.5f);
+            barrier.transform.localScale = SizeAlong(gap, height, thick * 0.8f);
+            Tint(barrier, new Color(0.75f, 0.55f, 0.15f));
+            var obstacle = barrier.AddComponent<UnityEngine.AI.NavMeshObstacle>();
+            obstacle.carving = true;
+            obstacle.shape = UnityEngine.AI.NavMeshObstacleShape.Box;
+            obstacle.size = Vector3.one;
+
+            // The control box sticks out of both faces of the wall so it can be hacked from either side.
+            var box = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            box.name = name + " Control";
+            box.transform.SetParent(gate);
+            box.transform.position = center + along * (gap * 0.5f + 0.5f) + Vector3.up * 1.5f;
+            box.transform.localScale = alongX ? new Vector3(0.5f, 0.6f, 1.1f) : new Vector3(1.1f, 0.6f, 0.5f);
+            Tint(box, new Color(0.2f, 0.8f, 1f));
+            box.AddComponent<NetworkObject>();
+            var shutter = box.AddComponent<Interaction.Shutter>();
+            SetString(shutter, "shutterName", name);
+            SetReference(shutter, "barrier", barrier);
+            SetReference(shutter, "navObstacle", obstacle);
+        }
+
+        private static void PowerJunction(Transform parent, string name, Vector3 floor)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = name;
+            go.transform.SetParent(parent);
+            go.transform.position = floor + Vector3.up * 0.8f;
+            go.transform.localScale = new Vector3(0.8f, 1.6f, 0.8f);
+            Tint(go, new Color(0.3f, 1f, 0.5f));
+
+            // A district light the blackout switches off, so everyone can see what happened.
+            var lightGo = new GameObject(name + " Light");
+            lightGo.transform.SetParent(parent);
+            lightGo.transform.position = floor + Vector3.up * 7f;
+            var light = lightGo.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.range = 32f;
+            light.intensity = 2.2f;
+            light.color = new Color(1f, 0.92f, 0.75f);
+
+            go.AddComponent<NetworkObject>();
+            var node = go.AddComponent<Interaction.PowerNode>();
+            SetString(node, "nodeName", name);
+            SetReference(node, "indicator", go.GetComponent<Renderer>());
+            SetReferenceArray(node, "lights", new Object[] { light });
+        }
+
+        private static void LiftPad(Transform parent, string name, Vector3 position, float liftHeight)
+        {
+            var pad = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            pad.name = name;
+            pad.transform.SetParent(parent);
+            pad.transform.position = position;
+            pad.transform.localScale = new Vector3(3.2f, 0.05f, 3.2f);
+            Object.DestroyImmediate(pad.GetComponent<Collider>());
+            Tint(pad, new Color(0.2f, 0.25f, 0.3f));
+            pad.AddComponent<NetworkObject>();
+            var lift = pad.AddComponent<Interaction.GravLift>();
+            SetString(lift, "liftName", name);
+            SetFloat(lift, "liftHeight", liftHeight);
+            SetReference(lift, "indicator", pad.GetComponent<Renderer>());
+        }
+
+        private static void Turret(Transform parent, string name, Vector3 floor)
+        {
+            // Base keeps its collider: that is what weapons hit.
+            var turretBase = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            turretBase.name = name;
+            turretBase.transform.SetParent(parent);
+            turretBase.transform.position = floor + Vector3.up * 0.55f;
+            turretBase.transform.localScale = new Vector3(0.9f, 0.55f, 0.9f);
+            Tint(turretBase, new Color(0.22f, 0.22f, 0.26f));
+
+            var head = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            head.name = "Head";
+            head.transform.SetParent(turretBase.transform);
+            head.transform.position = floor + Vector3.up * 1.3f;
+            head.transform.localScale = new Vector3(0.5f / 0.9f, 0.35f / 0.55f, 1f / 0.9f); // world size 0.5 x 0.35 x 1.0
+            Object.DestroyImmediate(head.GetComponent<Collider>());
+            Tint(head, new Color(0.9f, 0.75f, 0.2f));
+
+            turretBase.AddComponent<NetworkObject>();
+            var turret = turretBase.AddComponent<Interaction.SentryTurret>();
+            SetReference(turret, "head", head.transform);
+            SetReference(turret, "indicator", head.GetComponent<Renderer>());
         }
 
         /// <summary>A walled vault room whose door faces the atrium, with the loot objective inside.</summary>

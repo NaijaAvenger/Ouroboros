@@ -60,6 +60,8 @@ namespace Ouroboros.AI
         // Combat
         private Network.NetworkPlayer enemyPlayer;
         private BaseAIAgent enemyAgent;
+        private Interaction.SentryTurret enemyTurret; // (v0.11)
+        private int nextAnswerTick;
         private bool lineOfFire;
         private int firstSeenTick, strafeUntilTick, burstUntilTick, burstPauseUntilTick, nextAbilityTick;
         private float strafeSign = 1f;
@@ -76,7 +78,8 @@ namespace Ouroboros.AI
         private bool pulse;
 
         private NetworkRunner Runner => me != null ? me.Runner : null;
-        private bool HasEnemy => enemyPlayer != null || enemyAgent != null;
+        // [v0.10] private bool HasEnemy => enemyPlayer != null || enemyAgent != null;
+        private bool HasEnemy => enemyPlayer != null || enemyAgent != null || enemyTurret != null;
         private int Ticks(float seconds) => Mathf.Max(1, Mathf.CeilToInt(seconds / Runner.DeltaTime));
 
         private float ReactionSeconds => Mathf.Lerp(0.7f, 0.2f, skill);
@@ -112,7 +115,7 @@ namespace Ouroboros.AI
             var gm = GameMode.ExtractionHeistGameMode.Instance;
             if (gm == null || gm.Object == null || !gm.IsMatchLive || !me.IsActiveInMatch)
             {
-                enemyPlayer = null; enemyAgent = null; hasGoal = false; cornerCount = 0; lastHealth = -1f;
+                enemyPlayer = null; enemyAgent = null; enemyTurret = null; hasGoal = false; cornerCount = 0; lastHealth = -1f;
                 return true;
             }
 
@@ -141,8 +144,22 @@ namespace Ouroboros.AI
             lastHealth = me.Health;
 
             AcquireEnemy(tick);
+            AnswerSigns(tick);
             ChooseGoal(gm, tick);
             UpdatePath(tick);
+        }
+
+        /// <summary>
+        /// (v0.11) Jacked into a vault: a bot has no screen, so it "reads" a sign every couple of seconds and is
+        /// right more often the more skilled it is. The result goes through the same rules as a person's answer.
+        /// </summary>
+        private void AnswerSigns(int tick)
+        {
+            if (!me.IsJackedIn) { nextAnswerTick = 0; return; }
+            if (nextAnswerTick == 0) nextAnswerTick = tick + Ticks(Mathf.Lerp(3.2f, 1.4f, skill));
+            if (tick < nextAnswerTick) return;
+            nextAnswerTick = tick + Ticks(Mathf.Lerp(3.2f, 1.4f, skill) + (float)rng.NextDouble() * 0.8f);
+            me.SubmitBotAnswer(rng.NextDouble() < Mathf.Lerp(0.55f, 0.9f, skill));
         }
 
         private void AcquireEnemy(int tick)
@@ -178,14 +195,35 @@ namespace Ouroboros.AI
                 if ((player.Position - me.Position).sqrMagnitude <= agentSq) agent = null; else player = null;
             }
 
+            // (v0.11) A sentry turret that would shoot this bot is a target too, but only when nothing that
+            //         moves is in view: turrets do not chase.
+            Interaction.SentryTurret turret = null;
+            if (player == null && agent == null)
+            {
+                float turretSq = 26f * 26f;
+                var turrets = Interaction.SentryTurret.All;
+                for (int i = 0; i < turrets.Count; i++)
+                {
+                    var t = turrets[i];
+                    if (t == null || t.Object == null || t.IsOffline || t.OwnerTeam == me.Team) continue;
+                    float dSq = (t.Position - me.Position).sqrMagnitude;
+                    if (dSq >= turretSq) continue;
+                    if (!Perception.CanSee(eye, forward, t.MuzzlePosition, 26f, fov, occluders)) continue;
+                    turret = t; turretSq = dSq;
+                }
+            }
+
             bool hadEnemy = HasEnemy;
-            if (hadEnemy && player == null && agent == null)
+            bool nowEnemy = player != null || agent != null || turret != null;
+            if (hadEnemy && !nowEnemy)
             {
                 // Lost them: keep looking at where they were for a moment.
-                alertPoint = enemyPlayer != null ? enemyPlayer.Position + Vector3.up * 1.2f : (enemyAgent != null ? enemyAgent.Position : alertPoint);
+                alertPoint = enemyPlayer != null ? enemyPlayer.Position + Vector3.up * 1.2f
+                           : enemyAgent != null ? enemyAgent.Position
+                           : enemyTurret != null ? enemyTurret.MuzzlePosition : alertPoint;
                 alertUntilTick = tick + Ticks(2.5f);
             }
-            if (!hadEnemy && (player != null || agent != null))
+            if (!hadEnemy && nowEnemy)
             {
                 firstSeenTick = tick;
                 nextAbilityTick = tick + Ticks(1.5f + (float)rng.NextDouble() * 3f);
@@ -193,6 +231,7 @@ namespace Ouroboros.AI
 
             enemyPlayer = player;
             enemyAgent = agent;
+            enemyTurret = turret;
             lineOfFire = HasEnemy; // FindVisiblePlayer / CanSee already required a clear line
         }
 
@@ -459,7 +498,10 @@ namespace Ouroboros.AI
 
             if (fighting)
             {
-                Vector3 target = enemyPlayer != null ? enemyPlayer.Position + Vector3.up * 1.25f : enemyAgent.Position + Vector3.up * 0.2f;
+                // [v0.10] Vector3 target = enemyPlayer != null ? enemyPlayer.Position + Vector3.up * 1.25f : enemyAgent.Position + Vector3.up * 0.2f;
+                Vector3 target = enemyPlayer != null ? enemyPlayer.Position + Vector3.up * 1.25f
+                               : enemyAgent != null ? enemyAgent.Position + Vector3.up * 0.2f
+                               : enemyTurret.MuzzlePosition;
                 lookPoint = target;
 
                 Vector3 toward = Flat(target - pos);
@@ -525,7 +567,19 @@ namespace Ouroboros.AI
                 stuckCount = 0;
             }
 
-            if (interact) input.Buttons.Set((int)Core.InputButtons.Interact, true);
+            // [v0.10] if (interact) input.Buttons.Set((int)Core.InputButtons.Interact, true);
+            // (v0.11) Interact is "hold" for doors, cards and notes, but one press jacks into a vault and the next
+            //         press jacks out. So: once jacked in, leave the key alone (unless a fight starts, then press
+            //         once to get off the console); otherwise hold it with a one-tick gap every so often, which
+            //         gives the vault its press without dropping the hold for anything else.
+            if (me.IsJackedIn)
+            {
+                if (fighting && pulse) input.Buttons.Set((int)Core.InputButtons.Interact, true);
+            }
+            else if (interact && tick % 12 != 0)
+            {
+                input.Buttons.Set((int)Core.InputButtons.Interact, true);
+            }
             if (fighting) Shoot(ref input, lookPoint, eye, tick);
             else MaintainWeapon(ref input);
         }

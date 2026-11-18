@@ -171,8 +171,10 @@ namespace Ouroboros.UI
             if (root == null) return;
 
             ResolveLocal();
+            // [v0.10] bool playing = local != null && local.Object != null && local.IsActiveInMatch
+            // [v0.10]                && !ClassPickerUI.IsShown && !KeypadUI.IsShown;
             bool playing = local != null && local.Object != null && local.IsActiveInMatch
-                           && !ClassPickerUI.IsShown && !KeypadUI.IsShown;
+                           && !ClassPickerUI.IsShown && !KeypadUI.IsShown && !HackHUD.IsConsoleShown; // (v0.11) the console covers the centre
 
             crosshair.style.display = playing ? DisplayStyle.Flex : DisplayStyle.None;
             if (playing) UpdateCrosshair();

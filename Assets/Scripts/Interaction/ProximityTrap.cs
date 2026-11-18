@@ -8,8 +8,26 @@ namespace Ouroboros.Interaction
     /// within <see cref="triggerRadius"/>. Networked so every peer sees it; only the state authority
     /// evaluates triggering.
     /// </summary>
-    public class ProximityTrap : NetworkBehaviour
+    // [v0.10] public class ProximityTrap : NetworkBehaviour
+    public class ProximityTrap : NetworkBehaviour, IQuickHackable
     {
+        // ---- IQuickHackable (v0.11): a rival's trap can be turned against the crew that laid it ----
+        public Vector3 HackPoint => transform.position + Vector3.up * 0.2f;
+        public float HackSeconds => 1.6f;
+        public string HackPrompt(Network.NetworkPlayer by) => by != null && IsArmed && by.Team != OwnerTeam ? "Hijack trap" : null;
+        public void CompleteHack(Network.NetworkPlayer by)
+        {
+            if (!Object.HasStateAuthority || by == null) return;
+            ownerClass?.OnTrapConsumed(); // the Saboteur who laid it gets the slot back
+            ownerClass = null;
+            OwnerTeam = by.Team;
+        }
+
+        public override void Despawned(NetworkRunner runner, bool hasState)
+        {
+            QuickHack.Unregister(this);
+        }
+
         [SerializeField] private float armDelay = 1.5f;
         [SerializeField] private float lifetime = 180f;
         [SerializeField] private float triggerRadius = 1.5f;
@@ -34,6 +52,7 @@ namespace Ouroboros.Interaction
 
         public override void Spawned()
         {
+            QuickHack.Register(this); // (v0.11)
             if (Object.HasStateAuthority)
             {
                 ArmTimer = TickTimer.CreateFromSeconds(Runner, armDelay);

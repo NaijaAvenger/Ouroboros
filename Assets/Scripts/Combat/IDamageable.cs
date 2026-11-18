@@ -10,6 +10,8 @@ namespace Ouroboros.Combat
     public interface IDamageable
     {
         bool IsAlive { get; }
+        /// <summary>(v0.11) Current health, so callers can tell how much a hit actually removed.</summary>
+        float Health { get; }
         Core.TeamID Team { get; }
         Vector3 Position { get; }
 

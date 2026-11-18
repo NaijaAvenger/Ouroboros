@@ -16,6 +16,12 @@ namespace Ouroboros.Classes
         [SerializeField] private float empDuration = 4f;
         [SerializeField] private float dataMineRange = 40f;
         [SerializeField] private float dataMineRevealDuration = 5f;
+        [Tooltip("(v0.11) Reach of Remote Hack: the device you are aiming at is hacked at once.")]
+        [SerializeField] private float remoteHackRange = 40f;
+        [Tooltip("(v0.11) Seconds Net Sight shows hackable devices through walls.")]
+        [SerializeField] private float netSightDuration = 10f;
+        [Tooltip("(v0.11) Rivals this close to a device are revealed while Net Sight runs.")]
+        [SerializeField] private float netSightRevealRadius = 6f;
         // [v0.1] [SerializeField] private float abilityDMGBoost = 1.2f; // unused in v0.1, removed from inspector
 
         // [v0.1] private float lastHackTime;
@@ -23,8 +29,13 @@ namespace Ouroboros.Classes
 
         protected override void OnInitialize()
         {
-            className = "Hacker";
-            description = "Electronic warfare specialist capable of disabling security systems and hacking enemy equipment.";
+            // [v0.10] className = "Hacker";
+            // [v0.10] description = "Electronic warfare specialist capable of disabling security systems and hacking enemy equipment.";
+            // (v0.11) the Cipher: everyone can hack, this class is simply the best at it. Passive, from
+            //         NetworkPlayer.IsHackSpecialist: quick hacks reach 60% further and take half as long (a quarter
+            //         when chained), vault signs read one step easier and each right answer counts for more.
+            className = "Cipher";
+            description = "Reads the building like a pattern. Hacks faster and from further than anyone, chains one hack into the next, and sees the network through walls.";
 
             // Hacker has lower health but higher movement speed
             maxHealth = 85f;
@@ -32,8 +43,10 @@ namespace Ouroboros.Classes
             sprintSpeed = 7.8f;
             movement.CanGlide = true; movement.GlideSeconds = 3f;           // v0.7: light frame, glides
 
-            DefineAbility(0, "System Hack",    cooldown: 15f, staminaCost: 15f, duration: hackDuration);
-            DefineAbility(1, "Disable Camera", cooldown: 20f, staminaCost: 10f);
+            // [v0.10] DefineAbility(0, "System Hack",    cooldown: 15f, staminaCost: 15f, duration: hackDuration);
+            // [v0.10] DefineAbility(1, "Disable Camera", cooldown: 20f, staminaCost: 10f);
+            DefineAbility(0, "Remote Hack",    cooldown: 15f, staminaCost: 15f, duration: hackDuration);
+            DefineAbility(1, "Net Sight",      cooldown: 22f, staminaCost: 10f, duration: netSightDuration);
             DefineAbility(2, "EMP Blast",      cooldown: 25f, staminaCost: 25f, duration: empDuration);
             DefineAbility(3, "Data Mine",      cooldown: 30f, staminaCost: 20f, duration: dataMineRevealDuration);
         }
@@ -44,7 +57,8 @@ namespace Ouroboros.Classes
             switch (abilityIndex)
             {
                 case 0: return HackSystem();
-                case 1: return DisableSecurityCamera();
+                // [v0.10] case 1: return DisableSecurityCamera();
+                case 1: return NetSight();
                 case 2: return EMPBlast();
                 case 3: return DataMine();
             }
@@ -56,6 +70,16 @@ namespace Ouroboros.Classes
             // [v0.1] if (Time.time - lastHackTime < HACK_COOLDOWN) return;
             Log($"Initiating system hack with range {hackRange}m");
             if (context == null) return true;
+
+            // (v0.11) Remote Hack: whatever device is under the crosshair, at long range, with no tether to hold.
+            var self = Network.NetworkPlayer.Resolve(context);
+            if (self != null)
+            {
+                var device = Interaction.QuickHack.FindTarget(self, remoteHackRange);
+                if (device != null && self.InstantHack(device)) return true;
+            }
+            // Nothing aimed at: fall back to the old behaviour for things that are not quick-hack devices
+            // (vault doors, the security terminal).
 
             // Hack the nearest hackable object in range (doors, terminals, loot objectives...)
             var hackable = Core.SceneUtil.FindNearest<Interaction.IHackable>(context.Transform.position, hackRange);
@@ -81,6 +105,34 @@ namespace Ouroboros.Classes
                 count++;
             }
             return count > 0;
+        }
+
+        /// <summary>
+        /// (v0.11) Shows every hackable device in range through walls on the Cipher's HUD, and reveals rivals
+        /// standing next to one. Replaces Disable Camera: blinding a camera is now a quick hack anyone can do.
+        /// </summary>
+        private bool NetSight()
+        {
+            Log("Net Sight");
+            if (context == null) return true;
+            var self = Network.NetworkPlayer.Resolve(context);
+            if (self == null) return false;
+
+            self.ApplyTimedStatus(Core.StatusFlags.NetSight, netSightDuration);
+
+            float sightRange = self.QuickHackRange * 2f;
+            var devices = Interaction.QuickHack.Devices;
+            for (int i = 0; i < devices.Count; i++)
+            {
+                var d = devices[i];
+                if (d == null || d.Object == null) continue;
+                if ((d.HackPoint - self.Position).sqrMagnitude > sightRange * sightRange) continue;
+                foreach (var enemy in Network.NetworkPlayer.FindPlayersInRadius(d.HackPoint, netSightRevealRadius, context.Team, aliveOnly: true))
+                {
+                    enemy.ApplyTimedStatus(Core.StatusFlags.Revealed, netSightDuration * 0.5f);
+                }
+            }
+            return true;
         }
 
         private bool EMPBlast()

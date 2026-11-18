@@ -156,6 +156,18 @@ Awaiting in-engine validation: PHASE0_BRINGUP.md section 7e.
 
 Awaiting in-engine validation: PHASE0_BRINGUP.md section 7f.
 
+### v0.11 — M3, hacking
+- **Rules**: `Core/HackRules.cs` (sign puzzles, deep-hack progress, counter-hack, quick-hack time, range and aim cone).
+- **Quick hacks**: `Interaction/QuickHack.cs` (`IQuickHackable`, registry, targeting); `Network/NetworkPlayer.Hacking.cs` (tether state, jack-in state, answers); `Player/HackTether.cs`.
+- **Devices**: cameras, breachable doors and proximity traps implement `IQuickHackable`; new `Interaction/Shutter.cs`, `PowerNode.cs`, `GravLift.cs`, `SentryTurret.cs`; `PlayerController.Launch`.
+- **Deep hack**: `LootObjective.CanJackIn` / `ApplyHackAnswer` / `TakenOver`; passive progress slowed; abandon decay.
+- **Cipher**: `Classes/HackerClass.cs` (Remote Hack, Net Sight), `StatusFlags.NetSight`, `Hacker.asset` names.
+- **UI**: `UI/HackHUD.cs` (prompt, console, Net Sight markers), added automatically by `HeistHUD`.
+- **Bots**: `AI/BotBrain.cs` answers signs on a timer and treats hostile turrets as targets.
+- **Map**: `OuroborosFreeportBuilder.BuildFreeportDevices` (gates, power junctions, lifts, turrets).
+
+Awaiting in-engine validation: PHASE0_BRINGUP.md section 7g.
+
 ### Phase 5 — Meta
 - Lobby scene with class picker (`NetworkPlayer.RequestClass` is in place), session browser, late-join handling, host migration.
 - Progression/cosmetics via `ClassData`/`EquipmentData`.

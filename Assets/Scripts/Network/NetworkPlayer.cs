@@ -15,7 +15,9 @@ namespace Ouroboros.Network
     /// locally on every peer from the replicated <see cref="ClassType"/> (so late joiners get them),
     /// but abilities only execute on the state authority.
     /// </summary>
-    public class NetworkPlayer : NetworkBehaviour, Core.IAbilityContext, Combat.IDamageable
+    // [v0.10] public class NetworkPlayer : NetworkBehaviour, Core.IAbilityContext, Combat.IDamageable
+    // (v0.11) partial: hacking state and rules live in NetworkPlayer.Hacking.cs
+    public partial class NetworkPlayer : NetworkBehaviour, Core.IAbilityContext, Combat.IDamageable
     {
         /// <summary>Live registry of every spawned player on this peer. Cheap radius queries iterate this.</summary>
         public static readonly List<NetworkPlayer> All = new List<NetworkPlayer>();
@@ -568,6 +570,7 @@ namespace Ouroboros.Network
             // [v0.1] currentClass.TakeDamage(damage);            // BUG: class kept a second health value
             // [v0.1] Health = Mathf.Max(0, Health - damage);     // ...and the shield modifier was ignored here
             Health = Mathf.Max(0f, Health - damage);
+            LastDamageTick = (int)Runner.Tick; // (v0.11) taking damage breaks a hack tether
 
             if (Health <= 0f)
             {
@@ -608,6 +611,7 @@ namespace Ouroboros.Network
         {
             IsAlive = false;
             Deaths++;
+            ClearHackState(); // (v0.11)
             Status = Core.StatusFlags.None;
             for (int i = 0; i < STATUS_TIMER_SLOTS; i++) StatusTimers.Set(i, TickTimer.None);
             BurnTimer = TickTimer.None;
@@ -728,6 +732,7 @@ namespace Ouroboros.Network
         {
             if (!Object.HasStateAuthority || IsExtracted) return;
             IsExtracted = true;
+            ClearHackState(); // (v0.11)
             Status = Core.StatusFlags.Extracted;
             RespawnTimer = TickTimer.None;
             RPC_OnExtracted();

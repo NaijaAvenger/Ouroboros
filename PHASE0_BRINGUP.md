@@ -163,6 +163,39 @@ Host + client:
 
 Known limits of the bots (by design for now): no use of cover, they do not climb containers, and they leave vaults that need a Hacker's unlock to people.
 
+## 7g. M3 validation: hacking (v0.11)
+Setup: re-run **Ouroboros > Setup > Create Freeport Map (M2)**. On an existing Freeport scene it adds a `Devices` group (console: `Freeport devices ready: 3 shutter gates, 3 power junctions, 3 lifts, 3 sentry turrets`) and re-bakes the NavMesh. No prefab changes are needed for M3.
+
+Quick hacks (any class). Aim at a device within about 18 m and hold **F**:
+- [ ] A prompt appears under the crosshair before you press anything: `Hold [F] Blind camera`, `Close shutter`, `Cut the power`, `Start lift`, `Hijack turret`.
+- [ ] Holding F draws a line in your crew colour from you to the device and fills the bar. Look away, break line of sight, or get shot: the hack breaks and the bar resets.
+- [ ] **Camera**: its ground cone turns grey for 20 s.
+- [ ] **Shutter gate** (south, east and west of the atrium; aim at the blue control box): the barrier drops and guards path around it. Hack again to open. It reopens on its own after 25 s.
+- [ ] **Power junction** (green box in each district): the district light goes out, nearby camera cones go grey, nearby turrets stop, and the feed says who cut it. It cannot be cut again for 45 s (box turns orange).
+- [ ] **Lift pad** (grey disc below the mezzanine, the catwalk and a plaza corner): turns cyan for 25 s and throws anyone who steps on it up to the level above. On a client, check the launch is not followed by a snap back to the ground.
+- [ ] **Sentry turret** (three vault fronts): unhacked, it turns red, waits about a second, then fires at you. Hijacked, it shows your crew colour for 30 s and fires at rivals and guards. Shooting it to zero shuts it down for 30 s.
+- [ ] On a second screen, another player's tether line is visible.
+
+Deep hacks (vaults). Stand at an open vault and **press** F once:
+- [ ] The console opens: one gold sign, four cyan candidates numbered 1 to 4. Movement, weapons and abilities are locked. Press F again to jack out. The crosshair is hidden while the console is open.
+- [ ] Press the number of the matching sign: the bar jumps by about a fifth, a new puzzle appears. Five right answers crack a vault.
+- [ ] Press a wrong one: red flash, the bar drops a little, the alarm meter rises, and input is refused for a moment.
+- [ ] Do nothing: the bar creeps on its own, slowly (about three times the old crack time).
+- [ ] Jack out mid-crack and wait: the bar drains instead of resetting.
+- [ ] Rare vaults (Gallery, Archive, Customs) show candidates that differ from the target by two marks instead of three; they are harder to tell apart.
+- [ ] With two crews at one vault: a rival who jacks in sees `COUNTER-HACK - <crew> holds NN%`. Their right answers push the bar down; past zero the vault changes hands and the feed says so.
+- [ ] Bots crack vaults at a steady pace without anyone watching (they answer on a timer).
+
+The Cipher (pick the first class in the lobby; it is still `Hacker` in code):
+- [ ] Quick hacks reach noticeably further and take half as long; a second hack within 4 s of the first is faster still.
+- [ ] **1, Remote Hack**: aim at a device up to 40 m away and press 1. It is hacked at once, with no tether.
+- [ ] **2, Net Sight**: for 10 s, labels appear on devices through walls with their action and distance.
+- [ ] At a vault, the Cipher's signs are easier to tell apart and four right answers are enough.
+
+Host + client:
+- [ ] The client's answers register (the bar moves on both screens) and a fast double press does not count twice.
+- [ ] Tethers, shutter states, blackouts and turret ownership agree on both screens.
+
 ## 7d. Expected flow and troubleshooting
 **Expected flow on Play (dev config):** spectator camera orbits the arena → session starts → your player spawns → the
 **class picker** appears with the cursor free (state *Waiting for players*) → host presses **Start match now** (or the

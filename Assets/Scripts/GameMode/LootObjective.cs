@@ -158,18 +158,24 @@ namespace Ouroboros.GameMode
             foreach (var p in interacting) if (p.Team == CapturingTeam) workers++;
             foreach (var p in present) if (p.Team != CapturingTeam) enemyPresent = true;
 
+            if (enemyPresent != IsContested) IsContested = enemyPresent;
+
             if (workers == 0)
             {
-                Cancel();
+                // [v0.10] Cancel(); return;   // stepping away for a second threw the whole crack away
+                // (v0.11) an abandoned crack drains instead; the crew keeps the vault until it reaches zero
+                Progress -= Runner.DeltaTime * Core.HackRules.AbandonDecayPerSecond;
+                if (Progress <= 0f) Cancel();
                 return;
             }
 
-            if (enemyPresent != IsContested) IsContested = enemyPresent;
-            if (enemyPresent) return;
+            // [v0.10] if (enemyPresent) return;   // (v0.11) folded into PassiveRate: sign answers still count while contested
 
             // Extra workers speed the crack up slightly (diminishing returns).
             // [v0.8] float rate = 1f + 0.25f * Mathf.Min(workers - 1, 3);
-            float rate = Core.MatchRules.CrackRate(workers); // (v0.9) same formula, unit-tested
+            // [v0.10] float rate = Core.MatchRules.CrackRate(workers); // (v0.9) same formula, unit-tested
+            // (v0.11) being jacked in only trickles; answering signs (ApplyHackAnswer) is what cracks a vault quickly
+            float rate = Core.HackRules.PassiveRate(workers, enemyPresent);
             Progress += Runner.DeltaTime * rate;
 
             if (Progress >= captureTime)
@@ -190,7 +196,9 @@ namespace Ouroboros.GameMode
                 if (p == null || p.Object == null || !p.IsActiveInMatch) continue;
                 if ((p.transform.position - transform.position).sqrMagnitude > radiusSq) continue;
                 present.Add(p);
-                if (p.HasStatus(Core.StatusFlags.Interacting) && !p.HasStatus(Core.StatusFlags.EMPDisabled))
+                // [v0.10] if (p.HasStatus(Core.StatusFlags.Interacting) && !p.HasStatus(Core.StatusFlags.EMPDisabled))
+                // (v0.11) working a vault means being jacked into it (press Interact once), not holding a key
+                if (p.JackStation == Object.Id && !p.HasStatus(Core.StatusFlags.EMPDisabled))
                 {
                     interacting.Add(p);
                 }
@@ -260,6 +268,96 @@ namespace Ouroboros.GameMode
 
             // [v0.9] RPC_Completed(team, lootValue);
             RPC_Completed(team, payout);
+        }
+
+        // ------------------------------------------------------------------
+        // Deep hack (v0.11)
+
+        /// <summary>Fired on every peer when a rival crew counter-hacks a vault away from its owner (objective, new owner).</summary>
+        public static event System.Action<LootObjective, Core.TeamID> TakenOver;
+
+        /// <summary>How hard this vault's signs are to read: its loot tier.</summary>
+        public int HackDifficulty => (int)lootTier;
+        public int HackDifficultyFor(Network.NetworkPlayer player) =>
+            Core.HackRules.EffectiveDifficulty(HackDifficulty, player != null && player.IsHackSpecialist);
+        public float CaptureTime => captureTime;
+
+        /// <summary>Whether <paramref name="player"/> may be (or stay) jacked into this vault.</summary>
+        public bool CanJackIn(Network.NetworkPlayer player)
+        {
+            if (player == null || Object == null || !IsAvailable || !IsUnlocked || IsGated) return false;
+            if (!player.IsActiveInMatch) return false;
+            var gm = ExtractionHeistGameMode.Instance;
+            if (onlyDuringMatch && (gm == null || gm.Object == null || !gm.IsMatchLive)) return false;
+            return (player.transform.position - transform.position).sqrMagnitude <= interactRadius * interactRadius;
+        }
+
+        /// <summary>The nearest vault <paramref name="player"/> is standing at and could jack into.</summary>
+        public static LootObjective FindJackable(Network.NetworkPlayer player)
+        {
+            LootObjective best = null;
+            float bestSq = float.MaxValue;
+            for (int i = 0; i < All.Count; i++)
+            {
+                var obj = All[i];
+                if (obj == null || !obj.CanJackIn(player)) continue;
+                float dSq = (obj.transform.position - player.transform.position).sqrMagnitude;
+                if (dSq < bestSq) { bestSq = dSq; best = obj; }
+            }
+            return best;
+        }
+
+        /// <summary>
+        /// Applies one sign-puzzle answer from a jacked-in player. A right answer drives their crew's crack
+        /// forward, or, on a vault another crew holds, drives that crew back and can take the vault over.
+        /// A wrong answer costs a little progress and raises the alarm. State authority only.
+        /// </summary>
+        public void ApplyHackAnswer(Network.NetworkPlayer by, bool correct)
+        {
+            if (!Object.HasStateAuthority || by == null || !CanJackIn(by)) return;
+            var gm = ExtractionHeistGameMode.Instance;
+
+            if (!correct)
+            {
+                if (by.Team == CapturingTeam) Progress = Mathf.Max(0f, Progress - Core.HackRules.WrongLoss(captureTime));
+                AlarmSystem.Raise(gm != null ? gm.Config.alarmOnHackMistake : 6f, objectiveName);
+                return;
+            }
+
+            float gain = Core.HackRules.CorrectGain(captureTime, by.IsHackSpecialist);
+            if (CapturingTeam == Core.TeamID.None)
+            {
+                CapturingTeam = by.Team;
+                Progress = 0f;
+                RPC_CaptureStarted(by.Team);
+            }
+
+            if (by.Team == CapturingTeam)
+            {
+                Progress += gain;
+                if (Progress >= captureTime)
+                {
+                    Scan(); // the loot fallback and worker count read the jacked-in list
+                    Complete(gm);
+                }
+                return;
+            }
+
+            // Counter-hack: push the owner back; past zero the vault changes hands.
+            Core.HackRules.ApplyCounterHack(Progress, gain, out float newProgress, out bool changedHands);
+            Progress = newProgress;
+            if (changedHands)
+            {
+                CapturingTeam = by.Team;
+                RPC_TakenOver(by.Team);
+            }
+        }
+
+        [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+        private void RPC_TakenOver(Core.TeamID team)
+        {
+            Debug.Log($"[Objective:{objectiveName}] counter-hacked: now held by {Core.TeamUtil.DisplayName(team)}");
+            TakenOver?.Invoke(this, team);
         }
 
         private readonly List<int> tierIds = new List<int>();
