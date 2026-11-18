@@ -111,6 +111,31 @@ Watch the **DevHUD** (F1) and console:
 - [ ] West door: hold F → lockdown, survive 45 s → door opens
 - [ ] Movement: Ctrl while sprinting slides; jump into a cover block to mantle; Agent double jump; Hacker hold Space to glide; Saboteur hold Space on a wall to climb; Demolitions G to grapple to a surface
 
+## 7e. M1 validation: movement and gun feel (v0.9)
+Setup, once:
+- [ ] Re-run **Ouroboros > Setup > Create Dev Scene**. Console should log `Player prefab: NetworkTransform replaced by NetworkCharacterController`, `added HitboxRoot with Body and Head hitboxes` (player and each guard prefab). Weapon assets get recoil / bloom / falloff numbers (`feelVersion` becomes 1).
+- [ ] Select `Assets/Photon/Fusion/Resources/NetworkProjectConfig`: **Lag Compensation > Enabled** is ticked (the file now ships with it on). On Play the `NetworkRunner` object has a `HitboxManager`.
+- [ ] Open `Assets/Ouroboros/Prefabs/Player.prefab`: it has `NetworkCharacterController` and **no** `NetworkTransform`; children `Hitbox_Body` and `Hitbox_Head` exist.
+
+Solo (host):
+- [ ] Movement feels as before: walk, sprint, slide, jump, mantle, class perk. Jump works on the first press every time (ground contact is now networked state).
+- [ ] A crosshair is on screen. Its gap widens while firing, jumping and sprinting, and closes when you stop.
+- [ ] Firing kicks the view up and it settles back when you release. Holding the Assault Rifle trigger climbs; the Marksman Rifle kicks hard once.
+- [ ] Every shot draws a pale tracer and makes a sound, with no audio assets assigned. Reloading clicks.
+- [ ] Shoot a guard in the body: white hit marker and a tick. In the head: gold marker, higher tick, more damage. Kill: red marker, "ELIMINATED".
+- [ ] Guards no longer hit every shot. Red tracers show their misses; standing still at close range gets you hit far more than sprinting across their view. After breaking line of sight a guard needs a beat before its first shot.
+- [ ] Take damage from the side or behind: a red arc around the crosshair points at the source. Fire damage shows no arc.
+- [ ] Empty the magazine: `RELOAD [R]` appears under the crosshair.
+
+Host + client (this is the part that cannot be checked offline):
+- [ ] **Client movement** tracks the host's view of it. On the host, watch the client's capsule while the client strafes, jumps and slides: no drift, no snapping. On the client, own movement is smooth. If the client slowly desyncs or teleports, the prefab still has the old `NetworkTransform`.
+- [ ] **Client firing is immediate**: on the client, tracer, sound, recoil and the ammo counter react on the click, not a moment later. The host sees the same shots.
+- [ ] **Lag compensation**: on the client, shoot the host player while they strafe; aim directly at them, do not lead. Hits register. Repeat with about 100 ms of simulated latency (a network shaping tool such as `clumsy` on Windows).
+- [ ] Client hit markers appear only for the shooter. Kill feed and health agree on both sides.
+- [ ] No `non-authority write` or `Failed to find HitboxManager` messages in either console.
+
+If something fails, note which line and what you saw; the three risky areas are the sync component swap, predicted weapon state, and the lag-compensated ray.
+
 ## 7d. Expected flow and troubleshooting
 **Expected flow on Play (dev config):** spectator camera orbits the arena → session starts → your player spawns → the
 **class picker** appears with the cursor free (state *Waiting for players*) → host presses **Start match now** (or the
