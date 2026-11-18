@@ -92,10 +92,12 @@ namespace Ouroboros.GameMode
 
         private static int TierFor(float level, Data.GameModeConfig cfg)
         {
-            if (level >= cfg.alarmLockdownThreshold) return 3;
-            if (level >= cfg.alarmAlertThreshold) return 2;
-            if (level >= cfg.alarmSuspiciousThreshold) return 1;
-            return 0;
+            // (v0.9) thresholds are compared in Core.MatchRules.AlarmTier (unit-tested outside Unity).
+            return Core.MatchRules.AlarmTier(level, cfg.alarmSuspiciousThreshold, cfg.alarmAlertThreshold, cfg.alarmLockdownThreshold);
+            // [v0.8] if (level >= cfg.alarmLockdownThreshold) return 3;
+            // [v0.8] if (level >= cfg.alarmAlertThreshold) return 2;
+            // [v0.8] if (level >= cfg.alarmSuspiciousThreshold) return 1;
+            // [v0.8] return 0;
         }
 
         /// <summary>Raises (or lowers, with a negative amount) the alarm. No-op off the state authority or with no alarm in the scene.</summary>

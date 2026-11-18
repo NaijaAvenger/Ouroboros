@@ -156,7 +156,8 @@ namespace Ouroboros.GameMode
             if (enemyPresent) return;
 
             // Extra workers speed the crack up slightly (diminishing returns).
-            float rate = 1f + 0.25f * Mathf.Min(workers - 1, 3);
+            // [v0.8] float rate = 1f + 0.25f * Mathf.Min(workers - 1, 3);
+            float rate = Core.MatchRules.CrackRate(workers); // (v0.9) same formula, unit-tested
             Progress += Runner.DeltaTime * rate;
 
             if (Progress >= captureTime)
@@ -211,8 +212,9 @@ namespace Ouroboros.GameMode
             // Split loot between the workers; remainder goes to the first.
             int workers = 0;
             foreach (var p in interacting) if (p.Team == team) workers++;
-            int share = workers > 0 ? lootValue / workers : lootValue;
-            int remainder = workers > 0 ? lootValue - share * workers : 0;
+            // [v0.8] int share = workers > 0 ? lootValue / workers : lootValue;
+            // [v0.8] int remainder = workers > 0 ? lootValue - share * workers : 0;
+            Core.MatchRules.SplitLoot(lootValue, workers, out int share, out int remainder); // (v0.9) same split, unit-tested
             bool first = true;
             foreach (var p in interacting)
             {

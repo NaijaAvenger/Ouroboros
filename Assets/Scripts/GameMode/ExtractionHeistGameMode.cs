@@ -499,25 +499,37 @@ namespace Ouroboros.GameMode
         /// <summary>Highest score wins; ties go to the team with more banked loot, then more extracted members.</summary>
         protected virtual Core.TeamID DetermineWinner()
         {
-            Core.TeamID best = Core.TeamID.None;
-            int bestScore = int.MinValue, bestLoot = int.MinValue, bestExtracted = int.MinValue;
-
-            for (int i = 0; i < Core.GameConstants.MAX_TEAMS; i++)
+            // (v0.9) the comparison lives in Core.MatchRules.PickWinner so it can be unit-tested outside Unity.
+            const int n = Core.GameConstants.MAX_TEAMS;
+            var scores = new int[n]; var loot = new int[n]; var extracted = new int[n]; var hasPlayers = new bool[n];
+            var tm = Network.TeamManager.Instance;
+            for (int i = 0; i < n; i++)
             {
-                var tm = Network.TeamManager.Instance;
-                if (tm != null && tm.GetTeamPlayerCount(Core.TeamUtil.FromIndex(i)) == 0) continue;
-
-                int score = TeamScores[i], loot = TeamLoot[i], extracted = TeamExtractedCount[i];
-                bool better = score > bestScore
-                              || (score == bestScore && loot > bestLoot)
-                              || (score == bestScore && loot == bestLoot && extracted > bestExtracted);
-                if (better)
-                {
-                    best = Core.TeamUtil.FromIndex(i);
-                    bestScore = score; bestLoot = loot; bestExtracted = extracted;
-                }
+                scores[i] = TeamScores[i];
+                loot[i] = TeamLoot[i];
+                extracted[i] = TeamExtractedCount[i];
+                hasPlayers[i] = tm == null || tm.GetTeamPlayerCount(Core.TeamUtil.FromIndex(i)) > 0;
             }
-            return best;
+            int winner = Core.MatchRules.PickWinner(scores, loot, extracted, hasPlayers);
+            return winner >= 0 ? Core.TeamUtil.FromIndex(winner) : Core.TeamID.None;
+
+            // [v0.8] Core.TeamID best = Core.TeamID.None;
+            // [v0.8] int bestScore = int.MinValue, bestLoot = int.MinValue, bestExtracted = int.MinValue;
+            // [v0.8] for (int i = 0; i < Core.GameConstants.MAX_TEAMS; i++)
+            // [v0.8] {
+            // [v0.8]     var tm = Network.TeamManager.Instance;
+            // [v0.8]     if (tm != null && tm.GetTeamPlayerCount(Core.TeamUtil.FromIndex(i)) == 0) continue;
+            // [v0.8]     int score = TeamScores[i], loot = TeamLoot[i], extracted = TeamExtractedCount[i];
+            // [v0.8]     bool better = score > bestScore
+            // [v0.8]                   || (score == bestScore && loot > bestLoot)
+            // [v0.8]                   || (score == bestScore && loot == bestLoot && extracted > bestExtracted);
+            // [v0.8]     if (better)
+            // [v0.8]     {
+            // [v0.8]         best = Core.TeamUtil.FromIndex(i);
+            // [v0.8]         bestScore = score; bestLoot = loot; bestExtracted = extracted;
+            // [v0.8]     }
+            // [v0.8] }
+            // [v0.8] return best;
         }
 
         [Rpc(RpcSources.StateAuthority, RpcTargets.All)]

@@ -22,7 +22,7 @@ namespace Ouroboros.Network
 
         private const int STATUS_TIMER_SLOTS = 16;
 
-        [Header("Network Configuration")]
+        // [v0.8] [Header("Network Configuration")]   // Header is field-only (CS0592 on a property); found by Tools/typecheck
         [Networked] public PlayerRef PlayerRef { get; set; }
         /// <summary>Team assigned by the server at spawn. Prefer <see cref="Team"/>, which also falls back to TeamManager.</summary>
         [Networked] public Core.TeamID AssignedTeam { get; set; }
@@ -105,10 +105,13 @@ namespace Ouroboros.Network
                 var gm = GameMode.ExtractionHeistGameMode.Instance;
                 if (gm == null) return 1f;
                 var cfg = gm.Config;
-                float loot = cfg.lootWeightReference > 0 ? Mathf.Clamp01((float)CarriedLoot / cfg.lootWeightReference) : 0f;
-                float m = 1f - cfg.lootWeightMaxSlowdown * loot;
-                if (HasStatus(Core.StatusFlags.Encumbered)) m *= cfg.caseCarrySpeedMultiplier;
-                return Mathf.Clamp(m, 0.3f, 1f);
+                // (v0.9) formula moved to Core.MatchRules.CarrySpeedMultiplier (unit-tested outside Unity).
+                return Core.MatchRules.CarrySpeedMultiplier(CarriedLoot, cfg.lootWeightReference, cfg.lootWeightMaxSlowdown,
+                    HasStatus(Core.StatusFlags.Encumbered), cfg.caseCarrySpeedMultiplier);
+                // [v0.8] float loot = cfg.lootWeightReference > 0 ? Mathf.Clamp01((float)CarriedLoot / cfg.lootWeightReference) : 0f;
+                // [v0.8] float m = 1f - cfg.lootWeightMaxSlowdown * loot;
+                // [v0.8] if (HasStatus(Core.StatusFlags.Encumbered)) m *= cfg.caseCarrySpeedMultiplier;
+                // [v0.8] return Mathf.Clamp(m, 0.3f, 1f);
             }
         }
 
@@ -455,11 +458,12 @@ namespace Ouroboros.Network
 
         private static int StatusBit(Core.StatusFlags flag)
         {
-            int value = (int)flag;
-            if (value <= 0) return -1;
-            int bit = 0;
-            while ((value & 1) == 0) { value >>= 1; bit++; }
-            return bit;
+            return Core.MatchRules.LowestSetBit((int)flag); // (v0.9) unit-tested outside Unity
+            // [v0.8] int value = (int)flag;
+            // [v0.8] if (value <= 0) return -1;
+            // [v0.8] int bit = 0;
+            // [v0.8] while ((value & 1) == 0) { value >>= 1; bit++; }
+            // [v0.8] return bit;
         }
 
         public void ApplyBurning(float duration, float damagePerSecond, NetworkPlayer attacker)
