@@ -74,6 +74,7 @@ namespace Ouroboros.Equipment
                 case Data.EquipmentKind.ProjectileWeapon: return typeof(ProjectileWeapon);
                 case Data.EquipmentKind.PassiveGear:      return typeof(PassiveGear);
                 case Data.EquipmentKind.Deployable:       return typeof(PassiveGear); // placeholder until deployables exist
+                case Data.EquipmentKind.Gadget:           return typeof(GadgetTool);  // (v0.14)
                 default: return null;
             }
         }

@@ -42,7 +42,15 @@ namespace Ouroboros.Interaction
             // Ground cone: the camera is mounted high, so project its range onto the floor beneath it
             cone = AI.VisionCone.Attach(transform, viewRange, viewAngle, groundOffset: transform.position.y, AI.VisionCone.IdleColor);
             QuickHack.Register(this); // (v0.11)
+
+            // (v0.14) a code-built camera in place of the scene's box
+            var placeholder = GetComponent<Renderer>();
+            if (placeholder != null) placeholder.enabled = false;
+            Art.GearBuilder.BuildCamera(transform, out lensRenderer);
         }
+
+        private Renderer lensRenderer;
+        private int shownLens = -1;
 
         public override void Despawned(NetworkRunner runner, bool hasState)
         {
@@ -58,6 +66,14 @@ namespace Ouroboros.Interaction
             cone.Configure(viewRange * scale, viewAngle);
             // [v0.10] cone.SetColor(IsDisabled ? AI.VisionCone.DisabledColor : Spotting ? AI.VisionCone.AlertColor : AI.VisionCone.IdleColor);
             cone.SetColor(IsOff ? AI.VisionCone.DisabledColor : Spotting ? AI.VisionCone.AlertColor : AI.VisionCone.IdleColor);
+
+            // (v0.14) the lens says the same thing as the cone: off, watching, or it has seen someone
+            int lens = IsOff ? 0 : (Spotting ? 2 : 1);
+            if (lensRenderer != null && lens != shownLens)
+            {
+                shownLens = lens;
+                lensRenderer.sharedMaterial = Art.ArtMaterials.Emissive(lens == 0 ? new Color(0.25f, 0.25f, 0.28f) : lens == 2 ? new Color(1f, 0.15f, 0.1f) : new Color(0.2f, 0.9f, 1f));
+            }
         }
 
         public void Disable(float duration)

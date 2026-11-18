@@ -30,6 +30,7 @@ namespace Ouroboros.Art
             Network.NetworkPlayer.AbilityUsed += OnAbilityUsed;
             Network.NetworkPlayer.PlayerKilled += OnPlayerKilled;
             Interaction.ProximityTrap.Detonated += OnTrapDetonated;
+            Equipment.NetworkLoadout.GadgetUsed += OnGadgetUsed; // (v0.14)
         }
 
         private void OnDisable()
@@ -37,6 +38,7 @@ namespace Ouroboros.Art
             Network.NetworkPlayer.AbilityUsed -= OnAbilityUsed;
             Network.NetworkPlayer.PlayerKilled -= OnPlayerKilled;
             Interaction.ProximityTrap.Detonated -= OnTrapDetonated;
+            Equipment.NetworkLoadout.GadgetUsed -= OnGadgetUsed;
             foreach (var list in charges.Values) foreach (var c in list) if (c.Model != null) Destroy(c.Model);
             charges.Clear();
         }
@@ -183,6 +185,29 @@ namespace Ouroboros.Art
                 Destroy(list[i].Model);
             }
             list.Clear();
+        }
+
+        /// <summary>(v0.14) What each gadget looks like when it goes off.</summary>
+        private void OnGadgetUsed(Equipment.NetworkLoadout loadout, Data.GadgetType type, Vector3 point, float reach)
+        {
+            switch (type)
+            {
+                case Data.GadgetType.BreachingKit:
+                    Fx.Explosion(point, Mathf.Max(2f, reach));
+                    PlayBlastSound(point, 1f);
+                    break;
+                case Data.GadgetType.EmpEmitter:
+                    Fx.Shock(point, reach, Fx.ShockColour, 0.6f);
+                    break;
+                case Data.GadgetType.BypassKey:
+                    Fx.Burst(point, new Color(0.3f, 1f, 0.5f, 1f), 14, 2.5f, 0.07f, 0.4f, 0.2f);
+                    Fx.Flash(point, new Color(0.3f, 1f, 0.5f), 5f, 2.5f, 0.3f);
+                    break;
+                case Data.GadgetType.LootScanner:
+                    Fx.Ring(Ground(point) + Vector3.up * 0.08f, reach, new Color(0.3f, 0.95f, 1f, 0.8f), 1.1f, 0.12f);
+                    Fx.Ring(Ground(point) + Vector3.up * 0.08f, reach * 0.55f, new Color(0.3f, 0.95f, 1f, 0.8f), 1.4f, 0.07f);
+                    break;
+            }
         }
 
         private void OnTrapDetonated(Vector3 position, float radius)

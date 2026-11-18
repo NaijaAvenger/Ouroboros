@@ -43,6 +43,17 @@ namespace Ouroboros.Combat
                 }
             }
 
+            // (v0.14) Breakable objects: blasts are how armoured ones come open.
+            for (int i = Interaction.Breakable.All.Count - 1; i >= 0; i--)
+            {
+                var target = Interaction.Breakable.All[i];
+                if (target == null || !target.IsAlive) continue;
+                if (TryHit(target, target.Position, origin, radius, radiusSq, damage, attacker, falloff, requireLineOfSight, occluders))
+                {
+                    hit++;
+                }
+            }
+
             return hit;
         }
 

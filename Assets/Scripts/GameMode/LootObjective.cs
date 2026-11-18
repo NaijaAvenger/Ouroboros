@@ -68,7 +68,16 @@ namespace Ouroboros.GameMode
         public int LootValue => lootValue;
         public float InteractRadius => interactRadius;
         public int Stages => Mathf.Max(1, stages);
-        public bool IsGated => gatedBy != null && gatedBy.Object != null && !gatedBy.IsOpen;
+        [Tooltip("(v0.14) Optional weak wall into the vault room. Once it is broken the vault can be cracked even with its door shut.")]
+        [SerializeField] private Interaction.Breakable alsoOpenedBy;
+
+        // [v0.13] public bool IsGated => gatedBy != null && gatedBy.Object != null && !gatedBy.IsOpen;
+        /// <summary>
+        /// Behind a shut vault door. (v0.14) A broken weak wall into the room counts as a way in too, so a
+        /// crew that breaches the back wall can crack the vault without ever opening its door.
+        /// </summary>
+        public bool IsGated => gatedBy != null && gatedBy.Object != null && !gatedBy.IsOpen
+                               && !(alsoOpenedBy != null && alsoOpenedBy.Object != null && alsoOpenedBy.IsBroken);
         public Interaction.VaultDoor GatedBy => gatedBy;
         public float ProgressNormalized => Mathf.Clamp01(Progress / Mathf.Max(0.01f, captureTime));
 
