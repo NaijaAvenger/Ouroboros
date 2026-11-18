@@ -87,6 +87,15 @@ namespace Ouroboros.Data
         [Tooltip("Set by the scene builder once it has applied a per-weapon feel profile. 0 = defaults above.")]
         public int feelVersion = 0;
 
+        [Header("Model placement (v0.12): how equipmentPrefab sits when shown by Art.WeaponView")]
+        [Tooltip("Position in front of the camera for the local player's first-person view.")]
+        public Vector3 viewPosition = new Vector3(0.2f, -0.2f, 0.45f);
+        [Tooltip("Position relative to the hand joint on other players' characters.")]
+        public Vector3 handPosition = new Vector3(0f, 0.02f, 0.12f);
+        [Tooltip("Rotation applied to the model. The imported gun pack's barrels point along +X, so the default turns them to face forward.")]
+        public Vector3 viewEuler = new Vector3(0f, -90f, 0f);
+        public float viewScale = 1f;
+
         [Header("Projectile (v0.4, kind = ProjectileWeapon)")]
         public Fusion.NetworkObject projectilePrefab;
         public float projectileSpeed = 25f;

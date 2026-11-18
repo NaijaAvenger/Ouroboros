@@ -149,11 +149,34 @@ namespace Ouroboros.AI
             {
                 visionCone = VisionCone.Attach(transform, detectionRange, fieldOfView, groundOffset: 1f, VisionCone.IdleColor);
             }
-            else if (navAgent != null)
+            // [v0.11] else if (navAgent != null)
+            // [v0.11] {
+            // [v0.11]     // Proxies are driven by NetworkTransform; the NavMeshAgent must not fight it.
+            // [v0.11]     navAgent.enabled = false;
+            // [v0.11] }
+            // (v0.12) That "else" had ended up attached to the vision-cone check above instead of the authority
+            //         check, so with cones on, clients kept their NavMeshAgents running against the replicated
+            //         transform, and with cones off the server's own agents were switched off. Fixed:
+            if (!Object.HasStateAuthority && navAgent != null)
             {
                 // Proxies are driven by NetworkTransform; the NavMeshAgent must not fight it.
                 navAgent.enabled = false;
             }
+            DressModel(); // (v0.12)
+        }
+
+        /// <summary>
+        /// (v0.12, M4) Replaces the prefab's capsule with a code-built guard: grey armour, orange trim, a rifle.
+        /// The capsule's collider stays (it is what gets shot); only its renderer is switched off.
+        /// </summary>
+        private void DressModel()
+        {
+            var capsule = GetComponent<MeshRenderer>();
+            if (capsule != null) capsule.enabled = false;
+            var kind = this is EliteGuard ? AIAgentType.Elite : this is SniperGuard ? AIAgentType.Sniper : agentType;
+            var built = Art.CharacterBuilder.BuildGuard(transform, kind, feetY: -1f);
+            var walk = gameObject.AddComponent<Art.CharacterAnimator>();
+            walk.Model = built;
         }
 
         public override void Despawned(NetworkRunner runner, bool hasState)

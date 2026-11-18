@@ -65,16 +65,20 @@ namespace Ouroboros.GameMode
         {
             var item = Item;
             if (item == null) return;
-            var renderer = GetComponentInChildren<Renderer>();
-            if (renderer != null)
-            {
-                var block = new MaterialPropertyBlock();
-                Color c = Data.LootCatalog.TierColor(item.tier);
-                block.SetColor("_Color", c); block.SetColor("_BaseColor", c);
-                renderer.SetPropertyBlock(block);
-            }
-            float scale = item.tier == Data.LootTier.Legendary ? 1.5f : (item.tier == Data.LootTier.Rare ? 1.2f : 1f);
-            transform.localScale *= scale;
+            // [v0.11] tinted the prefab's sphere by tier and scaled it by value
+            // (v0.12) named items get a model of the thing itself, on a ring in the tier colour
+            var sphere = GetComponentInChildren<Renderer>();
+            if (sphere != null) sphere.enabled = false;
+
+            // The prefab is scaled down (it was a small sphere); build the model in real metres underneath it.
+            var holder = new GameObject("Model").transform;
+            holder.SetParent(transform, false);
+            Vector3 s = transform.lossyScale;
+            holder.localScale = new Vector3(1f / Mathf.Max(0.01f, s.x), 1f / Mathf.Max(0.01f, s.y), 1f / Mathf.Max(0.01f, s.z));
+            float size = item.tier == Data.LootTier.Legendary ? 1.35f : (item.tier == Data.LootTier.Rare ? 1.15f : 1f);
+            var model = Art.ArtefactBuilder.Build(holder, item.shape, item.tier);
+            model.localScale = Vector3.one * size;
+            model.gameObject.AddComponent<Art.PickupSpin>();
         }
 
         public override void FixedUpdateNetwork()
