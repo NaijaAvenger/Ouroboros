@@ -15,6 +15,12 @@ namespace Ouroboros.AI
         [SerializeField] private float scanDegreesPerSecond = 20f;
         [SerializeField] private float scanArc = 120f;
 
+        /// <summary>
+        /// (v0.9) The sniper's counterplay is its long, visible aim (it paints you Revealed first), not a dice
+        /// roll: once it fires, it hits. Break line of sight during the aim to escape.
+        /// </summary>
+        protected override float HitChanceAgainst(Network.NetworkPlayer target, float distance) => 1f;
+
         [Networked] private TickTimer AimTimer { get; set; }
         [Networked] private NetworkBool Aiming { get; set; }
 

@@ -31,18 +31,33 @@ namespace Ouroboros.UI
             GameMode.LootObjective.Completed += OnObjectiveCompleted;
             Network.NetworkPlayer.PlayerKilled += OnPlayerKilled;
             Equipment.Projectile.Exploded += OnExploded;
+            AI.BaseAIAgent.AgentFired += OnAgentFired; // (v0.9)
+        }
+
+        private static readonly Color GuardTracerColor = new Color(1f, 0.35f, 0.25f, 0.9f);
+
+        /// <summary>(v0.9) Guard shots, hits and misses alike: a red tracer and a positional shot sound.</summary>
+        private void OnAgentFired(AI.BaseAIAgent agent, Vector3 from, Vector3 to, bool hit)
+        {
+            Combat.ShotTracer.Spawn(from, to, GuardTracerColor, 0.035f, 0.1f);
+            var lib = Library;
+            AudioSource.PlayClipAtPoint(Core.ProceduralSfx.GuardShot, from, lib != null ? lib.matchVolume : 1f);
         }
 
         private void OnExploded(Vector3 point, float radius)
         {
             var lib = Library;
+            // [v0.8] if (lib == null) return;
+            // [v0.8] if (lib.explosion != null) AudioSource.PlayClipAtPoint(lib.explosion, point, lib.matchVolume);
+            // (v0.9) placeholder fallback so explosions are never silent
+            AudioSource.PlayClipAtPoint(lib != null && lib.explosion != null ? lib.explosion : Core.ProceduralSfx.Explosion, point, lib != null ? lib.matchVolume : 1f);
             if (lib == null) return;
-            if (lib.explosion != null) AudioSource.PlayClipAtPoint(lib.explosion, point, lib.matchVolume);
             lib.SpawnVfx(lib.explosionVfx, point, Quaternion.identity);
         }
 
         private void OnDisable()
         {
+            AI.BaseAIAgent.AgentFired -= OnAgentFired;
             Equipment.Projectile.Exploded -= OnExploded;
             GameMode.ExtractionHeistGameMode.StateChanged -= OnStateChanged;
             GameMode.ExtractionHeistGameMode.ExtractionOpened -= OnExtractionOpened;
