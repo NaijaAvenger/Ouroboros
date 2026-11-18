@@ -95,10 +95,16 @@ namespace Ouroboros.UI
             GameMode.ExtractionHeistGameMode.TeamExtractedEvent += OnTeamExtracted;
             GameMode.LootObjective.Completed += OnObjectiveCompleted;
             Network.NetworkPlayer.PlayerKilled += OnPlayerKilled;
+            GameMode.ExtractionHeistGameMode.GetawayCalled += OnGetawayCalled; // (v0.10)
+            GameMode.ExtractionHeistGameMode.CrewWiped += OnCrewWiped;
+            GameMode.LootDrop.PickedUp += OnLootPickedUp;
         }
 
         private void OnDisable()
         {
+            GameMode.ExtractionHeistGameMode.GetawayCalled -= OnGetawayCalled;
+            GameMode.ExtractionHeistGameMode.CrewWiped -= OnCrewWiped;
+            GameMode.LootDrop.PickedUp -= OnLootPickedUp;
             GameMode.ExtractionHeistGameMode.StateChanged -= OnStateChanged;
             GameMode.ExtractionHeistGameMode.ExtractionOpened -= OnExtractionOpened;
             GameMode.ExtractionHeistGameMode.TeamExtractedEvent -= OnTeamExtracted;
@@ -408,11 +414,17 @@ namespace Ouroboros.UI
                     timerLabel.text = Fmt(gm.PhaseTimeRemaining);
                     break;
                 case GameMode.ExtractionHeistGameMode.GameState.InProgress:
-                    stateLabel.text = gm.ExtractionOpen ? "Extraction OPEN" : "Heist in progress";
+                    // [v0.9] stateLabel.text = gm.ExtractionOpen ? "Extraction OPEN" : "Heist in progress";
+                    stateLabel.text = gm.Config.UseRunRules
+                        ? $"Heist  -  first crew carrying ${gm.Config.lootQuota} calls the getaway"
+                        : (gm.ExtractionOpen ? "Extraction OPEN" : "Heist in progress");
                     timerLabel.text = Fmt(gm.MatchTimeRemaining);
                     break;
                 case GameMode.ExtractionHeistGameMode.GameState.Extraction:
-                    stateLabel.text = "EXTRACT NOW";
+                    // [v0.9] stateLabel.text = "EXTRACT NOW";
+                    stateLabel.text = gm.Config.UseRunRules && gm.RichestTeam != Core.TeamID.None
+                        ? $"GETAWAY  -  {TeamName(gm.RichestTeam)} crew holds the most"
+                        : "EXTRACT NOW";
                     timerLabel.text = Fmt(gm.PhaseTimeRemaining);
                     break;
                 case GameMode.ExtractionHeistGameMode.GameState.MatchEnded:
@@ -437,8 +449,23 @@ namespace Ouroboros.UI
                 var s = tm.GetTeamStatus(team);
                 row.Name.text = TeamName(team) + (local != null && local.Team == team ? " ★" : "");
                 row.Score.text = gm != null && gm.Object != null ? gm.TeamScores[i].ToString() : "0";
-                row.Loot.text = gm != null && gm.Object != null ? $"${gm.TeamLoot[i]}" : "";
-                row.Status.text = s.Extracted == s.Total && s.Total > 0 ? "out" : $"{s.Alive}/{s.Total} up";
+                // [v0.9] row.Loot.text = gm != null && gm.Object != null ? $"${gm.TeamLoot[i]}" : "";
+                // [v0.9] row.Status.text = s.Extracted == s.Total && s.Total > 0 ? "out" : $"{s.Alive}/{s.Total} up";
+                bool live = gm != null && gm.Object != null;
+                if (live && gm.Config.UseRunRules)
+                {
+                    // (v0.10) Score is what the crew got out with; this column is what it is carrying toward the quota.
+                    int carried = gm.GetTeamCarried(team);
+                    row.Loot.text = gm.IsGetaway ? $"${carried}" : $"${carried} / {gm.Config.lootQuota}";
+                    row.Loot.style.color = gm.IsGetaway && gm.RichestTeam == team ? HealthColor : LootColor;
+                    row.Status.text = gm.CrewEliminated[i] ? "OUT"
+                        : (s.Extracted == s.Total && s.Total > 0 ? "away" : $"{s.Alive}/{s.Total} up");
+                }
+                else
+                {
+                    row.Loot.text = live ? $"${gm.TeamLoot[i]}" : "";
+                    row.Status.text = s.Extracted == s.Total && s.Total > 0 ? "out" : $"{s.Alive}/{s.Total} up";
+                }
             }
         }
 
@@ -463,7 +490,10 @@ namespace Ouroboros.UI
             }
             if (local.EnemyCards > 0) keys += $"  [ID cards: {local.EnemyCards}]";
             statusLabel.text = StatusText(local.Status) + keys;
-            lootLabel.text = $"${local.CarriedLoot}";
+            // [v0.9] lootLabel.text = $"${local.CarriedLoot}";
+            lootLabel.text = local.CarriedItemCount > 0 || local.CarriedLoot > 0
+                ? $"${local.CarriedLoot}   {local.CarriedItemCount}/{local.ItemCapacity} items"
+                : "$0";
             kdLabel.text = $"K {local.Kills}  D {local.Deaths}";
             RefreshAmmo();
 
@@ -640,7 +670,15 @@ namespace Ouroboros.UI
                 SetBar(zoneFill, bestEp.ProgressNormalized, 1f);
                 if (gm != null && !gm.ExtractionOpen) zoneHint.text = "Not open yet";
                 else if (!bestEp.IsActive) zoneHint.text = "Closed - reopening soon";
-                else if (bestEp.CurrentExtractingTeam == Core.TeamID.None) zoneHint.text = gm != null && gm.CanExtract(local) ? "Stand here to extract" : "Not eligible to extract";
+                // [v0.9] else if (bestEp.CurrentExtractingTeam == Core.TeamID.None) zoneHint.text = gm != null && gm.CanExtract(local) ? "Stand here to extract" : "Not eligible to extract";
+                else if (bestEp.CurrentExtractingTeam == Core.TeamID.None)
+                {
+                    if (gm == null || !gm.CanExtract(local)) zoneHint.text = gm != null && !gm.ExtractionOpen ? "Locked until the getaway is called" : "Not eligible to extract";
+                    else if (!gm.Config.UseRunRules) zoneHint.text = "Stand here to extract";
+                    else zoneHint.text = bestEp.IsCentral
+                        ? "CENTRAL GETAWAY - stand here to bank everything"
+                        : $"Side exit - banks {Mathf.RoundToInt(bestEp.PayoutMultiplier * 100f)}% of what you carry";
+                }
                 else if (bestEp.IsContested) zoneHint.text = "CONTESTED - clear the zone";
                 else zoneHint.text = bestEp.CurrentExtractingTeam == local.Team ? "Extracting... hold position" : $"{TeamName(bestEp.CurrentExtractingTeam)} is extracting!";
             }
@@ -705,12 +743,49 @@ namespace Ouroboros.UI
             switch (state)
             {
                 case GameMode.ExtractionHeistGameMode.GameState.PreMatch:   ShowBanner("Get ready"); break;
-                case GameMode.ExtractionHeistGameMode.GameState.InProgress: ShowBanner("GO - crack the vaults"); break;
-                case GameMode.ExtractionHeistGameMode.GameState.Extraction: ShowBanner("EXTRACTION PHASE - get out!"); break;
+                case GameMode.ExtractionHeistGameMode.GameState.InProgress: ShowBanner("GO - crack the vaults, carry the loot"); break;
+                // [v0.9] case GameMode.ExtractionHeistGameMode.GameState.Extraction: ShowBanner("EXTRACTION PHASE - get out!"); break;
+                case GameMode.ExtractionHeistGameMode.GameState.Extraction:
+                    var gmNow = GameMode.ExtractionHeistGameMode.Instance;
+                    if (gmNow == null || !gmNow.Config.UseRunRules) ShowBanner("EXTRACTION PHASE - get out!"); // run rules: OnGetawayCalled speaks
+                    break;
             }
         }
 
         private void OnExtractionOpened() => ShowBanner("Extraction points are open");
+
+        // ---- (v0.10) The Run ----
+
+        private void OnGetawayCalled(Core.TeamID byTeam)
+        {
+            if (byTeam == Core.TeamID.None) { ShowBanner("TIME IS UP - the getaway is open"); return; }
+            bool ours = local != null && local.Team == byTeam;
+            ShowBanner(ours ? "QUOTA HIT - get to the central getaway!" : $"{TeamName(byTeam)} crew hit the quota - stop them at the getaway");
+            AddFeed($"{TeamName(byTeam)} crew called the getaway", Player.TeamSpawnPoint.TeamColor(byTeam));
+        }
+
+        private void OnCrewWiped(Core.TeamID team, bool eliminated)
+        {
+            AddFeed(eliminated ? $"{TeamName(team)} crew is OUT" : $"{TeamName(team)} crew wiped - redeploying", Player.TeamSpawnPoint.TeamColor(team));
+            if (local != null && local.Team == team) ShowBanner(eliminated ? "CREW ELIMINATED" : "CREW WIPED - redeploying together");
+        }
+
+        private void OnLootPickedUp(Network.NetworkPlayer who, int itemId, int value)
+        {
+            if (who == null || itemId <= 0) return;
+            var item = Data.LootCatalog.Active.Get(itemId);
+            if (item == null) return;
+            // Your own pickups show the story card; other crews' rare finds show up in the feed.
+            if (who.IsLocalPlayer)
+            {
+                AddFeed($"+ {item.name}  (${value})", Data.LootCatalog.TierColor(item.tier));
+                if (!string.IsNullOrEmpty(item.story)) AddFeed(item.story, new Color(0.85f, 0.85f, 0.85f));
+            }
+            else if (item.tier != Data.LootTier.Common)
+            {
+                AddFeed($"{who.DisplayName} took {item.name}", Player.TeamSpawnPoint.TeamColor(who.Team));
+            }
+        }
 
         private void OnTeamExtracted(Core.TeamID team, int members, int loot)
         {
@@ -788,6 +863,8 @@ namespace Ouroboros.UI
 
         private static string TeamName(Core.TeamID team)
         {
+            return Core.TeamUtil.DisplayName(team); // (v0.10) city crews; the switch below is the [v0.9] naming
+#pragma warning disable CS0162 // unreachable: kept for reference
             switch (team)
             {
                 case Core.TeamID.TeamAlpha:   return "Alpha";
@@ -795,7 +872,8 @@ namespace Ouroboros.UI
                 case Core.TeamID.TeamCharlie: return "Charlie";
                 case Core.TeamID.TeamDelta:   return "Delta";
                 default: return "-";
-            }
+    #pragma warning restore CS0162
+        }
         }
 
         private static string StatusText(Core.StatusFlags status)

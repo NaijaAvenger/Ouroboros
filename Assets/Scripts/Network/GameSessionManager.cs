@@ -49,6 +49,10 @@ namespace Ouroboros.Network
         [Tooltip("Designer stats / ability numbers / class prefabs. Published to every peer as ClassRegistry.Active.")]
         [SerializeField] private Data.ClassRegistry classRegistry;
 
+        [Header("Loot (optional)")]
+        [Tooltip("(v0.10) Named loot items. Leave empty to use the built-in catalog, which is identical on every peer.")]
+        [SerializeField] private Data.LootCatalog lootCatalog;
+
         [Header("Defaults")]
         [SerializeField] private Core.PlayerClassType defaultClass = Core.PlayerClassType.Agent;
         [Tooltip("Cycle through classes for successive joins so a dev lobby exercises every class.")]
@@ -115,6 +119,8 @@ namespace Ouroboros.Network
             if (classRegistry != null) Data.ClassRegistry.Active = classRegistry;
             FeedbackLibrary = feedbackLibrary;
             if (equipmentRegistry != null) Data.EquipmentRegistry.Active = equipmentRegistry;
+
+            if (lootCatalog != null) Data.LootCatalog.Active = lootCatalog; // (v0.10)
 
             Equipment.NetworkLoadout.WeaponFired += OnWeaponFired; // (v0.9) recoil
         }
@@ -263,6 +269,12 @@ namespace Ouroboros.Network
             if (teamManager != null && teamManager.Object != null && teamManager.Object.HasStateAuthority)
             {
                 team = teamManager.AssignPlayerToTeam(player);
+                // (v0.10) every seat taken, some by bots: a person joining late takes a bot's place
+                if (team == Core.TeamID.None)
+                {
+                    Core.TeamID freed = RemoveOneBot(r);
+                    if (freed != Core.TeamID.None) team = teamManager.AssignPlayerToTeam(player, freed);
+                }
             }
 
             Core.PlayerClassType classType = defaultClass;
@@ -320,6 +332,115 @@ namespace Ouroboros.Network
             {
                 teamManager.RemovePlayerFromTeam(player);
             }
+        }
+
+        // ------------------------------------------------------------------
+        // Bots (v0.10)
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// Bots are identified by PlayerRefs far above anything Fusion hands to a real connection, so everything
+        /// keyed by <c>NetworkPlayer.PlayerRef</c> (teams, kill credit, the carried case) works for them unchanged.
+        /// They have no input authority.
+        /// </summary>
+        private const int BotRefBase = 200;
+        private static readonly string[] BotNames =
+        {
+            "Ada", "Kofi", "Zuri", "Tunde", "Amara", "Sipho", "Wanjiru", "Chidi", "Efua", "Thabo", "Nia", "Jabari", "Folake", "Kwame", "Imani", "Sizwe"
+        };
+        private readonly List<PlayerRef> botRefs = new List<PlayerRef>();
+        private int botSerial;
+
+        public int BotCount => botRefs.Count;
+
+        /// <summary>
+        /// Fills every empty crew seat with a bot. Called by the game mode when the match starts. Host / Server
+        /// mode only: in Shared mode there is no single peer that could simulate them.
+        /// </summary>
+        public void FillWithBots()
+        {
+            if (runner == null || !runner.IsRunning || !runner.IsServer) return;
+            var gm = GameMode.ExtractionHeistGameMode.Instance;
+            var tm = TeamManager.Instance;
+            if (gm == null || tm == null || tm.Object == null || !tm.Object.HasStateAuthority) return;
+
+            var cfg = gm.Config;
+            int added = 0;
+            for (int t = 0; t < cfg.CrewCount; t++)
+            {
+                Core.TeamID team = Core.TeamUtil.FromIndex(t);
+                for (int guard = 0; guard < Core.GameConstants.PLAYERS_PER_TEAM && tm.GetTeamPlayerCount(team) < cfg.CrewSize; guard++)
+                {
+                    if (!SpawnBot(runner, team, cfg.botSkill)) break;
+                    added++;
+                }
+            }
+            if (added > 0) Debug.Log($"[GameSessionManager] Filled empty seats with {added} bot(s): {cfg.CrewCount} crews of {cfg.CrewSize}");
+        }
+
+        private bool SpawnBot(NetworkRunner r, Core.TeamID team, float skill)
+        {
+            if (!playerPrefab.IsValid && playerPrefabObject == null) return false;
+            var tm = TeamManager.Instance;
+
+            PlayerRef botRef = PlayerRef.FromIndex(BotRefBase + botSerial);
+            if (tm.AssignPlayerToTeam(botRef, team) != team) { tm.RemovePlayerFromTeam(botRef); return false; }
+
+            int classCount = Enum.GetValues(typeof(Core.PlayerClassType)).Length - 1; // skip None
+            Core.PlayerClassType classType = (Core.PlayerClassType)(1 + (classRotation++ % classCount));
+            string botName = BotNames[botSerial % BotNames.Length];
+            botSerial++;
+
+            var point = spawnPoints.Pick(team);
+            Vector3 pos = point != null ? point.GetSpawnPosition() : Vector3.zero;
+            Quaternion rot = point != null ? point.GetSpawnRotation() : Quaternion.identity;
+
+            void InitBot(NetworkRunner runner, NetworkObject o)
+            {
+                var np = o.GetComponent<NetworkPlayer>();
+                if (np == null) return;
+                np.PlayerRef = botRef;
+                np.AssignedTeam = team;
+                np.ClassType = classType;
+                np.DisplayName = botName;
+                np.IsBot = true;
+            }
+
+            // No input authority: the state authority simulates the bot from AI.BotBrain's input.
+            NetworkObject obj = playerPrefab.IsValid
+                ? r.Spawn(playerPrefab, pos, rot, null, InitBot)
+                : r.Spawn(playerPrefabObject, pos, rot, null, InitBot);
+            if (obj == null) { tm.RemovePlayerFromTeam(botRef); return false; }
+
+            var brain = obj.gameObject.AddComponent<AI.BotBrain>();
+            brain.skill = skill;
+            var controller = obj.GetComponent<Player.PlayerController>();
+            if (controller != null) controller.SetBot(brain);
+
+            spawnedPlayers[botRef] = obj;
+            botRefs.Add(botRef);
+            Debug.Log($"[GameSessionManager] Spawned bot '{botName}' on {Core.TeamUtil.DisplayName(team)} as {classType}");
+            return true;
+        }
+
+        /// <summary>Removes one bot to make room for a person. Returns the crew whose seat was freed, or None.</summary>
+        private Core.TeamID RemoveOneBot(NetworkRunner r)
+        {
+            for (int i = 0; i < botRefs.Count; i++)
+            {
+                PlayerRef botRef = botRefs[i];
+                if (!spawnedPlayers.TryGetValue(botRef, out NetworkObject obj) || obj == null) continue;
+                var np = obj.GetComponent<NetworkPlayer>();
+                Core.TeamID team = np != null ? np.Team : Core.TeamID.None;
+
+                r.Despawn(obj);
+                spawnedPlayers.Remove(botRef);
+                botRefs.RemoveAt(i);
+                var tm = TeamManager.Instance;
+                if (tm != null && tm.Object != null && tm.Object.HasStateAuthority) tm.RemovePlayerFromTeam(botRef);
+                return team;
+            }
+            return Core.TeamID.None;
         }
 
         /// <summary>Respawns a dead player at one of their team's spawn points. State authority only.</summary>
@@ -467,6 +588,7 @@ namespace Ouroboros.Network
         {
             Debug.Log($"[GameSessionManager] Runner shutdown: {shutdownReason}");
             spawnedPlayers.Clear();
+            botRefs.Clear(); // (v0.10)
             runner = null;
         }
 

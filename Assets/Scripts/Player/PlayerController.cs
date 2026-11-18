@@ -91,6 +91,11 @@ namespace Ouroboros.Player
         // [v0.1] private float verticalRotation = 0f;
         private float localPitch;
 
+        private AI.BotBrain bot;
+
+        /// <summary>(v0.10) Hands control of this player to a bot brain. State authority only; see <c>AI.BotBrain</c>.</summary>
+        public void SetBot(AI.BotBrain brain) { bot = brain; }
+
         public Network.NetworkPlayer NetworkPlayer => networkPlayer;
         public bool IsSliding => SlideTimer.IsRunning && !SlideTimer.Expired(Runner);
         public bool IsMantling => MantleTimer.IsRunning && !MantleTimer.Expired(Runner);
@@ -168,7 +173,15 @@ namespace Ouroboros.Player
             // [v0.1] if (!Object.HasInputAuthority || !networkPlayer.IsAlive) return;   // ran only on the client
             // [v0.1] HandleMovement(); HandleAbilities(); HandleEquipment();           // polled UnityEngine.Input here
 
-            if (!GetInput(out Core.NetworkInputData input)) return;
+            // [v0.9] if (!GetInput(out Core.NetworkInputData input)) return;
+            // (v0.10) a bot has no input authority: its brain supplies the input on the state authority, and
+            //         everything below treats it exactly like a person's.
+            Core.NetworkInputData input;
+            if (bot != null)
+            {
+                if (!Object.HasStateAuthority || !bot.TryGetInput(out input)) return;
+            }
+            else if (!GetInput(out input)) return;
 
             NetworkButtons pressed = input.Buttons.GetPressed(PreviousButtons);
             PreviousButtons = input.Buttons;

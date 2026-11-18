@@ -157,5 +157,122 @@ namespace Ouroboros.Tests
         {
             Assert.That(MatchRules.LowestSetBit(flags), Is.EqualTo(expected));
         }
+
+        // ---- The Run (v0.10): quota, richest crew, payouts, wipes, fair contests ----
+
+        [TestCase(2999, 3000, false)]
+        [TestCase(3000, 3000, true)]
+        [TestCase(9000, 3000, true)]
+        [TestCase(9000, 0, false)]     // quota 0 switches the rule off
+        public void QuotaReached(int carried, int quota, bool expected)
+        {
+            Assert.That(MatchRules.QuotaReached(carried, quota), Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void RichestTeam_IsTheCrewCarryingTheMost()
+        {
+            Assert.That(MatchRules.RichestTeam(new[] { 200, 1500, 900, 0 }, AllTeams), Is.EqualTo(1));
+        }
+
+        [Test]
+        public void RichestTeam_NobodyCarrying_IsNobody()
+        {
+            Assert.That(MatchRules.RichestTeam(new[] { 0, 0, 0, 0 }, AllTeams), Is.EqualTo(-1));
+        }
+
+        [Test]
+        public void RichestTeam_IgnoresEmptyCrews_AndTiesGoToTheLowerIndex()
+        {
+            Assert.That(MatchRules.RichestTeam(new[] { 500, 900, 900, 0 }, new[] { true, false, true, true }), Is.EqualTo(2));
+            Assert.That(MatchRules.RichestTeam(new[] { 700, 700, 0, 0 }, AllTeams), Is.EqualTo(0));
+        }
+
+        [TestCase(1000, 1.0f, 1000)]
+        [TestCase(1000, 0.6f, 600)]
+        [TestCase(333, 0.5f, 167)]     // rounds half away from zero
+        [TestCase(0, 1.0f, 0)]
+        [TestCase(500, -2f, 0)]
+        public void BankedValue_AppliesTheExitPayout(int carried, float payout, int expected)
+        {
+            Assert.That(MatchRules.BankedValue(carried, payout), Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void BankedValue_SideExitNeverBeatsTheCentralGetaway()
+        {
+            for (int v = 0; v <= 5000; v += 137)
+            {
+                Assert.That(MatchRules.BankedValue(v, 0.6f), Is.LessThanOrEqualTo(MatchRules.BankedValue(v, 1f)));
+            }
+        }
+
+        [Test]
+        public void ResolveCrewWipe_RedeploysUntilTheLimit_ThenEliminates()
+        {
+            Assert.That(MatchRules.ResolveCrewWipe(wipesSoFar: 0, maxWipes: 1), Is.EqualTo(MatchRules.WipeOutcome.Redeploy));
+            Assert.That(MatchRules.ResolveCrewWipe(wipesSoFar: 1, maxWipes: 1), Is.EqualTo(MatchRules.WipeOutcome.Eliminated));
+            Assert.That(MatchRules.ResolveCrewWipe(wipesSoFar: 0, maxWipes: 0), Is.EqualTo(MatchRules.WipeOutcome.Eliminated));
+            Assert.That(MatchRules.ResolveCrewWipe(wipesSoFar: 50, maxWipes: -1), Is.EqualTo(MatchRules.WipeOutcome.Redeploy));
+        }
+
+        [Test]
+        public void RotatedIndex_VisitsEveryTeamOnce_AndTheFirstTeamChangesEachTick()
+        {
+            var firsts = new System.Collections.Generic.HashSet<int>();
+            for (int tick = 100; tick < 104; tick++)
+            {
+                var seen = new System.Collections.Generic.HashSet<int>();
+                for (int step = 0; step < 4; step++) seen.Add(MatchRules.RotatedIndex(tick, step, 4));
+                Assert.That(seen.Count, Is.EqualTo(4), "every team must be considered exactly once per scan");
+                firsts.Add(MatchRules.RotatedIndex(tick, 0, 4));
+            }
+            Assert.That(firsts.Count, Is.EqualTo(4), "over four ticks each team gets to go first once");
+        }
+
+        [Test]
+        public void RotatedIndex_HandlesNegativeTicksAndEmptyCounts()
+        {
+            Assert.That(MatchRules.RotatedIndex(-3, 0, 4), Is.InRange(0, 3));
+            Assert.That(MatchRules.RotatedIndex(5, 2, 0), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void PickDistinct_ReturnsDistinctIndicesInsideThePool()
+        {
+            var result = new int[4];
+            for (int seed = 0; seed < 500; seed++)
+            {
+                int n = MatchRules.PickDistinct(seed, 9, 4, result);
+                Assert.That(n, Is.EqualTo(4));
+                Assert.That(new System.Collections.Generic.HashSet<int>(result).Count, Is.EqualTo(4), $"seed {seed} repeated an index");
+                foreach (int i in result) Assert.That(i, Is.InRange(0, 8));
+            }
+        }
+
+        [Test]
+        public void PickDistinct_IsDeterministic_AndVariesWithTheSeed()
+        {
+            var a = new int[3]; var b = new int[3];
+            MatchRules.PickDistinct(42, 12, 3, a);
+            MatchRules.PickDistinct(42, 12, 3, b);
+            Assert.That(a, Is.EqualTo(b));
+
+            var seen = new System.Collections.Generic.HashSet<string>();
+            for (int seed = 0; seed < 60; seed++)
+            {
+                MatchRules.PickDistinct(seed, 12, 3, a);
+                seen.Add(string.Join(",", a));
+            }
+            Assert.That(seen.Count, Is.GreaterThan(20), "different vaults should not all hold the same items");
+        }
+
+        [Test]
+        public void PickDistinct_SmallPool_ReturnsWhatThereIs()
+        {
+            var result = new int[5];
+            Assert.That(MatchRules.PickDistinct(7, 2, 5, result), Is.EqualTo(2));
+            Assert.That(MatchRules.PickDistinct(7, 0, 5, result), Is.EqualTo(0));
+        }
     }
 }

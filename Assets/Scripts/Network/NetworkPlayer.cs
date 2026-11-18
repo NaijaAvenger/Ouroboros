@@ -45,6 +45,16 @@ namespace Ouroboros.Network
         /// <summary>ID cards looted from dead players of other teams (v0.7).</summary>
         [Networked] public int EnemyCards { get; set; }
 
+        /// <summary>(v0.10) Driven by <c>AI.BotBrain</c> on the state authority instead of a person. Has no input authority.</summary>
+        [Networked] public NetworkBool IsBot { get; set; }
+
+        /// <summary>Structural size of <see cref="CarriedItemIds"/>. The rule limit is GameModeConfig.maxCarriedItems.</summary>
+        public const int MAX_CARRIED_ITEMS = 8;
+        /// <summary>(v0.10) Loot catalog ids of the named items being carried (first <see cref="CarriedItemCount"/> entries).</summary>
+        [Networked, Capacity(MAX_CARRIED_ITEMS)]
+        public NetworkArray<int> CarriedItemIds => default;
+        [Networked] public int CarriedItemCount { get; set; }
+
         [Networked, Capacity(Core.GameConstants.MAX_ABILITY_SLOTS)]
         public NetworkArray<TickTimer> AbilityCooldowns => default;
 
@@ -572,6 +582,7 @@ namespace Ouroboros.Network
         public void NotifyHitConfirm(float damage, bool headshot, bool killed)
         {
             if (!Object.HasStateAuthority || damage <= 0f) return;
+            if (Object.InputAuthority.IsNone) return; // (v0.10) bots have no client to tell
             RPC_HitConfirm(damage, headshot, killed);
         }
 
@@ -614,10 +625,11 @@ namespace Ouroboros.Network
             if (gm != null)
             {
                 gm.OnPlayerDied(this, killer);
-                if (gm.CanRespawn(this))
-                {
-                    RespawnTimer = TickTimer.CreateFromSeconds(Runner, gm.Config.respawnDelay);
-                }
+                // [v0.9] if (gm.CanRespawn(this))
+                // [v0.9] {
+                // [v0.9]     RespawnTimer = TickTimer.CreateFromSeconds(Runner, gm.Config.respawnDelay);
+                // [v0.9] }
+                gm.ScheduleRespawn(this); // (v0.10) also resolves crew wipes
             }
 
             RPC_OnPlayerDeath(killer != null ? killer.PlayerRef : default);
@@ -659,10 +671,56 @@ namespace Ouroboros.Network
         /// <summary>Removes and returns all carried loot (death drop / extraction banking).</summary>
         public int TakeAllLoot()
         {
+            // [v0.9] if (!Object.HasStateAuthority) return 0;
+            // [v0.9] int loot = CarriedLoot;
+            // [v0.9] CarriedLoot = 0;
+            // [v0.9] return loot;
+            return TakeAllLoot(null);
+        }
+
+        /// <summary>
+        /// (v0.10) As above, and also hands back the catalog ids of the named items that were carried, so a
+        /// death can drop them as separate pickups. <see cref="CarriedLoot"/> is the total: items plus loose loot.
+        /// </summary>
+        public int TakeAllLoot(List<int> itemIds)
+        {
             if (!Object.HasStateAuthority) return 0;
             int loot = CarriedLoot;
             CarriedLoot = 0;
+
+            int count = Mathf.Clamp(CarriedItemCount, 0, MAX_CARRIED_ITEMS);
+            for (int i = 0; i < count; i++)
+            {
+                itemIds?.Add(CarriedItemIds[i]);
+                CarriedItemIds.Set(i, 0);
+            }
+            CarriedItemCount = 0;
             return loot;
+        }
+
+        /// <summary>(v0.10) How many named items this player may carry under the current rules.</summary>
+        public int ItemCapacity
+        {
+            get
+            {
+                var gm = GameMode.ExtractionHeistGameMode.Instance;
+                int limit = gm != null ? gm.Config.maxCarriedItems : 4;
+                return Mathf.Clamp(limit, 1, MAX_CARRIED_ITEMS);
+            }
+        }
+
+        public bool CanCarryItem => CarriedItemCount < ItemCapacity && CarriedLoot < Core.GameConstants.MAX_CARRIED_LOOT;
+
+        /// <summary>
+        /// (v0.10) Picks up one named item. All or nothing: returns false when the hands are full. State authority only.
+        /// </summary>
+        public bool AddLootItem(int itemId, int value)
+        {
+            if (!Object.HasStateAuthority || itemId <= 0 || value <= 0 || !CanCarryItem) return false;
+            if (AddLoot(value) <= 0) return false;
+            CarriedItemIds.Set(CarriedItemCount, itemId);
+            CarriedItemCount++;
+            return true;
         }
 
         /// <summary>Marks this player as extracted: out of the match, untargetable, loot banked by the game mode.</summary>

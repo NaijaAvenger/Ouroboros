@@ -93,6 +93,97 @@ namespace Ouroboros.Core
             return bit;
         }
 
+        // ------------------------------------------------------------------
+        // The Run (v0.10, milestone M2): quota race, getaway payouts, crew wipes, fair contests
+
+        /// <summary>True when a crew is carrying enough to call the getaway. A quota of 0 disables the rule.</summary>
+        public static bool QuotaReached(int crewCarried, int quota)
+        {
+            return quota > 0 && crewCarried >= quota;
+        }
+
+        /// <summary>
+        /// Index of the crew carrying the most, or -1 when nobody carries anything. Ties go to the lower index.
+        /// This is the crew everyone is told to hunt during the getaway.
+        /// </summary>
+        public static int RichestTeam(int[] carried, bool[] hasPlayers)
+        {
+            if (carried == null) return -1;
+            int best = -1, bestValue = 0;
+            for (int i = 0; i < carried.Length; i++)
+            {
+                if (hasPlayers != null && i < hasPlayers.Length && !hasPlayers[i]) continue;
+                if (carried[i] > bestValue) { bestValue = carried[i]; best = i; }
+            }
+            return best;
+        }
+
+        /// <summary>
+        /// Value actually banked when loot leaves through an exit. The central getaway pays in full
+        /// (multiplier 1); side exits pay a fraction.
+        /// </summary>
+        public static int BankedValue(int carriedValue, float payoutMultiplier)
+        {
+            if (carriedValue <= 0) return 0;
+            float m = payoutMultiplier < 0f ? 0f : payoutMultiplier;
+            return (int)Math.Round(carriedValue * (double)m, MidpointRounding.AwayFromZero);
+        }
+
+        public enum WipeOutcome
+        {
+            /// <summary>The whole crew redeploys together after the wipe delay.</summary>
+            Redeploy,
+            /// <summary>No redeploys left: the crew is out of the match.</summary>
+            Eliminated
+        }
+
+        /// <summary>
+        /// What happens when the last living member of a crew dies. <paramref name="wipesSoFar"/> counts earlier
+        /// wipes (not this one). A negative <paramref name="maxWipes"/> means unlimited redeploys.
+        /// </summary>
+        public static WipeOutcome ResolveCrewWipe(int wipesSoFar, int maxWipes)
+        {
+            if (maxWipes < 0) return WipeOutcome.Redeploy;
+            return wipesSoFar < maxWipes ? WipeOutcome.Redeploy : WipeOutcome.Eliminated;
+        }
+
+        /// <summary>
+        /// Team index to consider at step <paramref name="step"/> of a contest scan that starts at a different
+        /// team every tick. Without this the lowest team id won every simultaneous claim on a vault or exit.
+        /// </summary>
+        public static int RotatedIndex(int tick, int step, int count)
+        {
+            if (count <= 0) return 0;
+            int start = ((tick % count) + count) % count;
+            return (start + step) % count;
+        }
+
+        /// <summary>
+        /// Picks <paramref name="count"/> distinct indices out of <paramref name="poolSize"/>, the same way on
+        /// every peer for the same seed. Fills <paramref name="result"/> and returns how many were written
+        /// (fewer than asked when the pool is smaller).
+        /// </summary>
+        public static int PickDistinct(int seed, int poolSize, int count, int[] result)
+        {
+            if (result == null || poolSize <= 0 || count <= 0) return 0;
+            int n = Math.Min(Math.Min(count, poolSize), result.Length);
+
+            // Partial Fisher-Yates over a virtual 0..poolSize-1 array, tracking only the swapped slots.
+            var swapped = new System.Collections.Generic.Dictionary<int, int>();
+            uint state = unchecked((uint)seed * 2654435761u + 0x9E3779B9u);
+            for (int i = 0; i < n; i++)
+            {
+                state ^= state << 13; state ^= state >> 17; state ^= state << 5; // xorshift32
+                int j = i + (int)(state % (uint)(poolSize - i));
+                int atI = swapped.TryGetValue(i, out int vi) ? vi : i;
+                int atJ = swapped.TryGetValue(j, out int vj) ? vj : j;
+                result[i] = atJ;
+                swapped[j] = atI;
+                swapped[i] = atJ;
+            }
+            return n;
+        }
+
         private static float Clamp(float value, float min, float max) => value < min ? min : (value > max ? max : value);
     }
 }

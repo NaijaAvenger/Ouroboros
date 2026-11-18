@@ -16,16 +16,65 @@ namespace Ouroboros.GameMode
         [SerializeField] private float pickupDelay = 1f;
 
         [Networked] public int Value { get; set; }
+        /// <summary>(v0.10) Loot catalog id of a named item, or 0 for loose loot that is just a number.</summary>
+        [Networked] public int ItemId { get; set; }
+
+        /// <summary>(v0.10) Live registry on this peer (bots and HUD look pickups up here).</summary>
+        public static readonly System.Collections.Generic.List<LootDrop> All = new System.Collections.Generic.List<LootDrop>();
+        /// <summary>(v0.10) Fired on every peer when someone takes loot (who, catalog id or 0, value).</summary>
+        public static event System.Action<Network.NetworkPlayer, int, int> PickedUp;
+
+        private float lifetimeOverride;
+
+        public float PickupRadius => pickupRadius;
+        public bool IsPickupReady => PickupDelayTimer.ExpiredOrNotRunning(Runner);
+        public Data.LootItemDef Item => ItemId > 0 ? Data.LootCatalog.Active.Get(ItemId) : null;
+
+        /// <summary>
+        /// (v0.10) Sets what this pickup is. Call from the spawn callback, before <see cref="Spawned"/> runs.
+        /// <paramref name="lifetimeSeconds"/> of 0 keeps the prefab's default.
+        /// </summary>
+        public void Configure(int value, int itemId, float lifetimeSeconds = 0f)
+        {
+            Value = value;
+            ItemId = itemId;
+            lifetimeOverride = lifetimeSeconds;
+        }
         [Networked] private TickTimer LifetimeTimer { get; set; }
         [Networked] private TickTimer PickupDelayTimer { get; set; }
 
         public override void Spawned()
         {
+            if (!All.Contains(this)) All.Add(this);
             if (Object.HasStateAuthority)
             {
-                LifetimeTimer = TickTimer.CreateFromSeconds(Runner, lifetime);
+                // [v0.9] LifetimeTimer = TickTimer.CreateFromSeconds(Runner, lifetime);
+                LifetimeTimer = TickTimer.CreateFromSeconds(Runner, lifetimeOverride > 0f ? lifetimeOverride : lifetime);
                 PickupDelayTimer = TickTimer.CreateFromSeconds(Runner, pickupDelay);
             }
+            ApplyLook();
+        }
+
+        public override void Despawned(NetworkRunner runner, bool hasState)
+        {
+            All.Remove(this);
+        }
+
+        /// <summary>(v0.10) Named items are tinted by tier and sized by value so a glance tells what is worth grabbing.</summary>
+        private void ApplyLook()
+        {
+            var item = Item;
+            if (item == null) return;
+            var renderer = GetComponentInChildren<Renderer>();
+            if (renderer != null)
+            {
+                var block = new MaterialPropertyBlock();
+                Color c = Data.LootCatalog.TierColor(item.tier);
+                block.SetColor("_Color", c); block.SetColor("_BaseColor", c);
+                renderer.SetPropertyBlock(block);
+            }
+            float scale = item.tier == Data.LootTier.Legendary ? 1.5f : (item.tier == Data.LootTier.Rare ? 1.2f : 1f);
+            transform.localScale *= scale;
         }
 
         public override void FixedUpdateNetwork()
@@ -44,6 +93,15 @@ namespace Ouroboros.GameMode
             var candidates = Network.NetworkPlayer.FindPlayersInRadius(transform.position, pickupRadius, Core.TeamID.None, aliveOnly: true);
             foreach (var player in candidates)
             {
+                // (v0.10) a named item is taken whole, and only by someone with a free hand
+                if (ItemId > 0)
+                {
+                    if (!player.AddLootItem(ItemId, Value)) continue;
+                    RPC_PickedUp(player.PlayerRef, Value);
+                    Runner.Despawn(Object);
+                    return;
+                }
+
                 int accepted = player.AddLoot(Value);
                 if (accepted <= 0) continue;
 
@@ -61,6 +119,7 @@ namespace Ouroboros.GameMode
         private void RPC_PickedUp(PlayerRef player, int amount)
         {
             Debug.Log($"[LootDrop] {player} picked up {amount} loot");
+            PickedUp?.Invoke(Network.NetworkPlayer.Resolve(player), ItemId, amount); // (v0.10)
         }
     }
 }

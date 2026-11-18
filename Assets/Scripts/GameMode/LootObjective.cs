@@ -38,6 +38,16 @@ namespace Ouroboros.GameMode
         [Tooltip("(v0.7) Exterior vault door that must be open before this interior can be cracked (also blocks hacking through walls).")]
         [SerializeField] private Interaction.VaultDoor gatedBy;
 
+        [Header("Loot (v0.10)")]
+        [Tooltip("Named items this vault spills when cracked. Their catalog values replace lootValue. 0 = old behaviour (lootValue split between the crackers).")]
+        [SerializeField] private int lootItemCount = 3;
+        [Tooltip("Which tier of the loot catalog most of this vault's items come from.")]
+        [SerializeField] private Data.LootTier lootTier = Data.LootTier.Common;
+        [Tooltip("Also add one item from the next tier up (a reason to pick this vault).")]
+        [SerializeField] private bool bonusItemFromNextTier = false;
+        [Tooltip("Seconds spilled items stay before they disappear.")]
+        [SerializeField] private float lootLifetime = 240f;
+
         [Networked] public NetworkBool IsAvailable { get; set; }
         [Networked] public NetworkBool IsUnlocked { get; set; }
         [Networked] public Core.TeamID CapturingTeam { get; set; }
@@ -122,9 +132,11 @@ namespace Ouroboros.GameMode
 
             if (CapturingTeam == Core.TeamID.None)
             {
-                // Lowest team id with an interacting member starts the capture (deterministic)
-                for (int t = 0; t < Core.GameConstants.MAX_TEAMS; t++)
+                // [v0.9] Lowest team id with an interacting member starts the capture (deterministic)
+                // (v0.10) the scan starts at a different crew every tick, so no crew wins every simultaneous claim
+                for (int step = 0; step < Core.GameConstants.MAX_TEAMS; step++)
                 {
+                    int t = Core.MatchRules.RotatedIndex((int)Runner.Tick, step, Core.GameConstants.MAX_TEAMS);
                     Core.TeamID team = Core.TeamUtil.FromIndex(t);
                     foreach (var p in interacting)
                     {
@@ -209,18 +221,26 @@ namespace Ouroboros.GameMode
                 return;
             }
 
-            // Split loot between the workers; remainder goes to the first.
-            int workers = 0;
-            foreach (var p in interacting) if (p.Team == team) workers++;
-            // [v0.8] int share = workers > 0 ? lootValue / workers : lootValue;
-            // [v0.8] int remainder = workers > 0 ? lootValue - share * workers : 0;
-            Core.MatchRules.SplitLoot(lootValue, workers, out int share, out int remainder); // (v0.9) same split, unit-tested
-            bool first = true;
-            foreach (var p in interacting)
+            // (v0.10) the vault spills named items onto the floor; whoever picks them up carries them. With no
+            //         pickup prefab or no items configured, fall back to handing the crackers a number.
+            int payout = SpillLoot(gm);
+            if (payout <= 0)
             {
-                if (p.Team != team) continue;
-                p.AddLoot(share + (first ? remainder : 0));
-                first = false;
+                payout = lootValue;
+                // Split loot between the workers; remainder goes to the first.
+                int workers = 0;
+                foreach (var p in interacting) if (p.Team == team) workers++;
+                // [v0.8] int share = workers > 0 ? lootValue / workers : lootValue;
+                // [v0.8] int remainder = workers > 0 ? lootValue - share * workers : 0;
+                Core.MatchRules.SplitLoot(lootValue, workers, out int share, out int remainder); // (v0.9) same split, unit-tested
+                bool first = true;
+                foreach (var p in interacting)
+                {
+                    if (p.Team != team) continue;
+                    p.AddLoot(share + (first ? remainder : 0));
+                    first = false;
+                }
+
             }
 
             gm?.OnObjectiveCompleted(team, this);
@@ -238,7 +258,44 @@ namespace Ouroboros.GameMode
                 RespawnTimer = TickTimer.CreateFromSeconds(Runner, respawnTime);
             }
 
-            RPC_Completed(team, lootValue);
+            // [v0.9] RPC_Completed(team, lootValue);
+            RPC_Completed(team, payout);
+        }
+
+        private readonly List<int> tierIds = new List<int>();
+        private readonly int[] picks = new int[Network.NetworkPlayer.MAX_CARRIED_ITEMS];
+
+        /// <summary>
+        /// (v0.10) Spawns this vault's items in a ring around it and returns their total value (0 when nothing
+        /// could be spawned). Which items come out is a deterministic pick from the catalog tier.
+        /// </summary>
+        private int SpillLoot(ExtractionHeistGameMode gm)
+        {
+            if (gm == null || !gm.CanSpawnLoot || lootItemCount <= 0) return 0;
+            var catalog = Data.LootCatalog.Active;
+            if (catalog == null || catalog.Count == 0) return 0;
+
+            int seed = unchecked((int)Runner.Tick * 397 ^ objectiveName.GetHashCode());
+            int spawned = 0, total = 0;
+
+            void Spill(Data.LootTier tier, int count, int tierSeed)
+            {
+                catalog.GetIdsOfTier(tier, tierIds);
+                int n = Core.MatchRules.PickDistinct(tierSeed, tierIds.Count, Mathf.Min(count, picks.Length), picks);
+                for (int i = 0; i < n; i++)
+                {
+                    int id = tierIds[picks[i]];
+                    int value = catalog.ValueOf(id);
+                    float angle = spawned * 2.399963f; // golden angle: an even ring for any count
+                    Vector3 pos = transform.position + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 1.7f;
+                    pos.y = transform.position.y - 0.4f;
+                    if (gm.SpawnLoot(pos, value, id, lootLifetime)) { spawned++; total += value; }
+                }
+            }
+
+            Spill(lootTier, lootItemCount, seed);
+            if (bonusItemFromNextTier && lootTier != Data.LootTier.Legendary) Spill(lootTier + 1, 1, seed + 1);
+            return total;
         }
 
         // ---- IHackable ----

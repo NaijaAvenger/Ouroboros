@@ -21,7 +21,9 @@ namespace Ouroboros.EditorTools
     ///
     /// Menu: Ouroboros > Setup > Create Dev Scene (Phase 0)
     /// </summary>
-    public static class OuroborosDevSceneBuilder
+    // [v0.9] public static class OuroborosDevSceneBuilder
+    // (v0.10) partial: the Freeport map lives in OuroborosFreeportBuilder.cs and shares the helpers below.
+    public static partial class OuroborosDevSceneBuilder
     {
         private const string Root = "Assets/Ouroboros";
         private const string PrefabDir = Root + "/Prefabs";
@@ -30,7 +32,12 @@ namespace Ouroboros.EditorTools
         private const string PlayerPrefabPath = PrefabDir + "/Player.prefab";
         private const string LootDropPrefabPath = PrefabDir + "/LootDrop.prefab";
         private const string TrapPrefabPath = PrefabDir + "/ProximityTrap.prefab";
-        private const string ScenePath = SceneDir + "/DevArena.unity";
+        // [v0.9] private const string ScenePath = SceneDir + "/DevArena.unity";
+        private const string DevArenaScenePath = SceneDir + "/DevArena.unity";
+        /// <summary>(v0.10) Scene the build steps read and write. The Freeport builder points it at its own scene while it runs.</summary>
+        private static string ScenePath = DevArenaScenePath;
+        /// <summary>(v0.10) Lays out the static level when a scene has none yet.</summary>
+        private static System.Action s_levelBuilder = BuildLevel;
         private const string ClassDir = Root + "/Classes";
         private const string RegistryPath = ClassDir + "/ClassRegistry.asset";
         private const string UIDir = Root + "/UI";
@@ -235,7 +242,8 @@ namespace Ouroboros.EditorTools
         private static Data.GameModeConfig CreateOrLoadConfig()
         {
             var cfg = AssetDatabase.LoadAssetAtPath<Data.GameModeConfig>(ConfigPath);
-            if (cfg != null) return cfg;
+            // [v0.9] if (cfg != null) return cfg;
+            if (cfg != null) { MigrateConfig(cfg); return cfg; }
 
             cfg = ScriptableObject.CreateInstance<Data.GameModeConfig>();
             cfg.modeName = "Dev Extraction Heist";
@@ -250,8 +258,39 @@ namespace Ouroboros.EditorTools
             cfg.objectiveRespawnTime = 30f;
             cfg.respawnDelay = 5f;
             cfg.maxRespawns = 10;
+            ApplyRunRules(cfg); // (v0.10)
             AssetDatabase.CreateAsset(cfg, ConfigPath);
             return cfg;
+        }
+
+        /// <summary>(v0.10, M2) Brings a config asset made by an earlier version onto the quota-race rules, once.</summary>
+        private static void MigrateConfig(Data.GameModeConfig cfg)
+        {
+            if (cfg.configVersion >= 2) return;
+            ApplyRunRules(cfg);
+            EditorUtility.SetDirty(cfg);
+            Debug.Log("[Ouroboros] DevGameModeConfig migrated to the M2 rules: crews of 3, loot quota, getaway, crew wipes, bots fill empty seats.");
+        }
+
+        /// <summary>Dev values for "The Run": short enough to iterate on, long enough to reach the getaway.</summary>
+        private static void ApplyRunRules(Data.GameModeConfig cfg)
+        {
+            cfg.playersPerTeam = 3;
+            cfg.numberOfTeams = 4;
+            cfg.matchDuration = 480f;            // the getaway starts here if nobody hits the quota first
+            cfg.extractionWindowDuration = 120f; // length of the getaway
+            cfg.lootQuota = 2500;
+            cfg.sideExitPayout = 0.6f;
+            cfg.scoreIsBankedLootOnly = true;
+            cfg.maxCarriedItems = 4;
+            cfg.respawnDelay = 8f;
+            cfg.maxRespawns = -1;                // limited by crew wipes instead
+            cfg.respawnRequiresLivingCrewmate = true;
+            cfg.crewWipeRedeployDelay = 15f;
+            cfg.maxCrewWipes = 1;
+            cfg.fillWithBots = true;
+            cfg.humanAssignment = Data.HumanAssignment.FillCrews;
+            cfg.configVersion = 2;
         }
 
         private static NetworkObject CreatePlayerPrefab()
@@ -1189,7 +1228,8 @@ namespace Ouroboros.EditorTools
 
             if (!exists || Object.FindFirstObjectByType<Player.TeamSpawnPoint>() == null)
             {
-                BuildLevel();
+                // [v0.9] BuildLevel();
+                (s_levelBuilder ?? BuildLevel)();
             }
 
             // Managers (scene NetworkObject)

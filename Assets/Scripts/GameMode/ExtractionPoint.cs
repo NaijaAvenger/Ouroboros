@@ -22,6 +22,29 @@ namespace Ouroboros.GameMode
         [SerializeField] private bool requiresAllTeamMembers = false;
         [SerializeField] private bool useConfigForTeamRequirement = true;
 
+        [Header("The Run (v0.10)")]
+        [Tooltip("The single central getaway: pays carried loot in full. Every other exit is a side exit and pays GameModeConfig.sideExitPayout.")]
+        [SerializeField] private bool isCentral = false;
+        [Tooltip("Overrides the payout fraction for this exit when > 0.")]
+        [SerializeField] private float payoutOverride = 0f;
+
+        /// <summary>(v0.10) Live registry on this peer.</summary>
+        public static readonly List<ExtractionPoint> All = new List<ExtractionPoint>();
+
+        public bool IsCentral => isCentral;
+
+        /// <summary>(v0.10) Fraction of carried value banked here. Always 1 under the pre-quota rules.</summary>
+        public float PayoutMultiplier
+        {
+            get
+            {
+                var gm = ExtractionHeistGameMode.Instance;
+                if (gm == null || !gm.Config.UseRunRules) return 1f;
+                if (payoutOverride > 0f) return payoutOverride;
+                return isCentral ? 1f : gm.Config.sideExitPayout;
+            }
+        }
+
         [Networked] public NetworkBool IsActive { get; set; }
         [Networked] public Core.TeamID CurrentExtractingTeam { get; set; }
         [Networked] public float Progress { get; set; }
@@ -58,6 +81,7 @@ namespace Ouroboros.GameMode
 
         public override void Spawned()
         {
+            if (!All.Contains(this)) All.Add(this);
             ExtractionHeistGameMode.Instance?.RegisterExtractionPoint(this);
 
             if (Object.HasStateAuthority)
@@ -70,6 +94,7 @@ namespace Ouroboros.GameMode
 
         public override void Despawned(NetworkRunner runner, bool hasState)
         {
+            All.Remove(this);
             ExtractionHeistGameMode.Instance?.UnregisterExtractionPoint(this);
         }
 
@@ -154,9 +179,11 @@ namespace Ouroboros.GameMode
         {
             if (playersInZone.Count == 0) return;
 
-            // First eligible team present (deterministic order: lowest team id)
-            for (int t = 0; t < Core.GameConstants.MAX_TEAMS; t++)
+            // [v0.9] First eligible team present (deterministic order: lowest team id)
+            // (v0.10) the scan starts at a different crew every tick, so no crew wins every simultaneous claim
+            for (int step = 0; step < Core.GameConstants.MAX_TEAMS; step++)
             {
+                int t = Core.MatchRules.RotatedIndex((int)Runner.Tick, step, Core.GameConstants.MAX_TEAMS);
                 Core.TeamID team = Core.TeamUtil.FromIndex(t);
                 int eligible = 0;
                 foreach (var p in playersInZone)
@@ -207,7 +234,8 @@ namespace Ouroboros.GameMode
             }
 
             // [v0.1] var gameMode = FindObjectOfType<ExtractionHeistGameMode>(); gameMode.TeamExtractedSuccessfully(extractedTeam);
-            gm.OnTeamExtractionCompleted(extractedTeam, extractingMembers);
+            // [v0.9] gm.OnTeamExtractionCompleted(extractedTeam, extractingMembers);
+            gm.OnTeamExtractionCompleted(extractedTeam, extractingMembers, PayoutMultiplier); // (v0.10)
 
             CurrentExtractingTeam = Core.TeamID.None;
             Progress = 0f;

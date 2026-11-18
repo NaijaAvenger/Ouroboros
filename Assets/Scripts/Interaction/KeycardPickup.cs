@@ -18,6 +18,11 @@ namespace Ouroboros.Interaction
         public float PickupRadius => pickupRadius;
 
         public static event System.Action<KeycardPickup, Network.NetworkPlayer> PickedUp;
+        /// <summary>(v0.10) Live registry on this peer.</summary>
+        public static readonly System.Collections.Generic.List<KeycardPickup> All = new System.Collections.Generic.List<KeycardPickup>();
+
+        public override void Spawned() { if (!All.Contains(this)) All.Add(this); }
+        public override void Despawned(NetworkRunner runner, bool hasState) { All.Remove(this); }
 
         public override void FixedUpdateNetwork()
         {

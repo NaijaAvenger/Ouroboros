@@ -57,6 +57,22 @@ namespace Ouroboros.Core
         public static int ToIndex(TeamID team) => (int)team - 1;
         public static TeamID FromIndex(int index) => (TeamID)(index + 1);
         public static bool IsValid(TeamID team) => team != TeamID.None && (int)team <= GameConstants.MAX_TEAMS;
+
+        /// <summary>
+        /// (v0.10) Crew name shown to players. Crews are city crews, not Alpha to Delta; the enum names stay
+        /// as they are because scenes and assets serialise them.
+        /// </summary>
+        public static string DisplayName(TeamID team)
+        {
+            switch (team)
+            {
+                case TeamID.TeamAlpha:   return "Lagos";
+                case TeamID.TeamBravo:   return "Nairobi";
+                case TeamID.TeamCharlie: return "Accra";
+                case TeamID.TeamDelta:   return "Joburg";
+                default: return "-";
+            }
+        }
     }
 
     /// <summary>
