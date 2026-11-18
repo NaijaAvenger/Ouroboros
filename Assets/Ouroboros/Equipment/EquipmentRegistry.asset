@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9f9a1d67ac82c6499abeeecb1c71113, type: 3}
+  m_Name: EquipmentRegistry
+  m_EditorClassIdentifier: Assembly-CSharp::Ouroboros.Data.EquipmentRegistry
+  items:
+  - {fileID: 11400000, guid: b47cf5f855001b2488560220c91c10d2, type: 2}
+  - {fileID: 11400000, guid: 0229463b5508991488d6851be575088a, type: 2}
+  - {fileID: 11400000, guid: 9a216a88b353d2c488e9febd9eacd992, type: 2}
+  - {fileID: 11400000, guid: 4cd680826fc501b4798509cd3fecd527, type: 2}
+  - {fileID: 11400000, guid: 2258b5cd60cf746459facb1988b01cf6, type: 2}
+  - {fileID: 11400000, guid: f433b84d1d44b794a975116d846ae721, type: 2}
+  - {fileID: 11400000, guid: 44cf889ca4c106b42aa4d6388d42e11a, type: 2}
+  - {fileID: 11400000, guid: 8f044df3c06cd804480def01ebc4d518, type: 2}
+  - {fileID: 11400000, guid: 0d7d98ce2b368544bb599a99069293dc, type: 2}
+  - {fileID: 11400000, guid: 8a50f976842c265418add5b9092d2036, type: 2}

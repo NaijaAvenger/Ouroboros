@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0d4d365252999b1478b6ebdaa17070fd, type: 3}
+  m_Name: Grenade_Launcher
+  m_EditorClassIdentifier: Assembly-CSharp::Ouroboros.Data.EquipmentData
+  equipmentName: Grenade Launcher
+  description: Impact-fused grenades. Mind the splash.
+  equipmentIcon: {fileID: 0}
+  equipmentPrefab: {fileID: 0}
+  slotType: 1
+  rarity: 0
+  kind: 1
+  cooldown: 1.2
+  maxUses: -1
+  range: 10
+  effectDuration: 0
+  damage: 60
+  automatic: 0
+  magazineSize: 3
+  reserveAmmo: 9
+  reloadTime: 2.5
+  spreadDegrees: 1
+  pelletCount: 1
+  hitMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  projectilePrefab: {fileID: 6149160477463540825, guid: 307a97f15e88a734bb76f6e2ceaaec72, type: 3}
+  projectileSpeed: 22
+  projectileGravity: -9.81
+  explosionRadius: 4
+  fuseTime: 0
+  projectileLifetime: 6
+  damageModifier: 0
+  defenseModifier: 0
+  speedModifier: 0
+  stealthModifier: 0
+  requiredLevel: 1
+  allowedClasses: 03000000

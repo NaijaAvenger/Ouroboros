@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0d4d365252999b1478b6ebdaa17070fd, type: 3}
+  m_Name: Breacher_Shotgun
+  m_EditorClassIdentifier: Assembly-CSharp::Ouroboros.Data.EquipmentData
+  equipmentName: Breacher Shotgun
+  description: Eight pellets of persuasion.
+  equipmentIcon: {fileID: 0}
+  equipmentPrefab: {fileID: 0}
+  slotType: 0
+  rarity: 0
+  kind: 0
+  cooldown: 0.8
+  maxUses: -1
+  range: 25
+  effectDuration: 0
+  damage: 9
+  automatic: 0
+  magazineSize: 6
+  reserveAmmo: 24
+  reloadTime: 2.4
+  spreadDegrees: 6
+  pelletCount: 8
+  hitMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  projectilePrefab: {fileID: 0}
+  projectileSpeed: 25
+  projectileGravity: 0
+  explosionRadius: 0
+  fuseTime: 0
+  projectileLifetime: 6
+  damageModifier: 0
+  defenseModifier: 0
+  speedModifier: 0
+  stealthModifier: 0
+  requiredLevel: 1
+  allowedClasses: 0300000004000000
