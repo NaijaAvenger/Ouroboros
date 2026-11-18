@@ -27,13 +27,19 @@ namespace Ouroboros.Equipment
             var shooter = owner;
             var stats = data;
 
-            Runner.Spawn(stats.projectilePrefab, origin, Quaternion.LookRotation(aim), owner.Object.InputAuthority, (runner, obj) =>
+            // (v0.9) OnUse also runs on the owning client as prediction: it spends the round and shows the
+            //        launch at once, but only the state authority creates the projectile.
+            if (HasAuthority)
             {
-                var projectile = obj.GetComponent<Projectile>();
-                if (projectile != null) projectile.Configure(shooter, aim * stats.projectileSpeed, stats);
-            });
+                Runner.Spawn(stats.projectilePrefab, origin, Quaternion.LookRotation(aim), owner.Object.InputAuthority, (runner, obj) =>
+                {
+                    var projectile = obj.GetComponent<Projectile>();
+                    if (projectile != null) projectile.Configure(shooter, aim * stats.projectileSpeed, stats);
+                });
+            }
 
-            loadout.NotifyFired(slotIndex, origin, false);
+            // [v0.8] loadout.NotifyFired(slotIndex, origin, false);
+            loadout.RegisterShot(slotIndex, origin, false);
             return true;
         }
     }

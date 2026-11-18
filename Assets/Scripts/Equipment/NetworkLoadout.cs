@@ -23,14 +23,36 @@ namespace Ouroboros.Equipment
         [Networked, Capacity(SLOTS)] public NetworkArray<TickTimer> UseTimers => default;
         [Networked, Capacity(SLOTS)] public NetworkArray<TickTimer> ReloadTimers => default;
 
+        // ---- v0.9 (M1): shots are networked state, not RPCs, so the shooter's client can predict them ----
+        /// <summary>Total shots fired by this loadout. Peers compare it with what they have already shown.</summary>
+        [Networked] public int FireCount { get; set; }
+        [Networked] public int LastShotSlot { get; set; }
+        /// <summary>Where the last shot ended (impact point, or the end of its range).</summary>
+        [Networked] public Vector3 LastShotPoint { get; set; }
+        [Networked] public NetworkBool LastShotHit { get; set; }
+        /// <summary>Spread bloom in degrees as of <see cref="BloomTick"/>; it recovers over time (see <see cref="CurrentBloom"/>).</summary>
+        [Networked] public float Bloom { get; set; }
+        [Networked] public int BloomTick { get; set; }
+
         private Network.NetworkPlayer owner;
         private ChangeDetector changeDetector;
         private readonly int[] knownIds = new int[SLOTS];
         private bool defaultsApplied;
+        private int shownFireCount;
+        private readonly bool[] shownReloading = new bool[SLOTS];
+
+        /// <summary>
+        /// True where weapon state is simulated: the state authority (truth) and the owning client (prediction).
+        /// The client's writes are overwritten by the server's state when it arrives.
+        /// </summary>
+        public bool CanSimulate => Object != null && (Object.HasStateAuthority || Object.HasInputAuthority);
 
         /// <summary>Fired on every peer when a slot's item id changes (slot index, new data or null).</summary>
         public event Action<int, Data.EquipmentData> SlotChanged;
-        /// <summary>Fired on every peer when a weapon fires (loadout, slot, world hit/end point, hit something). Cosmetic.</summary>
+        /// <summary>
+        /// Fired on every peer when a weapon fires (loadout, slot, world hit/end point, hit something). Cosmetic.
+        /// v0.9: raised from <see cref="Render"/> off <see cref="FireCount"/>, immediately on the shooter's own client.
+        /// </summary>
         public static event Action<NetworkLoadout, int, Vector3, bool> WeaponFired;
         /// <summary>Fired on every peer when a reload starts (loadout, slot).</summary>
         public static event Action<NetworkLoadout, int> ReloadStarted;
@@ -65,6 +87,10 @@ namespace Ouroboros.Equipment
             {
                 EquipDefaults(owner.CurrentClass.ClassData);
             }
+
+            // Late joiners must not replay shots / reloads that happened before they arrived.
+            shownFireCount = FireCount;
+            for (int i = 0; i < SLOTS; i++) shownReloading[i] = IsReloading(i);
         }
 
         public override void Render()
@@ -81,11 +107,44 @@ namespace Ouroboros.Equipment
                     SlotChanged?.Invoke(i, Registry?.Get(id));
                 }
             }
+
+            RenderShots();
+            RenderReloads();
+        }
+
+        /// <summary>
+        /// (v0.9) Raises <see cref="WeaponFired"/> for shots this peer has not shown yet. On the shooter's own
+        /// client <see cref="FireCount"/> is predicted, so feedback is immediate; everyone else sees it when the
+        /// server's state arrives. A rolled-back prediction just lowers the count again.
+        /// </summary>
+        private void RenderShots()
+        {
+            int count = FireCount;
+            if (count < shownFireCount) { shownFireCount = count; return; }
+            if (count == shownFireCount) return;
+
+            int newShots = Mathf.Min(count - shownFireCount, 3); // never spam after a hitch
+            shownFireCount = count;
+            for (int i = 0; i < newShots; i++)
+            {
+                WeaponFired?.Invoke(this, LastShotSlot, LastShotPoint, LastShotHit);
+            }
+        }
+
+        private void RenderReloads()
+        {
+            for (int i = 0; i < SLOTS; i++)
+            {
+                bool reloading = IsReloading(i);
+                if (reloading && !shownReloading[i]) ReloadStarted?.Invoke(this, i);
+                shownReloading[i] = reloading;
+            }
         }
 
         public override void FixedUpdateNetwork()
         {
-            if (!Object.HasStateAuthority) return;
+            // [v0.8] if (!Object.HasStateAuthority) return;   // the owning client now predicts reloads too
+            if (!CanSimulate) return;
 
             for (int i = 0; i < SLOTS; i++)
             {
@@ -210,14 +269,16 @@ namespace Ouroboros.Equipment
 
         public void StartCooldown(int slot, float seconds)
         {
-            if (!Object.HasStateAuthority || seconds <= 0f) return;
+            // [v0.8] if (!Object.HasStateAuthority || seconds <= 0f) return;
+            if (!CanSimulate || seconds <= 0f) return;
             UseTimers.Set(slot, TickTimer.CreateFromSeconds(Runner, seconds));
         }
 
         /// <summary>Spends one round. Auto-starts a reload when the magazine is empty. Returns false if nothing was spent.</summary>
         public bool ConsumeAmmo(int slot)
         {
-            if (!Object.HasStateAuthority) return false;
+            // [v0.8] if (!Object.HasStateAuthority) return false;
+            if (!CanSimulate) return false;
             var data = GetData(slot);
             if (data == null) return false;
             if (!data.UsesAmmo) return true;
@@ -233,13 +294,14 @@ namespace Ouroboros.Equipment
 
         public bool StartReload(int slot)
         {
-            if (!Object.HasStateAuthority) return false;
+            // [v0.8] if (!Object.HasStateAuthority) return false;
+            if (!CanSimulate) return false;
             var data = GetData(slot);
             if (data == null || !data.UsesAmmo) return false;
             if (IsReloading(slot) || Magazine[slot] >= data.magazineSize || Reserve[slot] <= 0) return false;
 
             ReloadTimers.Set(slot, TickTimer.CreateFromSeconds(Runner, Mathf.Max(0.05f, data.reloadTime)));
-            RPC_ReloadStarted(slot);
+            // [v0.8] RPC_ReloadStarted(slot);   // Render() now raises ReloadStarted from the replicated timer
             return true;
         }
 
@@ -265,25 +327,82 @@ namespace Ouroboros.Equipment
             Reserve.Set(slot, Reserve[slot] + amount);
         }
 
-        /// <summary>Called by weapons after a shot so every peer can play muzzle/impact effects.</summary>
+        /// <summary>
+        /// (v0.9) Records a shot in networked state: bumps <see cref="FireCount"/> (which drives feedback on every
+        /// peer), stores where it ended, and raises the bloom. Runs on the state authority and, as prediction, on
+        /// the owning client. Compute the shot's spread <b>before</b> calling this.
+        /// </summary>
+        public void RegisterShot(int slot, Vector3 endPoint, bool hit)
+        {
+            if (!CanSimulate) return;
+            var data = GetData(slot);
+            if (data != null)
+            {
+                Bloom = Core.CombatRules.BloomAfterShot(CurrentBloom, data.bloomPerShot, data.bloomMax);
+                BloomTick = (int)Runner.Tick;
+            }
+            LastShotSlot = slot;
+            LastShotPoint = endPoint;
+            LastShotHit = hit;
+            FireCount++;
+
+            // Guards only hear shots that really happened.
+            if (Object.HasStateAuthority && data != null && data.noiseRadius > 0f)
+            {
+                AI.AIBlackboard.ReportNoise(transform.position, data.noiseRadius); // v0.6
+            }
+        }
+
+        /// <summary>Legacy name for <see cref="RegisterShot"/>.</summary>
         public void NotifyFired(int slot, Vector3 point, bool hit)
         {
-            if (!Object.HasStateAuthority) return;
+            RegisterShot(slot, point, hit);
+            // [v0.8] if (!Object.HasStateAuthority) return;
+            // [v0.8] var data = GetData(slot);
+            // [v0.8] if (data != null && data.noiseRadius > 0f) AI.AIBlackboard.ReportNoise(transform.position, data.noiseRadius); // v0.6
+            // [v0.8] RPC_WeaponFired(slot, point, hit);
+        }
+
+        // [v0.8] Shots and reloads were announced with RPCs. An RPC only leaves the server, so the shooter saw
+        // [v0.8] their own muzzle flash one round trip late. FireCount / ReloadTimers + Render() replace them.
+        // [v0.8] [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+        // [v0.8] private void RPC_WeaponFired(int slot, Vector3 point, NetworkBool hit)
+        // [v0.8] {
+        // [v0.8]     WeaponFired?.Invoke(this, slot, point, hit);
+        // [v0.8] }
+        // [v0.8] [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+        // [v0.8] private void RPC_ReloadStarted(int slot)
+        // [v0.8] {
+        // [v0.8]     ReloadStarted?.Invoke(this, slot);
+        // [v0.8] }
+
+        // ------------------------------------------------------------------
+        // Spread (v0.9)
+
+        /// <summary>Bloom in degrees right now: what the last shot left, minus recovery since then.</summary>
+        public float CurrentBloom
+        {
+            get
+            {
+                if (Bloom <= 0f || Runner == null) return 0f;
+                var data = GetData(LastShotSlot);
+                float recovery = data != null ? data.bloomRecoveryPerSecond : 6f;
+                float seconds = Mathf.Max(0, (int)Runner.Tick - BloomTick) * Runner.DeltaTime;
+                return Core.CombatRules.DecayedBloom(Bloom, seconds, recovery);
+            }
+        }
+
+        /// <summary>Cone half-angle in degrees the next shot from <paramref name="slot"/> would use.</summary>
+        public float CurrentSpread(int slot)
+        {
             var data = GetData(slot);
-            if (data != null && data.noiseRadius > 0f) AI.AIBlackboard.ReportNoise(transform.position, data.noiseRadius); // v0.6
-            RPC_WeaponFired(slot, point, hit);
-        }
-
-        [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-        private void RPC_WeaponFired(int slot, Vector3 point, NetworkBool hit)
-        {
-            WeaponFired?.Invoke(this, slot, point, hit);
-        }
-
-        [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-        private void RPC_ReloadStarted(int slot)
-        {
-            ReloadStarted?.Invoke(this, slot);
+            if (data == null) return 0f;
+            var controller = owner != null ? owner.Controller : null;
+            bool grounded = controller == null || controller.IsGrounded;
+            float stance = Core.CombatRules.StanceSpreadMultiplier(grounded,
+                owner != null && owner.HasStatus(Core.StatusFlags.Sprinting),
+                owner != null && owner.HasStatus(Core.StatusFlags.Sliding));
+            return Core.CombatRules.EffectiveSpread(data.spreadDegrees, CurrentBloom, stance);
         }
 
         // ------------------------------------------------------------------

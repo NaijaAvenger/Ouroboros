@@ -47,20 +47,43 @@ namespace Ouroboros.Player
             Equipment.NetworkLoadout.ReloadStarted -= OnReloadStarted;
         }
 
+        private static readonly Color PlayerTracerColor = new Color(1f, 0.92f, 0.55f, 0.9f);
+
         private void OnWeaponFired(Equipment.NetworkLoadout loadout, int slot, Vector3 point, bool hit)
         {
             if (loadout == null || loadout.Owner != player) return;
             var lib = Library;
+            // [v0.8] if (lib == null) return;
+            // [v0.8] Play(lib.weaponFire);
+            // (v0.9) placeholder sound and a tracer when no assets are assigned, so shots are never silent or invisible
+            Play(lib != null && lib.weaponFire != null ? lib.weaponFire : Core.ProceduralSfx.Gunshot);
+
+            Vector3 aim = player.AimDirection;
+            Vector3 muzzle = player.EyePosition + aim * 0.6f;
+            var data = loadout.GetData(slot);
+            if (data == null || data.kind == Data.EquipmentKind.HitscanWeapon)
+            {
+                // First person: start the line low and to the right of the camera so the shooter can see it.
+                Vector3 from = muzzle;
+                if (player.IsLocalPlayer)
+                {
+                    Vector3 right = Vector3.Cross(Vector3.up, aim).normalized;
+                    from += right * 0.18f - Vector3.up * 0.14f + aim * 0.3f;
+                }
+                Combat.ShotTracer.Spawn(from, point, PlayerTracerColor);
+            }
+
             if (lib == null) return;
-            Play(lib.weaponFire);
-            lib.SpawnVfx(lib.muzzleVfx, player.EyePosition + player.AimDirection * 0.6f, Quaternion.LookRotation(player.AimDirection));
+            lib.SpawnVfx(lib.muzzleVfx, muzzle, Quaternion.LookRotation(aim));
             if (hit) lib.SpawnVfx(lib.impactVfx, point, Quaternion.identity);
         }
 
         private void OnReloadStarted(Equipment.NetworkLoadout loadout, int slot)
         {
             if (loadout == null || loadout.Owner != player) return;
-            Play(Library?.reload);
+            // [v0.8] Play(Library?.reload);
+            var lib = Library;
+            Play(lib != null && lib.reload != null ? lib.reload : Core.ProceduralSfx.Reload);
         }
 
         private void Update()
@@ -82,16 +105,20 @@ namespace Ouroboros.Player
         private void OnDamaged(Network.NetworkPlayer who, float amount)
         {
             var lib = Library;
+            // [v0.8] if (lib == null) return;
+            // [v0.8] Play(lib.hurt);
+            Play(lib != null && lib.hurt != null ? lib.hurt : Core.ProceduralSfx.Hurt); // (v0.9) placeholder fallback
             if (lib == null) return;
-            Play(lib.hurt);
             lib.SpawnVfx(lib.hurtVfx, player.transform.position + Vector3.up, Quaternion.identity);
         }
 
         private void OnDied(Network.NetworkPlayer who)
         {
             var lib = Library;
+            // [v0.8] if (lib == null) return;
+            // [v0.8] Play(lib.death);
+            Play(lib != null && lib.death != null ? lib.death : Core.ProceduralSfx.Death); // (v0.9) placeholder fallback
             if (lib == null) return;
-            Play(lib.death);
             lib.SpawnVfx(lib.deathVfx, player.transform.position, Quaternion.identity);
         }
 

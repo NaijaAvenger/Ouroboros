@@ -83,6 +83,9 @@ namespace Ouroboros.UI
             panelRoot.Add(root);
             Build();
 
+            // (v0.9) crosshair, hit markers and damage direction live in their own component on the same document
+            if (GetComponent<CombatHUD>() == null) gameObject.AddComponent<CombatHUD>();
+
             var ps = document.panelSettings;
             Debug.Log($"[HeistHUD] Enabled. PanelSettings='{(ps != null ? ps.name : "NONE")}', theme='{(ps != null && ps.themeStyleSheet != null ? ps.themeStyleSheet.name : "NONE")}', " +
                       $"elements={root.childCount}, screen={Screen.width}x{Screen.height}");

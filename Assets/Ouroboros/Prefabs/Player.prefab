@@ -108,6 +108,8 @@ GameObject:
   - component: {fileID: 6863533096427939780}
   - component: {fileID: 2240672581749257764}
   - component: {fileID: 3735426592794357832}
+  - component: {fileID: 2072752932934950027}
+  - component: {fileID: 1765059726727938004}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -178,6 +180,7 @@ MonoBehaviour:
   - {fileID: 5742166751925453876}
   - {fileID: 8173831752575094567}
   - {fileID: 6863533096427939780}
+  - {fileID: 1765059726727938004}
   ForceRemoteRenderTimeframe: 0
 --- !u!114 &5742166751925453876
 MonoBehaviour:
@@ -232,6 +235,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0c77a652558a6b3468998e57c3d272ce, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Ouroboros.Network.NetworkPlayer
+  _AssignedTeam: 0
+  _ClassType: 0
+  _Health: 0
+  _Stamina: 0
+  _IsAlive:
+    RawValue: 0
+  _IsExtracted:
+    RawValue: 0
+  _Status: 0
+  _CarriedLoot: 0
+  _Kills: 0
+  _Deaths: 0
+  _RespawnsUsed: 0
+  _LookYaw: 0
+  _LookPitch: 0
+  _DisplayName:
+    _length: 0
+    _data:
+      Data: 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
   playerModel: {fileID: 2353521936123333526}
   eyeHeight: 1.6
 --- !u!114 &6863533096427939780
@@ -280,6 +302,36 @@ MonoBehaviour:
   modelRenderer: {fileID: 1688018811714847082}
   hideOwnModel: 1
   refreshInterval: 0.1
+--- !u!114 &2072752932934950027
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1354965132410901328}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cc65406008277534087819ab379dc5ad, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Ouroboros.Player.PlayerFeedback
+  libraryOverride: {fileID: 0}
+  audioSource: {fileID: 0}
+  spatialBlendRemote: 1
+--- !u!114 &1765059726727938004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1354965132410901328}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b3d8f2c07de40f46b0a97f5999d12d4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Ouroboros.Equipment.NetworkLoadout
+  _SlotItemIds: 
+  _Magazine: 
+  _Reserve: 
 --- !u!1 &3491491278314470125
 GameObject:
   m_ObjectHideFlags: 0

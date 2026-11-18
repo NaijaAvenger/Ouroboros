@@ -11,7 +11,7 @@ before M0 started; where M0 has already changed a finding, it is marked **(fixed
 
 | Item | State |
 |------|-------|
-| Merge `claude/vigilant-ramanujan-la3aua` | Done on branch `claude/awesome-darwin-awl360`. Merging that branch into `main` is yours to do |
+| Merge `claude/vigilant-ramanujan-la3aua` | Done, and merged into `main` on 2026-11-18 |
 | Clean compile | Every game script now passes an offline type-check against Fusion 2.1.3, Input System 1.11.2 and Unity reference assemblies (`Tools/typecheck/run.sh`). One error found and fixed: `[Header]` on a property in `NetworkPlayer.cs` |
 | `com.unity.ai.navigation` in the manifest | Done (2.0.8). Unity resolves it on next open |
 | Tests for pure logic | Done. 62 unit tests over winner selection, alarm tiers, loot split, carry weight, constants and the behaviour tree (`dotnet test Tools/tests`) |
@@ -22,6 +22,24 @@ before M0 started; where M0 has already changed a finding, it is marked **(fixed
 | Two-client checklist in `PHASE0_BRINGUP.md` | **Open, needs you.** This is M0's exit criterion |
 
 The offline type-check is described in `Tools/README.md`, including what a pass does not prove.
+
+### M1 progress (first slice, code complete, not yet play-tested)
+
+Everything below compiles against the real Fusion and Input System APIs and the pure maths is unit-tested.
+None of it has been run in Unity. The checklist is section 7e of `PHASE0_BRINGUP.md`.
+
+| M1 item | State |
+|---------|-------|
+| Prediction-safe movement | Done in code. The player prefab now uses Fusion's built-in `NetworkCharacterController` as its transform sync, and ground contact and velocity are networked. The KCC add-on could not be downloaded in the build environment; this fixes the same reconciliation fault without it. Revisit KCC only if the two-client test shows problems |
+| Lag compensation and hit zones | Done in code. Enabled in the project config; the builder adds Head and Body hitboxes to the player and guard prefabs; shots ignore a target's present-time collider |
+| Predicted firing | Done in code. Ammo, cooldown, reload and a shot counter are networked state simulated on the owning client; damage stays on the host. Shot and reload RPCs are gone |
+| Recoil, bloom, falloff, headshots | Done in code, with a per-weapon profile applied by the builder. Spread is deterministic so the predicted tracer matches the real shot |
+| Crosshair, hit markers, damage direction, reload prompt | Done in code (`UI/CombatHUD.cs`, added automatically by the HUD) |
+| Guard accuracy | Done in code. Hit chance depends on distance, target speed and alarm tier; the first shot at a new target is delayed; misses draw tracers. The sniper keeps its guaranteed, telegraphed shot |
+| Placeholder SFX and VFX | Partly done. Synthesised sounds for shots, reload, hurt, death, explosions and hit ticks; pooled tracers. Ability and match-event sounds are still silent |
+| Aim-down-sights | **Not started.** Right mouse is bound to the Secondary weapon. ADS needs that button, which means adding weapon switching; that collides with the unpushed Keybinds work, so it waits for the local project |
+| Third-person body with animations | **Not started.** Needs model and animation assets |
+| URP switch | **Not started.** Needs the editor (package install, pipeline asset, material upgrade) |
 
 ## 0. What was audited, and what was not
 
@@ -261,13 +279,17 @@ All six recommendations were accepted.
 
 Decision 2 affects the local `ViewMode.cs`: if it is a first/third-person toggle, park it until M4.
 
-## 7. What is left to close M0
+## 7. What is needed from you next
 
 1. Push your local project to a branch so `ViewMode.cs` and the Keybinds panel can be reviewed and fixed.
-2. Merge `claude/awesome-darwin-awl360` into `main`.
-3. Open the project in Unity 6000.4. Confirm it compiles and that AI Navigation resolved.
-4. Run the two-client checklist in `PHASE0_BRINGUP.md` and list what breaks.
-5. M1 then starts with KCC and lag compensation.
+2. Open the project in Unity 6000.4. Confirm it compiles and that AI Navigation resolved.
+3. Re-run **Ouroboros > Setup > Create Dev Scene**, then work through sections 5, 6 and 7e of `PHASE0_BRINGUP.md`
+   and list what breaks. Section 7e is the M1 checklist.
+4. With those results: fix what the playtest finds, then finish M1 (ADS and weapon switching, URP, a
+   third-person body) and tune the weapon numbers.
+
+`main` holds M0 (merged 2026-11-18, pull request 2). The M1 slice is on `claude/awesome-darwin-awl360`, which
+has that merge folded back in.
 
 ## Sources
 

@@ -10,6 +10,10 @@ namespace Ouroboros.Player
     /// same code runs on the input authority (prediction) and on the state authority (truth). Requires a
     /// <c>NetworkTransform</c> on the prefab so proxies see the resulting movement.
     ///
+    /// v0.9: put a <c>NetworkCharacterController</c> on the prefab instead of <c>NetworkTransform</c> (the scene
+    /// builder does this). It is used purely as a CharacterController-safe state sync; without it a client's
+    /// mispredicted position is never corrected. Ground contact and velocity are networked for the same reason.
+    ///
     /// v0.7 movement tech (all tick-simulated, state networked for prediction):
     ///   walk · sprint · slide (sprint + Slide) · jump · mantle (jump into a ledge) ·
     ///   class perks from <see cref="Core.MovementProfile"/>: double jump, glide (hold Jump while falling),
@@ -51,6 +55,12 @@ namespace Ouroboros.Player
         private Equipment.EquipmentLoadout equipmentLoadout;
         private Equipment.NetworkLoadout networkLoadout;
         private NetworkTransform networkTransform;
+        /// <summary>
+        /// (v0.9) Fusion's CharacterController-aware transform sync. Used only for its state copy (it disables the
+        /// CharacterController while Fusion rewinds the transform, which a plain NetworkTransform does not, so
+        /// client-side reconciliation actually takes effect). Movement itself is still simulated in this class.
+        /// </summary>
+        private NetworkCharacterController characterSync;
         private float standHeight;
         private Vector3 standCenter;
         
@@ -68,6 +78,14 @@ namespace Ouroboros.Player
         [Networked] private NetworkBool Grappling { get; set; }
         [Networked] private Vector3 GrapplePoint { get; set; }
         [Networked] private TickTimer GrappleCooldown { get; set; }
+        /// <summary>
+        /// (v0.9) Ground contact at the end of the last simulated tick. CharacterController.isGrounded is not
+        /// rewound with the rest of the state (and resets whenever the controller is re-enabled), so the
+        /// simulation reads this instead.
+        /// </summary>
+        [Networked] private NetworkBool GroundedState { get; set; }
+        /// <summary>(v0.9) Velocity over the last simulated tick (for spread, AI aim and, later, animation).</summary>
+        [Networked] private Vector3 SimVelocity { get; set; }
 
         // [v0.1] private Vector3 velocity;
         // [v0.1] private float verticalRotation = 0f;
@@ -77,6 +95,10 @@ namespace Ouroboros.Player
         public bool IsSliding => SlideTimer.IsRunning && !SlideTimer.Expired(Runner);
         public bool IsMantling => MantleTimer.IsRunning && !MantleTimer.Expired(Runner);
         public bool IsGrappling => Grappling;
+        /// <summary>(v0.9) Ground contact as the simulation sees it (prediction-safe on every peer).</summary>
+        public bool IsGrounded => characterSync != null ? (bool)GroundedState : (characterController != null && characterController.isGrounded);
+        /// <summary>(v0.9) Velocity over the last simulated tick.</summary>
+        public Vector3 Velocity => SimVelocity;
 
         private Core.MovementProfile Profile => currentClass != null ? currentClass.Movement : Core.MovementProfile.Default;
         
@@ -86,6 +108,7 @@ namespace Ouroboros.Player
             equipmentLoadout = GetComponent<Equipment.EquipmentLoadout>();
             networkLoadout = GetComponent<Equipment.NetworkLoadout>();
             networkTransform = GetComponent<NetworkTransform>();
+            characterSync = GetComponent<NetworkCharacterController>();
             if (characterController == null) characterController = GetComponent<CharacterController>();
             if (characterController != null) { standHeight = characterController.height; standCenter = characterController.center; }
             
@@ -155,19 +178,23 @@ namespace Ouroboros.Player
                 return;
             }
 
-            if (Object.HasStateAuthority)
-            {
-                networkPlayer.LookYaw = input.Yaw;
-                networkPlayer.LookPitch = input.Pitch;
-            }
+            // [v0.8] if (Object.HasStateAuthority) { networkPlayer.LookYaw = input.Yaw; networkPlayer.LookPitch = input.Pitch; }
+            // (v0.9) written on the owning client too, so its predicted shots use this tick's aim rather than
+            //        the last aim the server echoed back.
+            networkPlayer.LookYaw = input.Yaw;
+            networkPlayer.LookPitch = input.Pitch;
 
             HandleMovement(input, pressed);
+
+            // (v0.9) weapons are simulated on the owning client as well (prediction): ammo, cooldown and the shot
+            //        counter are networked state, damage is still dealt only by the state authority.
+            HandleEquipment(pressed, input.Buttons);
 
             if (Object.HasStateAuthority)
             {
                 HandleAbilities(pressed);
                 HandleInteract(input.Buttons);
-                HandleEquipment(pressed, input.Buttons);
+                // [v0.8] HandleEquipment(pressed, input.Buttons);   // ran on the state authority only
             }
         }
 
@@ -190,16 +217,30 @@ namespace Ouroboros.Player
         // ------------------------------------------------------------------
         // Movement
         
+        /// <summary>(v0.9) Runs one tick of movement, then records ground contact and velocity as networked state.</summary>
         private void HandleMovement(Core.NetworkInputData input, NetworkButtons pressed)
         {
             if (characterController == null) return;
+
+            Vector3 before = transform.position;
+            SimulateMovement(input, pressed);
+
+            GroundedState = characterController.isGrounded;
+            SimVelocity = (transform.position - before) / Mathf.Max(0.0001f, Runner.DeltaTime);
+        }
+
+        // [v0.8] private void HandleMovement(Core.NetworkInputData input, NetworkButtons pressed)   // renamed; see wrapper above
+        private void SimulateMovement(Core.NetworkInputData input, NetworkButtons pressed)
+        {
+            // [v0.8] if (characterController == null) return;   // checked by HandleMovement
 
             // Yaw comes from input so server and client agree on facing.
             transform.rotation = Quaternion.Euler(0f, input.Yaw, 0f);
 
             float dt = Runner.DeltaTime;
             var profile = Profile;
-            bool grounded = characterController.isGrounded;
+            // [v0.8] bool grounded = characterController.isGrounded;
+            bool grounded = IsGrounded;
             bool jumpPressed = pressed.IsSet((int)Core.InputButtons.Jump);
             bool jumpHeld = input.Buttons.IsSet((int)Core.InputButtons.Jump);
 
@@ -453,7 +494,11 @@ namespace Ouroboros.Player
             bool wasEnabled = characterController != null && characterController.enabled;
             if (characterController != null) characterController.enabled = false;
 
-            if (networkTransform != null)
+            if (characterSync != null)
+            {
+                characterSync.Teleport(position, rotation); // (v0.9)
+            }
+            else if (networkTransform != null)
             {
                 networkTransform.Teleport(position, rotation);
             }
@@ -466,6 +511,8 @@ namespace Ouroboros.Player
             Grappling = false;
             MantleTimer = TickTimer.None;
             SlideTimer = TickTimer.None;
+            GroundedState = false;
+            SimVelocity = Vector3.zero;
             if (characterController != null) characterController.enabled = wasEnabled;
         }
     }

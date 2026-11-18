@@ -50,7 +50,10 @@ MonoBehaviour:
     duration: 3
     energyCost: 10
     effectType: 0
-  startingEquipment: []
+  startingEquipment:
+  - {fileID: 11400000, guid: b47cf5f855001b2488560220c91c10d2, type: 2}
+  - {fileID: 11400000, guid: 2258b5cd60cf746459facb1988b01cf6, type: 2}
+  - {fileID: 11400000, guid: 8f044df3c06cd804480def01ebc4d518, type: 2}
   damageMultiplier: 1
   defenseMultiplier: 1
   stealthMultiplier: 1

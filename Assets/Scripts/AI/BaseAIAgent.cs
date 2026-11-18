@@ -78,8 +78,22 @@ namespace Ouroboros.AI
         [Tooltip("Faction team. None = hostile to every player (default for heist guards).")]
         [SerializeField] protected Core.TeamID faction = Core.TeamID.None;
 
+        [Header("Accuracy (v0.9)")]
+        [Tooltip("Chance to hit a stationary target at point-blank range. Distance, target speed and the alarm tier adjust it (Core.CombatRules.GuardHitChance).")]
+        [Range(0f, 1f)] [SerializeField] protected float baseAccuracy = 0.55f;
+        [Tooltip("Seconds the agent needs to line up its first shot after it acquires (or re-acquires) a target. Breaking line of sight resets it.")]
+        [SerializeField] protected float aimSettleSeconds = 0.45f;
+
+        /// <summary>
+        /// (v0.9) Fired on every peer when an agent shoots (agent, muzzle, where the shot went, whether it hit).
+        /// Misses are reported too, so tracers and audio can show near misses.
+        /// </summary>
+        public static event System.Action<BaseAIAgent, Vector3, Vector3, bool> AgentFired;
+
         [Networked] public float Health { get; set; }
         [Networked] public AIBehaviorState NetworkedState { get; set; }
+        /// <summary>(v0.9) Runs while the agent is still lining up its first shot at a newly acquired target.</summary>
+        [Networked] protected TickTimer AimSettleTimer { get; set; }
         [Networked] public NetworkBool IsAlive { get; set; }
         [Networked] protected TickTimer AttackTimer { get; set; }
 
@@ -251,8 +265,16 @@ namespace Ouroboros.AI
 
         public virtual void SetTarget(Transform target)
         {
+            // (v0.9) a new target (or one seen again after losing it) has to be lined up before the first shot
+            var newPlayer = target != null ? target.GetComponentInParent<Network.NetworkPlayer>() : null;
+            if (target != null && newPlayer != currentTargetPlayer && aimSettleSeconds > 0f && Object != null && Object.HasStateAuthority)
+            {
+                AimSettleTimer = TickTimer.CreateFromSeconds(Runner, aimSettleSeconds);
+            }
+
             currentTarget = target;
-            currentTargetPlayer = target != null ? target.GetComponentInParent<Network.NetworkPlayer>() : null;
+            // [v0.8] currentTargetPlayer = target != null ? target.GetComponentInParent<Network.NetworkPlayer>() : null;
+            currentTargetPlayer = newPlayer;
             if (target != null)
             {
                 lastKnownTargetPosition = target.position;
@@ -277,6 +299,12 @@ namespace Ouroboros.AI
         public virtual void OnDamaged(float damage)
         {
             ApplyDamage(damage, null);
+        }
+
+        /// <summary>(v0.9) Origin-aware entry point; agents only need the attacker, so it forwards.</summary>
+        public void ApplyDamage(float amount, Network.NetworkPlayer attacker, Vector3 origin)
+        {
+            ApplyDamage(amount, attacker);
         }
 
         public virtual void ApplyDamage(float amount, Network.NetworkPlayer attacker)
@@ -320,10 +348,47 @@ namespace Ouroboros.AI
             // Blocked by level geometry?
             if (Physics.Raycast(origin, dir, Mathf.Max(0f, dist - 0.3f), visionOccluders, QueryTriggerInteraction.Ignore)) return false;
 
-            currentTargetPlayer.ApplyDamage(damage, null);
+            // (v0.9) still lining up the first shot: the player gets a beat to react or break line of sight
+            if (!AimSettleTimer.ExpiredOrNotRunning(Runner)) return false;
+
+            // [v0.8] currentTargetPlayer.ApplyDamage(damage, null);   // every shot hit, at any speed and distance
+            // (v0.9) shots can miss. A miss still fires (cooldown, noise, tracer) and returns true.
+            bool hit = Random.value < HitChanceAgainst(currentTargetPlayer, dist);
+            Vector3 end = currentTargetPlayer.EyePosition;
+            if (hit)
+            {
+                currentTargetPlayer.ApplyDamage(damage, null, origin);
+            }
+            else
+            {
+                // Put the tracer visibly past the target, 0.5 to 1.2 m off to one side.
+                Vector3 side = Vector3.Cross(dir, Vector3.up);
+                if (side.sqrMagnitude < 0.0001f) side = Vector3.right;
+                side = side.normalized * (Random.value < 0.5f ? -1f : 1f) * Random.Range(0.5f, 1.2f);
+                end += side + Vector3.up * Random.Range(-0.3f, 0.4f) + dir * 4f;
+            }
+
             AttackTimer = TickTimer.CreateFromSeconds(Runner, attackCooldown);
+            RPC_Fired(origin, end, hit);
             OnAttacked(currentTargetPlayer);
             return true;
+        }
+
+        /// <summary>
+        /// (v0.9) Chance for the next shot to hit. Override for agents with their own rules (the sniper's
+        /// telegraphed shot always lands).
+        /// </summary>
+        protected virtual float HitChanceAgainst(Network.NetworkPlayer target, float distance)
+        {
+            var alarm = GameMode.AlarmSystem.Instance;
+            int tier = alarm != null && alarm.Object != null ? alarm.Tier : 0;
+            return Core.CombatRules.GuardHitChance(baseAccuracy, distance, attackRange, target.Velocity.magnitude, tier);
+        }
+
+        [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+        protected void RPC_Fired(Vector3 from, Vector3 to, NetworkBool hit)
+        {
+            AgentFired?.Invoke(this, from, to, hit);
         }
 
         /// <summary>Moves toward a position using the NavMeshAgent. Returns true if the agent has (nearly) arrived.</summary>

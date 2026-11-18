@@ -138,6 +138,16 @@ Still open in Phase 4: object pooling for guards, animation hooks, cover-seeking
 - **Vision cones** (`AI/VisionCone.cs`): translucent ground fans for cameras and guards, re-coloured by state (idle / searching / alert / disabled), scaled with the alarm tier.
 - **Guard spawn diagnostics**: the spawner logs its references and every spawn, places guards on the floor, and the builder verifies the prefab links.
 
+### v0.9 — M0 and the first slice of M1 (see GAME_AUDIT_AND_ROADMAP.md, which is the plan from here on)
+- **M0**: feature branch merged; offline type-check and unit tests (`Tools/`), run in CI; `Core/MatchRules.cs` holds the pure match arithmetic; AI Navigation added to the manifest.
+- **Movement sync**: the player prefab uses `NetworkCharacterController` instead of `NetworkTransform` (it disables the CharacterController while Fusion rewinds the transform, so reconciliation takes effect); `PlayerController` networks ground contact and velocity.
+- **Weapons**: `NetworkLoadout` shots are networked state (`FireCount`, last shot point, bloom) predicted on the owning client instead of RPCs; `HitscanWeapon` uses a filtered lag-compensated `RaycastAll`, `Combat.HitZone` head/body zones, distance falloff, deterministic spread with bloom; recoil is a view punch in `GameSessionManager`; `Core/CombatRules.cs` holds the maths.
+- **Feedback**: `UI/CombatHUD.cs` (crosshair, hit markers, damage direction, reload prompt), `Combat/ShotTracer.cs`, `Core/ProceduralSfx.cs` (synthesised placeholder sounds used when a FeedbackLibrary slot is empty), `NetworkPlayer.HitConfirmed` / `LastDamageOrigin`.
+- **Guards**: hit chance from `CombatRules.GuardHitChance`, a settle delay before the first shot at a new target, `BaseAIAgent.AgentFired` for tracers and sound.
+- Scene builder: swaps the sync component, adds hitboxes to player and guard prefabs, applies a per-weapon feel profile once (`EquipmentData.feelVersion`).
+
+Awaiting in-engine validation: PHASE0_BRINGUP.md section 7e.
+
 ### Phase 5 — Meta
 - Lobby scene with class picker (`NetworkPlayer.RequestClass` is in place), session browser, late-join handling, host migration.
 - Progression/cosmetics via `ClassData`/`EquipmentData`.

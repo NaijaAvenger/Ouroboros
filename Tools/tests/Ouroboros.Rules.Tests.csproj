@@ -21,6 +21,7 @@
   <ItemGroup>
     <!-- Code under test: only files with no Unity or Fusion dependency belong here. -->
     <Compile Include="$(RepoRoot)Assets/Scripts/Core/MatchRules.cs" Link="UnderTest/MatchRules.cs" />
+    <Compile Include="$(RepoRoot)Assets/Scripts/Core/CombatRules.cs" Link="UnderTest/CombatRules.cs" />
     <Compile Include="$(RepoRoot)Assets/Scripts/Core/GameConstants.cs" Link="UnderTest/GameConstants.cs" />
     <Compile Include="$(RepoRoot)Assets/Scripts/AI/BehaviorTree.cs" Link="UnderTest/BehaviorTree.cs" />
     <Compile Include="*.cs" />
