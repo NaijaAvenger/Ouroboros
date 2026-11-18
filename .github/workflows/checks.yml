@@ -19,6 +19,11 @@ jobs:
       - name: Unit tests
         run: dotnet test Tools/tests --nologo
 
+      - name: Map layout is generated and passes its own checks
+        run: |
+          python3 Tools/mapgen/galleria.py
+          git diff --exit-code -- Assets/Editor/OuroborosGalleriaLayout.cs
+
       - name: Cache type-check references
         uses: actions/cache@v4
         with:

@@ -282,6 +282,64 @@ Map:
 - [ ] Guards path around the new props (the NavMesh was re-baked) and do not walk through shelving or vans.
 - [ ] Frame rate with the props and lights in. If it has dropped, the first thing to cut is the number of point lights.
 
+## 7j. The Galleria, breakables, gadgets, damage numbers, death recap (v0.14)
+Setup: run **Ouroboros > Setup > Create Galleria Map (M6)**. It refreshes the assets and builds `Assets/Ouroboros/Scenes/Galleria.unity`. It places several thousand objects and bakes a two-level NavMesh, so give it time. The console ends with `Galleria content ready: 83 zones, 122 doors, 11 vaults, ...`. With that scene open, press Play and choose **Solo**.
+
+First, the things most likely to be wrong:
+- [ ] **NavMesh.** Guards and bots walk the concourses, climb the escalators and use the staff stairs. Open the Navigation overlay: both levels are blue, and the ramps join them. If the upper level is an island, tell me.
+- [ ] **Frame rate.** Note it in the Atrium and in a shop. If it is low, send the Stats window numbers (batches, SetPass calls).
+- [ ] **Scale.** Doorways are 3.5 m high and at least 4 m wide, walls 5.5 m, the upper level 6 m up. Nothing should feel like a crawl space or a cathedral by accident.
+- [ ] **Nothing is stuck.** Walk every wing. No prop inside a wall or across a door. The generator checks this, but it has never been seen.
+
+The building:
+- [ ] The main menu fits: the title is inside its panel at any window size, and narrowing the window never clips a button.
+- [ ] You spawn in your crew's gate, in a corner, with your banner on the wall. The zone name shows bottom left and changes as you move (`LAGOS GATE`, `SOUTH-WEST YARD`, `TOY STORE`). Points of interest show in gold.
+- [ ] The Atrium is open through both levels with a gold ring on the floor at the central getaway. Wing names hang over the four concourse mouths.
+- [ ] Each concourse has an escalator up the middle to the galleries. Each corner block has staff stairs in the corridor behind the shops.
+- [ ] Four side exits: Bank Staff Exit (bank lobby, east end), Gallery Exit, Truck Bay Exit, Metro Exit (food court, west end).
+- [ ] The getaway is called at **$6000** carried on this map, not $3000.
+
+Vaults and the ways in. For each, try the intended route and one alternative:
+- [ ] **Main Vault** (Bank): through the lobby, a laser grid, then a passcode door. The note is in the Manager's Office upstairs (north-west). Alternative: breach the weak wall from the Counting Room, which is behind a maglock.
+- [ ] **Safe Deposit** (Bank): red keycard, which is in Security HQ upstairs (north-east), behind shutters and a turret.
+- [ ] **Cash Cage** (Services): blue keycard, which is in the Auction House back office.
+- [ ] **Auction Strongroom** (Luxe Wing): the loud lockdown override, or breach the weak wall beside it.
+- [ ] **Cold Store** (Market Hall): a rival's ID card.
+- [ ] **Stockroom** (Market Hall): maglocked. Cut the Market power or use a Bypass Key.
+- [ ] **Server Vault** (upstairs, south-east): laser grids on both doors.
+- [ ] Each corner hall has a small open safe for the early game.
+
+Gadgets. In the lobby the third row picks one; the HUD shows it bottom right with **[E]** and `READY` or a countdown:
+- [ ] **Breaching Kit**: face a weak wall, strongbox or safe within about 4 m and press E. It blows open, loudly. With nothing in front of you it does nothing and costs nothing.
+- [ ] **EMP Emitter**: cameras, turrets and laser grids within 12 m go dark for 10 s.
+- [ ] **Bypass Key**: the nearest maglocked door opens for 12 s.
+- [ ] **Loot Scanner**: for 10 s, containers with loot and loose loot within 38 m are marked through walls. Armoured ones say so.
+- [ ] **Grapple Line**: any specialist can grapple with G.
+- [ ] Laser grid: walking through burns you, reveals you and raises the alarm, with a banner. A power slide under the lowest beam passes. Hacking the box on the door frame turns it off.
+- [ ] Maglocks open during a blackout of their district and shut again after.
+
+Breakables:
+- [ ] Shoot a display case, vending machine, cash machine, till, locker or crate: it breaks with an effect and spills loot or cash. Guards come to the noise and the alarm ticks up.
+- [ ] Shoot a strongbox or safe with a rifle: grey sparks, no damage. A grenade, a placed charge, the Marksman Rifle or a Breaching Kit opens it.
+- [ ] A weak wall is cracked brickwork with yellow tape. Once broken it is a doorway, and guards path through it.
+- [ ] Host + client: breaks, sparks and spilled loot agree on both screens.
+
+Events (times from the match going live; each is announced about 25 s early in the feed):
+- [ ] 2:30 **Armoured delivery**: three strongboxes appear in the Truck Bay.
+- [ ] 5:00 **Supply drop**: two crates with a light column appear in the Atrium.
+- [ ] 6:30 **Power failure**: the Atrium loses power.
+- [ ] 8:00 **Time lock released**: the Main Vault door opens for everyone.
+- [ ] Each shows a banner, a feed line and a gold marker with distance that points to the screen edge when off screen.
+
+Damage numbers and death recap:
+- [ ] Every hit you land shows a number where it landed: white, yellow for a headshot, red and larger for the kill. Shotgun pellets add up into one number. It works on guards, players, turrets and breakables.
+- [ ] Die: a panel names what killed you and with what, then lists every source of damage that life with amount, hits and share, the final blow marked. Check a death to a guard, a turret, a trap, a laser grid and fire: each is named.
+- [ ] The recap goes away when you respawn. Host + client: the client gets its own recap, not the host's.
+
+Security:
+- [ ] Six guards walk a loop of the concourses and three walk the upper galleries. Thirteen stand at posts and stay there until they see something. Two snipers hold gallery corners over the Atrium.
+- [ ] Cameras look like cameras now, with a lens that is cyan when watching, red when it has seen someone and grey when off.
+
 ## 7d. Expected flow and troubleshooting
 **Expected flow on Play (dev config):** spectator camera orbits the arena → session starts → your player spawns → the
 **class picker** appears with the cursor free (state *Waiting for players*) → host presses **Start match now** (or the

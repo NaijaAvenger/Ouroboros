@@ -104,6 +104,12 @@ namespace Ouroboros.GameMode
         /// <summary>(v0.10) The getaway phase: exits are open, no more respawns, the richest crew is marked.</summary>
         public bool IsGetaway => CurrentState == GameState.Extraction;
         /// <summary>(v0.10) True when loot pickups can be spawned (a prefab is assigned).</summary>
+        [Tooltip("(v0.14) Getaway quota for this map. 0 = use the config's. A bigger map with more loot wants a bigger quota.")]
+        [SerializeField] private int lootQuotaOverride = 0;
+
+        /// <summary>(v0.14) What a crew must be carrying for the getaway to be called, on this map.</summary>
+        public int LootQuota => lootQuotaOverride > 0 ? lootQuotaOverride : Config.lootQuota;
+
         public bool CanSpawnLoot => lootDropPrefab.IsValid || lootDropPrefabObject != null;
         public bool AllowClassChange => Config.allowClassChangeBeforeMatch && (CurrentState == GameState.WaitingForPlayers || CurrentState == GameState.PreMatch);
         public float? MatchTimeRemaining => MatchTimer.RemainingTime(Runner);
@@ -245,7 +251,8 @@ namespace Ouroboros.GameMode
             for (int step = 0; step < Core.GameConstants.MAX_TEAMS; step++)
             {
                 int i = Core.MatchRules.RotatedIndex((int)Runner.Tick, step, Core.GameConstants.MAX_TEAMS);
-                if (activeScratch[i] && Core.MatchRules.QuotaReached(carriedScratch[i], Config.lootQuota))
+                // [v0.13] if (activeScratch[i] && Core.MatchRules.QuotaReached(carriedScratch[i], Config.lootQuota))
+                if (activeScratch[i] && Core.MatchRules.QuotaReached(carriedScratch[i], LootQuota)) // (v0.14) a map can set its own quota
                 {
                     EnterExtractionPhase(Core.TeamUtil.FromIndex(i));
                     return;

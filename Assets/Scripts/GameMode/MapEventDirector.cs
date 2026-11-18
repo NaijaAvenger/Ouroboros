@@ -60,6 +60,9 @@ namespace Ouroboros.GameMode
         private int shownWarned, shownFired;
         private readonly float[] firedAt = new float[32];
 
+        /// <summary>Editor only: the scene builder hands the schedule over with its object references already made.</summary>
+        public void EditorSetEvents(MapEvent[] schedule) { events = schedule ?? new MapEvent[0]; }
+
         public int EventCount => events != null ? Mathf.Min(events.Length, 32) : 0;
         public MapEvent GetEvent(int index) => index >= 0 && index < EventCount ? events[index] : null;
         public float MarkerSeconds => markerSeconds;
