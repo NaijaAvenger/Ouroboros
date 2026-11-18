@@ -23,6 +23,23 @@ before M0 started; where M0 has already changed a finding, it is marked **(fixed
 
 The offline type-check is described in `Tools/README.md`, including what a pass does not prove.
 
+### M2 progress (code complete, not yet play-tested)
+
+Compiles against the real Fusion and Input System APIs; the new rules arithmetic is unit-tested. Not run in
+Unity. The checklist is section 7f of `PHASE0_BRINGUP.md`.
+
+| M2 item | State |
+|---------|-------|
+| Quota and getaway | Done in code. Exits stay shut until a crew is carrying the quota (or the timer runs out); then the central getaway and the side exits open, the facility locks down and the richest crew's carriers are revealed |
+| Scoring | Done in code. Score is extracted value only; side exits bank 60% |
+| Physical loot | Done in code. Vaults spill named items from a catalog with story cards; players carry up to four; death drops them one by one |
+| Loot transfer on wipe, respawn rules | Done in code. Respawn needs a living crewmate; a wipe redeploys the crew once and then eliminates it. Revive and respawn stations are not built |
+| Team format | Done in code. Four crews of three, config-driven, named Lagos, Nairobi, Accra and Joburg |
+| Bot crews | Done in code. A bot is a normal player object fed input by `AI/BotBrain.cs`; bots fill empty seats, follow a human crewmate, fight, open all four lock types, carry loot and extract. Placeholder quality: no cover use or climbing |
+| Fair contests | Done in code. Simultaneous claims no longer always go to the lowest team id |
+| Blockout map | Done as a builder script (`Ouroboros > Setup > Create Freeport Map (M2)`): laid out by hand in code, built by the editor on your machine. The old generated arena is still available but is no longer the first scene |
+| Loot catalog writing | Placeholder. Eighteen fictional items; names and stories need review with people from the cultures they draw on |
+
 ### M1 progress (first slice, code complete, not yet play-tested)
 
 Everything below compiles against the real Fusion and Input System APIs and the pure maths is unit-tested.
@@ -281,15 +298,20 @@ Decision 2 affects the local `ViewMode.cs`: if it is a first/third-person toggle
 
 ## 7. What is needed from you next
 
-1. Push your local project to a branch so `ViewMode.cs` and the Keybinds panel can be reviewed and fixed.
-2. Open the project in Unity 6000.4. Confirm it compiles and that AI Navigation resolved.
-3. Re-run **Ouroboros > Setup > Create Dev Scene**, then work through sections 5, 6 and 7e of `PHASE0_BRINGUP.md`
-   and list what breaks. Section 7e is the M1 checklist.
-4. With those results: fix what the playtest finds, then finish M1 (ADS and weapon switching, URP, a
-   third-person body) and tune the weapon numbers.
+1. Open the project in Unity 6000.4 and confirm it compiles. Nothing since M0 has been through the Fusion weaver.
+2. Run **Ouroboros > Setup > Create Freeport Map (M2)**. It also applies the M1 prefab upgrades, which the
+   committed `Player.prefab` does not have yet.
+3. Work through sections 7e (M1) and 7f (M2) of `PHASE0_BRINGUP.md` and list what breaks.
+4. With those results: fix what the playtest finds, tune the weapon and quota numbers, then finish M1
+   (ADS and weapon switching, a third-person body) and move to M3, hacking.
 
-`main` holds M0 (merged 2026-11-18, pull request 2). The M1 slice is on `claude/awesome-darwin-awl360`, which
-has that merge folded back in.
+Notes on the repository as of the M2 work:
+- `main` holds M0, M1 and your Unity project state ("Squashed local work"). M2 is on `claude/awesome-darwin-awl360`.
+- `ViewMode.cs` and the Keybinds panel are not in the pushed project, so nothing blocks ADS any more.
+- The pushed project references a URP global settings asset but the URP package is not in `Packages/manifest.json`.
+  Either finish the switch (install Universal RP, assign a pipeline asset, upgrade materials) or remove the stray asset.
+- The imported packs (SciFi Gun Pack, LaserGunPack, Cartoon FX Remaster) are not used by any code yet. They are the
+  obvious source for weapon view models, turrets and muzzle/impact effects in the next M1 pass.
 
 ## Sources
 

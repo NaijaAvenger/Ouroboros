@@ -97,7 +97,7 @@ namespace Ouroboros.GameMode
                 if (ItemId > 0)
                 {
                     if (!player.AddLootItem(ItemId, Value)) continue;
-                    RPC_PickedUp(player.PlayerRef, Value);
+                    RPC_PickedUp(player.PlayerRef, Value, ItemId);
                     Runner.Despawn(Object);
                     return;
                 }
@@ -106,7 +106,7 @@ namespace Ouroboros.GameMode
                 if (accepted <= 0) continue;
 
                 Value -= accepted;
-                RPC_PickedUp(player.PlayerRef, accepted);
+                RPC_PickedUp(player.PlayerRef, accepted, 0);
                 if (Value <= 0)
                 {
                     Runner.Despawn(Object);
@@ -116,10 +116,13 @@ namespace Ouroboros.GameMode
         }
 
         [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-        private void RPC_PickedUp(PlayerRef player, int amount)
+        // [v0.9] private void RPC_PickedUp(PlayerRef player, int amount)
+        // (v0.10) the item id travels with the call: the pickup is despawned in the same tick, so its own
+        //         networked state may already be gone when this runs on a client.
+        private void RPC_PickedUp(PlayerRef player, int amount, int itemId)
         {
             Debug.Log($"[LootDrop] {player} picked up {amount} loot");
-            PickedUp?.Invoke(Network.NetworkPlayer.Resolve(player), ItemId, amount); // (v0.10)
+            PickedUp?.Invoke(Network.NetworkPlayer.Resolve(player), itemId, amount);
         }
     }
 }

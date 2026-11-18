@@ -148,6 +148,14 @@ Still open in Phase 4: object pooling for guards, animation hooks, cover-seeking
 
 Awaiting in-engine validation: PHASE0_BRINGUP.md section 7e.
 
+### v0.10 — M2, "The Run"
+- **Rules**: `GameModeConfig.lootQuota` and friends; `ExtractionHeistGameMode` calls the getaway on quota or timer, tracks the richest crew, resolves crew wipes (`ScheduleRespawn`), scores extracted value only; `ExtractionPoint.isCentral` and payout; `Core/MatchRules.cs` gains the quota, payout, wipe, rotation and item-pick arithmetic.
+- **Loot**: `Data/LootCatalog.cs`; `LootDrop` carries a catalog id; `LootObjective` spills items; `NetworkPlayer.CarriedItemIds`.
+- **Crews and bots**: `GameModeConfig.playersPerTeam` = 3, `TeamUtil.DisplayName`, `HumanAssignment`; `AI/BotBrain.cs`, `PlayerController.SetBot`, `GameSessionManager.FillWithBots`.
+- **Map**: `Assets/Editor/OuroborosFreeportBuilder.cs` (menu **Ouroboros > Setup > Create Freeport Map (M2)**).
+
+Awaiting in-engine validation: PHASE0_BRINGUP.md section 7f.
+
 ### Phase 5 — Meta
 - Lobby scene with class picker (`NetworkPlayer.RequestClass` is in place), session browser, late-join handling, host migration.
 - Progression/cosmetics via `ClassData`/`EquipmentData`.
