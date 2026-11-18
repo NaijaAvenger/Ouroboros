@@ -96,6 +96,9 @@ namespace Ouroboros.UI
             if (GetComponent<TeammateMarkers>() == null) gameObject.AddComponent<TeammateMarkers>();
             // (v0.13, M5) main menu, pause, settings, controls and profile
             if (GetComponent<GameMenu>() == null) gameObject.AddComponent<GameMenu>();
+            // (v0.14) numbers on the hits you land, and a recap of what killed you
+            if (GetComponent<DamageNumbers>() == null) gameObject.AddComponent<DamageNumbers>();
+            if (GetComponent<DeathRecap>() == null) gameObject.AddComponent<DeathRecap>();
 
             var ps = document.panelSettings;
             Debug.Log($"[HeistHUD] Enabled. PanelSettings='{(ps != null ? ps.name : "NONE")}', theme='{(ps != null && ps.themeStyleSheet != null ? ps.themeStyleSheet.name : "NONE")}', " +

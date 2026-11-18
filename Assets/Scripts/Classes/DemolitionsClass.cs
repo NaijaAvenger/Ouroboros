@@ -113,7 +113,10 @@ namespace Ouroboros.Classes
                 var self = Network.NetworkPlayer.Resolve(context);
                 foreach (var pos in armedCharges)
                 {
-                    Combat.DamageUtil.ApplyRadialDamage(pos, explosiveRadius, explosiveDamage, self, context.Team, falloff: true);
+                    using (Combat.DamageContext.Begin(means: "Placed Charge")) // (v0.14)
+                    {
+                        Combat.DamageUtil.ApplyRadialDamage(pos, explosiveRadius, explosiveDamage, self, context.Team, falloff: true);
+                    }
                 }
             }
             armedCharges.Clear();

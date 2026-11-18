@@ -331,11 +331,30 @@ namespace Ouroboros.AI
             ApplyDamage(amount, attacker);
         }
 
+        /// <summary>(v0.14) What a player's death recap calls this agent.</summary>
+        public virtual string SourceLabel
+        {
+            get
+            {
+                string type = GetType().Name;
+                if (type.Contains("Elite")) return "Elite Guard";
+                if (type.Contains("Sniper")) return "Sniper";
+                return "Guard";
+            }
+        }
+
         public virtual void ApplyDamage(float amount, Network.NetworkPlayer attacker)
         {
             if (!Object.HasStateAuthority || !IsAlive || amount <= 0f) return;
 
+            float healthBefore = Health; // (v0.14)
             Health = Mathf.Max(0f, Health - amount);
+            if (attacker != null && healthBefore > Health)
+            {
+                // (v0.14) damage numbers for the shooter
+                var info = Combat.DamageContext.Current;
+                attacker.NotifyDamageDealt(healthBefore - Health, info.HasPoint ? info.Point : transform.position + Vector3.up * 1.3f, info.Headshot, Health <= 0f);
+            }
 
             if (attacker != null && attacker.IsActiveInMatch)
             {
@@ -381,7 +400,11 @@ namespace Ouroboros.AI
             Vector3 end = currentTargetPlayer.EyePosition;
             if (hit)
             {
-                currentTargetPlayer.ApplyDamage(damage, null, origin);
+                // [v0.13] currentTargetPlayer.ApplyDamage(damage, null, origin);
+                using (Combat.DamageContext.Begin(source: SourceLabel, means: "Rifle")) // (v0.14) named in the death recap
+                {
+                    currentTargetPlayer.ApplyDamage(damage, null, origin);
+                }
             }
             else
             {

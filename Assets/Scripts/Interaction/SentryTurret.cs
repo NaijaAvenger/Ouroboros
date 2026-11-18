@@ -126,8 +126,13 @@ namespace Ouroboros.Interaction
             Vector3 end = aimPoint;
             if (hit)
             {
-                if (targetPlayer != null) targetPlayer.ApplyDamage(damage, null, muzzle);
-                else targetAgent.ApplyDamage(damage, null);
+                // [v0.13] if (targetPlayer != null) targetPlayer.ApplyDamage(damage, null, muzzle);
+                // [v0.13] else targetAgent.ApplyDamage(damage, null);
+                using (Combat.DamageContext.Begin(source: "Sentry Turret", means: IsHijacked ? "Hijacked" : "Security")) // (v0.14)
+                {
+                    if (targetPlayer != null) targetPlayer.ApplyDamage(damage, null, muzzle);
+                    else targetAgent.ApplyDamage(damage, null);
+                }
             }
             else
             {
@@ -228,7 +233,13 @@ namespace Ouroboros.Interaction
             if (!Object.HasStateAuthority || IsDisabled || amount <= 0f) return;
             // A crew cannot shoot the turret it hijacked.
             if (attacker != null && IsHijacked && attacker.Team == OwnerTeam) return;
+            float healthBefore = Health; // (v0.14)
             Health = Mathf.Max(0f, Health - amount);
+            if (attacker != null && healthBefore > Health)
+            {
+                var info = Combat.DamageContext.Current;
+                attacker.NotifyDamageDealt(healthBefore - Health, info.HasPoint ? info.Point : transform.position + Vector3.up * 0.8f, false, Health <= 0f);
+            }
             if (Health <= 0f)
             {
                 DisabledTimer = TickTimer.CreateFromSeconds(Runner, repairSeconds);

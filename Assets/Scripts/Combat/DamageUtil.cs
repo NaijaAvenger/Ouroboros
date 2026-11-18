@@ -70,7 +70,11 @@ namespace Ouroboros.Combat
             }
 
             // [v0.8] target.ApplyDamage(scaled, attacker);
-            target.ApplyDamage(scaled, attacker, origin); // (v0.9) the blast centre, so the victim's HUD points at it
+            // [v0.13] target.ApplyDamage(scaled, attacker, origin); // (v0.9) the blast centre, so the victim's HUD points at it
+            using (DamageContext.Begin(means: "Explosion", point: targetPos + Vector3.up * 1.2f)) // (v0.14) an outer scope's name wins
+            {
+                target.ApplyDamage(scaled, attacker, origin);
+            }
             return true;
         }
 
