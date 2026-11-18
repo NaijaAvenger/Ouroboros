@@ -229,6 +229,59 @@ Identity:
 - [ ] Each crew dock has a banner in the crew's pattern with its city over it.
 - [ ] Impacts, explosions and extractions show Cartoon FX effects. If an effect is too big or too bright, swap it on `Assets/Ouroboros/FeedbackLibrary.asset`.
 
+## 7i. M5 validation: shell, gun handling, gear, markers, map (v0.13)
+Setup: run **Ouroboros > Setup > Recreate Freeport Map**. To keep a hand-edited Freeport scene instead, run **Create Freeport Map (M2)** (it refreshes the assets, including the weapons' handling values, and leaves an existing level alone), then with the scene open run **Apply Art Pass (M4)** and **Build Out Freeport (M5)**. Then press Play.
+
+Main menu and session:
+- [ ] Play shows the main menu over the map, with the cursor free. Nothing has spawned yet.
+- [ ] **Solo** starts an offline match: you spawn, bots fill the other seats, the class picker appears.
+- [ ] **Quick Play** hosts a public match when none exists; a second instance pressing Quick Play joins it.
+- [ ] **Host Private Match** starts a match. Esc shows a five-character party code. A second instance typing that code and pressing **Join Code** joins it. A wrong code shows a message and stays on the menu.
+- [ ] The name typed on the menu is the name other players see. Symbols are stripped and long names are cut at 16.
+- [ ] If starting fails, the menu says so and stays usable.
+
+Pause, settings, controls, profile:
+- [ ] **Esc** opens the pause menu, frees the cursor and stops your character. Esc again closes it and locks the cursor. The match keeps running behind it.
+- [ ] **Settings**: sensitivity and field of view change at once; music volume changes the score; the marker and radio toggles work; values survive a restart.
+- [ ] **Controls** lists every action with a key cap for keyboard and mouse and one for gamepad. The key caps cannot be clicked, focused or changed.
+- [ ] **Leave Match** returns to the main menu with a clean scene. Starting another match afterwards works. **Check this one carefully: it shuts the runner down and reloads the scene, and it is the least certain part of the shell.**
+- [ ] At match end the results screen shows `+NNN XP` and your level. **Profile** shows the totals, and they survive a restart.
+
+Gun handling:
+- [ ] You hold one weapon. **Left click** fires it. **Right click** does not fire anything; it raises the sights.
+- [ ] **Mouse wheel** (either way) or **X** swaps weapon. The new weapon rises from below and cannot fire for about half a second. The HUD shows the weapon in hand large and the other one small.
+- [ ] Aiming: the view zooms, the weapon moves to the centre, the crosshair bars fade to a dot, you walk slower and cannot sprint. Shots land tighter and the view kicks less.
+- [ ] The Marksman Rifle is wild from the hip and exact when aimed, with a strong zoom. Look speed drops with the zoom so aiming does not feel twitchy.
+- [ ] **R** reloads only the weapon in hand. Swapping during a reload cancels it. Aiming drops during a reload.
+- [ ] The Smith's launcher is its second weapon: swap to it, fire with left click, no aiming.
+- [ ] Host + client: swap, aim and fire feel immediate on the client, with no weapon snapping back after a swap.
+- [ ] Bots change weapon when the first runs dry and aim at range.
+
+Teammate markers:
+- [ ] Each crewmate has a diamond in your crew colour over their head, with name, health bar and distance, visible through walls.
+- [ ] Turn away: the marker slides to the screen edge on their side. A crewmate behind you is pinned to an edge too, never lost.
+- [ ] A crewmate who is down shows a red marker and `DOWN` where they fell.
+- [ ] Rivals have no marker. After a Data Mine, Recon Drone or Net Sight tags one, they show a bare magenta diamond until the reveal ends.
+
+Gear and effects. Nothing a player carries, places or triggers should be invisible:
+- [ ] Other players hold their weapon and carry the spare across the back. A weapon with no prefab shows a blocky stand-in, not an empty hand.
+- [ ] Light Armor shows chest and back plates, Stim Rig shows green injectors on the belt, Hollow Points shows an ammunition belt.
+- [ ] Every shot has a muzzle flash at the gun and a spark at the hit.
+- [ ] Cipher: Remote Hack fires a cyan bolt; Net Sight and Data Mine send rings across the floor; EMP Blast is a blue shell with sparks.
+- [ ] Spider: the trap is a disc with a blinking light in the owner's colour and explodes visibly; Stealth shimmers; Sabotage is a yellow shock; Smoke Bomb leaves a cloud for its full duration.
+- [ ] Smith: a placed charge is a taped block with a fast blinking light, and Detonate blows up each one; Breaching Charge blasts ahead; Incendiary throws a patch of fire and victims burn visibly. Grenades are canisters with a smoke trail.
+- [ ] Shield: Tactical Shield is a cyan bubble; Damage Boost is a red aura at the feet; Recon Drone is a small drone that climbs, sweeps scan rings and leaves; Flashbang is a white burst.
+- [ ] On yourself, statuses tint the screen: white when flashed, orange when burning, blue flicker when jammed, cyan when shielded.
+- [ ] A player carrying the case has it on their back. A revealed player has a magenta diamond over the head.
+
+Map:
+- [ ] Each district has its own floor colour and light colour, and a name on its outer wall. Side exits have a green `EXIT` board and a parked van with a green beacon.
+- [ ] The plaza has a gold ring inlay marking the central getaway and four banner masts.
+- [ ] South-east: the Bonded Store, a walled room with three doors, shelving and a roof over the back half. North-east: the Courtyard, with a fountain, trees, benches and two stalls. South-west: the Motor Pool, two vans under a canopy. North-west: the Harbour Office. A yellow crane stands over the container yard.
+- [ ] Walk every new area. Nothing is stuck inside anything else, every door is passable, and no route that existed before is blocked.
+- [ ] Guards path around the new props (the NavMesh was re-baked) and do not walk through shelving or vans.
+- [ ] Frame rate with the props and lights in. If it has dropped, the first thing to cut is the number of point lights.
+
 ## 7d. Expected flow and troubleshooting
 **Expected flow on Play (dev config):** spectator camera orbits the arena → session starts → your player spawns → the
 **class picker** appears with the cursor free (state *Waiting for players*) → host presses **Start match now** (or the

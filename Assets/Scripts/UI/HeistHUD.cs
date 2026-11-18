@@ -94,6 +94,8 @@ namespace Ouroboros.UI
             if (GetComponent<CrewCallouts>() == null) gameObject.AddComponent<CrewCallouts>();
             // (v0.13) markers over crewmates, so friend and rival are never confused
             if (GetComponent<TeammateMarkers>() == null) gameObject.AddComponent<TeammateMarkers>();
+            // (v0.13, M5) main menu, pause, settings, controls and profile
+            if (GetComponent<GameMenu>() == null) gameObject.AddComponent<GameMenu>();
 
             var ps = document.panelSettings;
             Debug.Log($"[HeistHUD] Enabled. PanelSettings='{(ps != null ? ps.name : "NONE")}', theme='{(ps != null && ps.themeStyleSheet != null ? ps.themeStyleSheet.name : "NONE")}', " +
@@ -754,6 +756,14 @@ namespace Ouroboros.UI
                     var team = Core.TeamUtil.FromIndex(i);
                     if (tm != null && tm.Object != null && tm.GetTeamPlayerCount(team) == 0) continue;
                     sb.AppendLine($"{TeamName(team),-14} {gm.TeamScores[i],6} pts   ${gm.TeamLoot[i],-6} banked   {gm.TeamExtractedCount[i]} extracted   {gm.TeamObjectives[i]} objectives");
+                }
+                // (v0.13) what the match added to the local profile
+                var record = Core.PlayerProfile.LastMatch;
+                if (record.Valid)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine($"+{record.Xp} XP    Level {record.LevelAfter}  {Core.ProfileRules.TitleForLevel(record.LevelAfter)}" + (record.LevelledUp ? "    LEVEL UP" : ""));
+                    sb.AppendLine("[Esc] menu");
                 }
                 endTable.text = sb.ToString().TrimEnd();
                 return;

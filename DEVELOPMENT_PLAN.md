@@ -185,6 +185,15 @@ M4, all generated in code:
 
 Awaiting in-engine validation: PHASE0_BRINGUP.md section 7h.
 
+### v0.13 — M5, the game shell, plus gun handling, gear visuals, teammate markers and the wider map
+- **Weapons**: `InputButtons.NextWeapon` / `PrevWeapon`; `NetworkLoadout.ActiveSlot`, `SwapTimer`, `Aiming`, `CycleWeapon`, `SetAiming`, `ReloadActive`; `CombatRules.AimedSpread`, `ZoomedFov`, `ZoomSensitivity`; handling fields on `EquipmentData`; `PlayerController.AimBlend` and view zoom; `Art/WeaponView` rewritten (draw, aim, reload, kick, stowed weapon); bots swap and aim.
+- **Gear and effects**: `Art/Prim.cs`, `Art/GearBuilder.cs` (stand-in weapons, trap, charge, grenade, drone, worn gear), `Art/Fx.cs` (particles, pulses, blasts, smoke, fire), `Art/AbilityEffects.cs` with `BasePlayerClass.GetAbilityVisual`, `Art/StatusEffects.cs`, status screen wash in `CombatHUD`, models on `ProximityTrap` and `Projectile`.
+- **Teammate markers**: `UI/TeammateMarkers.cs`.
+- **Map**: `Assets/Editor/OuroborosPropKit.cs` (prop kit, shared materials, `BuildFreeportExpansion`, menu **Build Out Freeport (M5)**).
+- **Shell**: `UI/GameMenu.cs` (main menu, pause, settings, read-only controls list, profile), `Core/GameSettings.cs`, `Core/ProfileRules.cs` (unit-tested), `Core/PlayerProfile.cs`, `GameSessionManager.showMainMenu` / `LeaveToMenu` / `SessionCode`, player names sent to the host and cleaned there.
+
+Awaiting in-engine validation: PHASE0_BRINGUP.md section 7i.
+
 ### Phase 5 — Meta
 - Lobby scene with class picker (`NetworkPlayer.RequestClass` is in place), session browser, late-join handling, host migration.
 - Progression/cosmetics via `ClassData`/`EquipmentData`.

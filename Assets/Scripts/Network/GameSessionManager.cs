@@ -29,6 +29,8 @@ namespace Ouroboros.Network
         [SerializeField] private Fusion.GameMode startMode = Fusion.GameMode.AutoHostOrClient;
         [SerializeField] private string sessionName = "ouroboros-dev";
         [SerializeField] private bool autoStartOnPlay = true;
+        [Tooltip("(v0.13) Show the main menu instead of starting a session on Play. Untick for the old press-Play-and-host flow.")]
+        [SerializeField] private bool showMainMenu = true;
         [SerializeField] private NetworkRunner runnerPrefab;
 
         [Header("Player Prefab")]
@@ -98,6 +100,10 @@ namespace Ouroboros.Network
         public NetworkRunner Runner => runner;
         public static Data.FeedbackLibrary FeedbackLibrary { get; private set; }
         public bool IsSessionRunning => runner != null && runner.IsRunning;
+        /// <summary>(v0.13) True when the main menu, not auto-start, decides when a session begins.</summary>
+        public bool ShowMainMenu => showMainMenu;
+        /// <summary>(v0.13) Name of the running session. For a private match this is the party code.</summary>
+        public string SessionCode { get; private set; }
         public IReadOnlyDictionary<PlayerRef, NetworkObject> SpawnedPlayers => spawnedPlayers;
 
         private void Awake()
@@ -157,7 +163,8 @@ namespace Ouroboros.Network
 
         private async void Start()
         {
-            if (autoStartOnPlay)
+            // [v0.12] if (autoStartOnPlay)
+            if (autoStartOnPlay && !showMainMenu) // (v0.13) with the menu on, the player picks how to start
             {
                 await StartSession(startMode, sessionName);
             }
@@ -178,6 +185,7 @@ namespace Ouroboros.Network
         {
             if (Cursor.lockState == CursorLockMode.Locked) return;
             if (UI.ClassPickerUI.IsShown || UI.KeypadUI.IsShown) return;
+            if (UI.GameMenu.IsOpen) return; // (v0.13) the menu owns the cursor while it is up
             if (!runner.TryGetPlayerObject(runner.LocalPlayer, out NetworkObject local) || local == null) return;
             if (Core.LocalInputSource.Pressed(Core.InputButtons.Primary))
             {
@@ -242,7 +250,36 @@ namespace Ouroboros.Network
             }
 
             Debug.Log($"[GameSessionManager] Session '{session}' started as {mode}");
+            SessionCode = session; // (v0.13)
             return true;
+        }
+
+        /// <summary>
+        /// (v0.13) Leaves the session and reloads the scene, which brings the main menu back. Reloading is the
+        /// simple way to get every scene object back to how it was before the session touched it.
+        /// </summary>
+        public async void LeaveToMenu()
+        {
+            int buildIndex = SceneManager.GetActiveScene().buildIndex;
+            var leaving = runner;
+            try
+            {
+                if (leaving != null) await leaving.Shutdown();
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+
+            // If Fusion moved this object out of the scene to keep the runner alive, the reload would not replace it.
+            if (this != null && gameObject.scene.name == "DontDestroyOnLoad")
+            {
+                if (Instance == this) Instance = null;
+                Destroy(gameObject);
+            }
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+            if (buildIndex >= 0) SceneManager.LoadScene(buildIndex);
         }
 
         public async void ShutdownSession()
@@ -500,7 +537,9 @@ namespace Ouroboros.Network
                 if (Core.LocalInputSource.Pressed((Core.InputButtons)b)) pressedSinceLastTick |= 1 << b;
             }
 
-            if (!UI.KeypadUI.IsShown && Core.LocalInputSource.CursorTogglePressed())
+            // [v0.12] if (!UI.KeypadUI.IsShown && Core.LocalInputSource.CursorTogglePressed())
+            // (v0.13) Esc opens the pause menu when there is one; this is the fallback for scenes without it
+            if (!UI.GameMenu.Exists && !UI.KeypadUI.IsShown && Core.LocalInputSource.CursorTogglePressed())
             {
                 Cursor.lockState = Cursor.lockState == CursorLockMode.Locked ? CursorLockMode.None : CursorLockMode.Locked;
                 Cursor.visible = Cursor.lockState != CursorLockMode.Locked;
@@ -543,6 +582,13 @@ namespace Ouroboros.Network
                 data.Buttons.Set((int)Core.InputButtons.NextWeapon, false); // (v0.13)
                 data.Buttons.Set((int)Core.InputButtons.PrevWeapon, false);
                 data.Buttons.Set((int)Core.InputButtons.Interact, false);
+                data.Move = Vector2.zero;
+            }
+
+            // (v0.13) with the menu up the character stands still and does nothing
+            if (UI.GameMenu.IsOpen)
+            {
+                data.Buttons = default;
                 data.Move = Vector2.zero;
             }
 

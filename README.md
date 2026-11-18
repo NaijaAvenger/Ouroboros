@@ -3,7 +3,7 @@
 
 A modular multiplayer extraction heist game built with **Photon Fusion 2**, featuring 4 teams of 4 players competing to crack objectives, hold onto the loot, and extract before the window closes.
 
-> **Status: v0.12 — networked prototype with a code-generated look.** The systems below exist in code and pass an
+> **Status: v0.13 — networked prototype with a code-generated look and a game shell.** The systems below exist in code and pass an
 > offline C# type-check and unit tests (`Tools/`). They have not been validated in play mode. Characters, loot,
 > patterns, music and sound are generated in code as stand-ins; there is no authored art, audio or voice yet.
 > A ✅ in the feature list means "implemented in code", not "tested and fun".
@@ -86,7 +86,7 @@ Assets/Scripts/
 - **AI Navigation** package (`com.unity.ai.navigation`, in `Packages/manifest.json` since v0.9) for NavMesh baking (GuardAI)
 
 ### Scene Setup
-**Current map:** menu **Ouroboros > Setup > Create Freeport Map (M2)** builds the prefabs, assets and the `Freeport` blockout (a laid-out map with a central getaway and three districts) and makes it the first scene. The older generated test arena is still available:
+**Current map:** menu **Ouroboros > Setup > Create Freeport Map (M2)** builds the prefabs, assets and the `Freeport` map (a central getaway, the Gallery, Archive and Docks districts, a bonded store, a courtyard and a motor pool, dressed with code-built props) and makes it the first scene. On a Freeport scene built before v0.13, **Ouroboros > Setup > Apply Art Pass (M4)** and **Build Out Freeport (M5)** add the dressing and the props. The older generated test arena is still available:
 
 **Dev arena:** menu **Ouroboros > Setup > Create Dev Scene (Phase 0)** generates the config asset, prefabs and a playable `DevArena` scene (see [PHASE0_BRINGUP.md](PHASE0_BRINGUP.md)); **Ouroboros > Setup > Rebuild Scene References** re-applies the asset references if any field in the scene comes up empty. Manual equivalent:
 
@@ -94,7 +94,7 @@ Assets/Scripts/
 2. **Scene objects**: `GameSessionManager` (assign the player prefab), `TeamManager` and `ExtractionHeistGameMode` as scene `NetworkObject`s.
 3. **Config**: Create → Ouroboros → Game Mode Config, assign to `ExtractionHeistGameMode`. For solo testing set `minPlayersToStart = 1`.
 4. **Level**: place `TeamSpawnPoint`s (one per team at minimum), `ExtractionPoint`s, `LootObjective`s, optional `SecurityCamera`s, `BreachableDoor`s and `GuardAI`s (with a baked NavMesh).
-5. Press Play — `GameSessionManager` auto-starts an `AutoHostOrClient` session. Run a second instance (ParrelSync or a build) to join.
+5. Press Play. The main menu comes up (v0.13): **Solo** plays offline with bots, **Quick Play** hosts or joins a public match, **Host Private Match** gives a party code and **Join Code** takes one. Run a second instance (ParrelSync or a build) to join. To get the old press-Play-and-host flow, untick `showMainMenu` on `GameSessionManager`.
 
 ## Game Flow
 1. **Waiting** — players join, get a team and class
@@ -106,7 +106,9 @@ Assets/Scripts/
 Scoring: objectives, kills, first extraction per team, each member extracted, and banked loot (`GameModeConfig`).
 
 ## Controls
-Input goes through the **Input System** package (keyboard, mouse, gamepad) when it is enabled; the legacy Input Manager is only a fallback. Bindings are rebindable at runtime (`HeistInputActions.StartRebind`) and persist in PlayerPrefs.
+Input goes through the **Input System** package (keyboard, mouse, gamepad) when it is enabled; the legacy Input Manager is only a fallback. The pause menu (Esc) has a **Controls** page listing every binding; it is a read-only reference. Rebinding exists in code (`HeistInputActions.StartRebind`, saved in PlayerPrefs) but has no screen yet.
+
+You hold one weapon at a time (v0.13). Left click fires it, right click aims down its sights, and the mouse wheel swaps to the other one.
 
 | Action | Keyboard / Mouse | Gamepad |
 |--------|------------------|---------|
@@ -115,14 +117,16 @@ Input goes through the **Input System** package (keyboard, mouse, gamepad) when 
 | Jump | Space | A |
 | Interact: **hold** while aiming at a device to quick-hack it; **press** at a vault to jack in (then 1-4 answer the signs, press again to jack out); hold for cards, notes and doors | F | X |
 | Abilities 1–4 | 1 2 3 4 | D-pad ↑ → ↓ ← |
-| Primary / Secondary | LMB / RMB | RT / LT |
+| Fire the weapon in hand | LMB | RT |
+| Aim down sights (tighter spread, less kick, slower walk, no sprint) | RMB (hold) | LT (hold) |
+| Swap weapon | Mouse wheel, or X | Select |
 | Utility / Gadget | Q / E | LB / RB |
 | Reload | R | Y |
 | Slide (while sprinting) | Ctrl | B |
 | Grapple (Smith) | G | R3 |
 | Glide / wall climb | hold Space | hold A |
-| Cursor lock toggle | Esc | Start |
-| Debug overlay | F1 | Select |
+| Menu (pause, settings, controls, profile, leave match) | Esc | Start |
+| Debug overlay | F1 | - |
 
 ## Technical Details
 - **Max Players**: 16 (4 teams × 4 players)

@@ -231,6 +231,19 @@ namespace Ouroboros.Core
             return DefaultHint(button, LastDeviceWasGamepad);
         }
 
+        /// <summary>
+        /// (v0.13) Label for a button on a named device, for the controls list. Unlike <see cref="Hint"/> it does
+        /// not depend on which device was touched last.
+        /// </summary>
+        public static string BindingLabel(InputButtons button, bool gamepad)
+        {
+#if ENABLE_INPUT_SYSTEM
+            string s = Actions.DisplayString(button, gamepad);
+            if (!string.IsNullOrEmpty(s) && s != "?") return s;
+#endif
+            return DefaultHint(button, gamepad);
+        }
+
         public static string DefaultHint(InputButtons button, bool gamepad)
         {
             if (gamepad)

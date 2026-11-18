@@ -188,6 +188,15 @@ namespace Ouroboros.Network
                 Health = MaxHealth;
                 Stamina = MaxStamina;
             }
+
+            // (v0.13) the owner tells the host what they are called; the host cleans it before anyone sees it
+            if (Object.HasInputAuthority) RPC_SetName(Core.PlayerProfile.Name);
+        }
+
+        [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+        private void RPC_SetName(string requested)
+        {
+            DisplayName = Core.ProfileRules.SanitiseName(requested, DisplayName.ToString());
         }
 
         public override void Despawned(NetworkRunner runner, bool hasState)

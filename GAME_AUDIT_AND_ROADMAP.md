@@ -64,6 +64,34 @@ own, not a replacement for artists, composers, voice actors or cultural consulta
 Still open in M4 and not solvable in code: real character and environment art, composed music, recorded
 voice, the cultural review named in 4.1, and the visual language of the hack signs.
 
+### M5 progress (code complete, not yet play-tested)
+
+M5 was started at your request before the first play session. Everything here compiles and the rules are
+unit-tested, but none of it has run in Unity.
+
+| M5 item | State |
+|---------|-------|
+| Main menu | Done in code. Quick play, solo (offline with bots), host a private match, join with a code, name entry. Shown on Play unless `showMainMenu` is unticked on `GameSessionManager` |
+| Party codes | Done in code. A five-character code is the session name of a private match; the pause menu shows it |
+| Session browser | Not done. Quick play and codes cover finding a match for now |
+| Pause menu | Done in code. Esc: resume, settings, controls, profile, leave match (reloads the scene to the main menu), quit |
+| Settings | Done in code. Look and aim sensitivity, field of view, invert Y, master and music volume, teammate markers, crew radio, full screen. Stored per machine |
+| Controls and keybinds | Done as a read-only list of every action for keyboard and mouse and for gamepad. Rebinding has code but no screen |
+| Loadout screen | Unchanged: the lobby picker chooses specialist and both weapons |
+| Post-match summary | Done in code. The end screen adds the XP gained and the level |
+| Cosmetic progression | Done in code, local only. XP, 50 levels and eight titles. Nothing it unlocks changes a match |
+| Dedicated servers or host migration | **Recommendation: stay player-hosted and add Fusion host migration before any public test.** Dedicated servers cost money every hour a match runs and need an operations pipeline this project does not have. Host migration removes the worst failure of player hosting (the host leaves, the match dies) at the cost of engineering only. Not implemented yet |
+
+Also added with M5, at your request:
+
+| Item | State |
+|------|-------|
+| Gun mechanics | Done in code. One weapon in hand; the wheel swaps, left click fires, right click aims down sights. Aiming tightens spread, cuts kick, slows the walk, blocks sprint and zooms. Draw time on swap. A first-person view model with draw, aim, reload and kick motion |
+| Teammate indicators | Done in code. A crew-coloured diamond, name, health and distance over each crewmate, visible through walls, pinned to the screen edge when they are out of view. Rivals show nothing unless a reveal has tagged them |
+| Every piece of gear visible | Done in code. Stand-in models for weapons without a prefab, the spare weapon on the back, worn armour, speed rig and ammunition belt, the trap, the placed charge, grenades with a trail, the recon drone, and an effect for all sixteen abilities and eight statuses |
+| Environment pieces | Done in code. Eighteen kinds of prop and structure modelled from primitives |
+| Map build-out | Done in code. 75 props across every district and three new areas (bonded store, courtyard, motor pool), a crane, getaway vans at the side exits, district floors, signs and lighting. No new vaults |
+
 ### M2 progress (code complete, not yet play-tested)
 
 Compiles against the real Fusion and Input System APIs; the new rules arithmetic is unit-tested. Not run in
@@ -341,16 +369,16 @@ Decision 2 affects the local `ViewMode.cs`: if it is a first/third-person toggle
 
 1. Open the project in Unity 6000.4 and confirm it compiles. Nothing since M0 has been through the Fusion weaver.
 2. Run **Ouroboros > Setup > Recreate Freeport Map** (or **Create Freeport Map (M2)** if the scene does not
-   exist yet). It applies the M1 prefab upgrades, the M3 devices and gravity zones, and the M4 art pass.
-3. Work through sections 7e (M1), 7f (M2), 7g (M3) and 7h (M3 follow-up and M4) of `PHASE0_BRINGUP.md` and
-   list what breaks.
-4. With those results: fix what the playtest finds and tune the weapon, quota and hack numbers.
+   exist yet). It applies the prefab upgrades, the devices and gravity zones, the art pass, the map build-out
+   and the per-weapon handling values.
+3. Press Play and choose **Solo** on the main menu. That needs no Photon connection.
+4. Work through sections 7e to 7i of `PHASE0_BRINGUP.md` and list what breaks.
 5. Find native speakers of Nigerian Pidgin, Swahili or Sheng, Twi and isiZulu to rewrite the crew radio lines
    in `Assets/Scripts/UI/CrewCallouts.cs`, and someone who can review the artefact names and stories.
 
-M1 to M4 are code complete as far as code can take them, and none has been play-tested. Four milestones of
+M1 to M5 are code complete as far as code can take them, and none has been play-tested. Five milestones of
 untested work is a real risk: the first play session will find bugs, and some will be in the oldest layers.
-M5 (the game shell: menus, settings, progression) should wait for that session.
+The next milestone should be that session and its fixes, not M6.
 
 Notes on the repository as of the M2 work:
 - `main` holds M0, M1 and your Unity project state ("Squashed local work"). M2 is on `claude/awesome-darwin-awl360`.
