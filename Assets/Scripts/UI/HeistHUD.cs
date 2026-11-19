@@ -78,6 +78,7 @@ namespace Ouroboros.UI
         private readonly int[] boardTotals = new int[Core.GameConstants.MAX_TEAMS];
 
         private class AbilitySlotView { public VisualElement Root, CooldownFill; public Label Key, Name, Cooldown, Cost; }
+        private AbilitySlotView tacticalView; // (v0.24)
 
         // ------------------------------------------------------------------
 
@@ -366,6 +367,26 @@ namespace Ouroboros.UI
                 abilities.Add(slot.Root);
                 slots[i] = slot;
             }
+            // (v0.24) The tactical sits beside the two abilities as the third card of the kit: its key, its
+            //         name and its cooldown, set apart by a gold edge. It used to be a line of text bottom right.
+            tacticalView = new AbilitySlotView { Root = Panel(PanelBg) };
+            tacticalView.Root.style.width = 112; tacticalView.Root.style.height = 72; tacticalView.Root.style.marginLeft = 14; tacticalView.Root.style.marginRight = 4;
+            tacticalView.Root.style.overflow = Overflow.Hidden;
+            tacticalView.Root.style.justifyContent = Justify.SpaceBetween;
+            tacticalView.Root.style.borderTopWidth = 2; tacticalView.Root.style.borderTopColor = LootColor;
+            tacticalView.CooldownFill = new VisualElement();
+            tacticalView.CooldownFill.style.position = Position.Absolute;
+            tacticalView.CooldownFill.style.left = 0; tacticalView.CooldownFill.style.right = 0; tacticalView.CooldownFill.style.bottom = 0;
+            tacticalView.CooldownFill.style.height = Length.Percent(0);
+            tacticalView.CooldownFill.style.backgroundColor = new Color(1f, 1f, 1f, 0.18f);
+            tacticalView.Root.Add(tacticalView.CooldownFill);
+            tacticalView.Key = Text("", 12, new Color(1f, 1f, 1f, 0.6f), bold: true);
+            tacticalView.Name = Text("", 12, Color.white, bold: true);
+            tacticalView.Name.style.whiteSpace = WhiteSpace.Normal;
+            tacticalView.Cooldown = Text("", 14, LootColor, bold: true);
+            tacticalView.Cost = Text("TACTICAL", 10, LootColor);
+            tacticalView.Root.Add(tacticalView.Key); tacticalView.Root.Add(tacticalView.Name); tacticalView.Root.Add(tacticalView.Cooldown); tacticalView.Root.Add(tacticalView.Cost);
+            abilities.Add(tacticalView.Root);
             root.Add(abilities);
 
             // Bottom right: loot + K/D
@@ -761,7 +782,8 @@ namespace Ouroboros.UI
             {
                 var view = slots[i];
                 var def = cls != null ? cls.GetAbilitySlot(i) : default;
-                bool has = !string.IsNullOrEmpty(def.Name);
+                // [v0.23] bool has = !string.IsNullOrEmpty(def.Name);
+                bool has = i < Core.GameConstants.ABILITIES_PER_CLASS && !string.IsNullOrEmpty(def.Name); // (v0.24) two abilities
                 view.Root.style.display = has ? DisplayStyle.Flex : DisplayStyle.None;
                 if (!has) continue;
 
@@ -785,13 +807,28 @@ namespace Ouroboros.UI
 
             // (v0.14) the gadget, its key and its cooldown
             var gadget = lo.GadgetData;
-            if (gadget == null) gadgetLabel.text = "";
-            else if (gadget.gadget == Data.GadgetType.GrappleLine) gadgetLabel.text = $"[{Core.LocalInputSource.Hint(Core.InputButtons.Grapple)}] {gadget.equipmentName}";
-            else
+            // [v0.23] if (gadget == null) gadgetLabel.text = "";
+            // [v0.23] else if (gadget.gadget == Data.GadgetType.GrappleLine) gadgetLabel.text = $"[{Hint(Grapple)}] {gadget.equipmentName}";
+            // [v0.23] else
+            // [v0.23] {
+            // [v0.23]     float wait = lo.CooldownRemaining((int)Equipment.EquipmentSlotType.Gadget);
+            // [v0.23]     gadgetLabel.text = $"[{Hint(Gadget)}] {gadget.equipmentName}  " + (wait > 0.05f ? $"{wait:0}s" : "READY");
+            // [v0.23]     gadgetLabel.style.opacity = wait > 0.05f ? 0.55f : 1f;
+            // [v0.23] }
+            // (v0.24) the tactical has its own card in the kit bar; the line here is retired
+            gadgetLabel.text = "";
+            if (tacticalView != null)
             {
-                float wait = lo.CooldownRemaining((int)Equipment.EquipmentSlotType.Gadget);
-                gadgetLabel.text = $"[{Core.LocalInputSource.Hint(Core.InputButtons.Gadget)}] {gadget.equipmentName}  " + (wait > 0.05f ? $"{wait:0}s" : "READY");
-                gadgetLabel.style.opacity = wait > 0.05f ? 0.55f : 1f;
+                tacticalView.Root.style.display = gadget != null ? DisplayStyle.Flex : DisplayStyle.None;
+                if (gadget != null)
+                {
+                    float wait = gadget.gadget == Data.GadgetType.GrappleLine ? 0f : lo.CooldownRemaining((int)Equipment.EquipmentSlotType.Gadget);
+                    tacticalView.Key.text = Core.LocalInputSource.Hint(Core.InputButtons.Gadget);
+                    tacticalView.Name.text = gadget.equipmentName;
+                    tacticalView.Cooldown.text = wait > 0.05f ? $"{wait:0.0}s" : "";
+                    tacticalView.CooldownFill.style.height = Length.Percent(gadget.cooldown > 0f ? Mathf.Clamp01(wait / gadget.cooldown) * 100f : 0f);
+                    tacticalView.Root.style.opacity = local.HasStatus(Core.StatusFlags.EMPDisabled) ? 0.35f : 1f;
+                }
             }
 
             int p = (int)Equipment.EquipmentSlotType.Primary, s = (int)Equipment.EquipmentSlotType.Secondary;
@@ -1230,6 +1267,12 @@ namespace Ouroboros.UI
 
         private void OnLootPickedUp(Network.NetworkPlayer who, int itemId, int value)
         {
+            // (v0.24) an ammo box: a line for the one who took it, nothing for anyone else
+            if (who != null && itemId == GameMode.LootDrop.AmmoItemId)
+            {
+                if (who.IsLocalPlayer) AddFeed("+ Ammo", new Color(0.85f, 0.95f, 1f));
+                return;
+            }
             if (who == null || itemId <= 0) return;
             var item = Data.LootCatalog.Active.Get(itemId);
             if (item == null) return;

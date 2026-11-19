@@ -18,6 +18,26 @@ namespace Ouroboros.Data
     }
 
     /// <summary>(v0.14) What a gadget does. Values are stored in assets: add new ones at the end.</summary>
+    /// <summary>
+    /// (v0.24) A kit is two weapons, two abilities and one tactical. The tactical is the item in the Gadget
+    /// slot; each specialist starts with the one that fits what they do, and may swap it for any other.
+    /// </summary>
+    public static class Kit
+    {
+        /// <summary>The tactical a specialist carries unless the player picks another.</summary>
+        public static GadgetType DefaultTactical(Core.PlayerClassType specialist)
+        {
+            switch (specialist)
+            {
+                case Core.PlayerClassType.Hacker:      return GadgetType.EmpEmitter;   // Cipher: switches a room's electronics off
+                case Core.PlayerClassType.Saboteur:    return GadgetType.BypassKey;    // Spider: lets itself in quietly
+                case Core.PlayerClassType.Demolitions: return GadgetType.GrappleLine;  // Smith: swings across to the breach point
+                case Core.PlayerClassType.Agent:       return GadgetType.BreachingKit; // Shield: first through the door
+                default:                               return GadgetType.None;
+            }
+        }
+    }
+
     public enum GadgetType
     {
         None = 0,

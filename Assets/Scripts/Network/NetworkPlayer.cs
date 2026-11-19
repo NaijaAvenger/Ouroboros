@@ -746,6 +746,7 @@ namespace Ouroboros.Network
             if (!Object.HasStateAuthority) return;
             RespawnsUsed++;
             LastRedeployTick = (int)Runner.Tick; // (v0.23) opens a short window to change class and gear
+            if (Loadout != null) Loadout.RefillAll(); // (v0.24) a redeploy comes back with full magazines and a full reserve
             Health = MaxHealth;
             Stamina = MaxStamina;
             Status = Core.StatusFlags.None;

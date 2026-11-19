@@ -199,6 +199,42 @@ namespace Ouroboros.Core
             }
         }
 
+        // ------------------------------------------------------------------
+        // Ammunition (v0.24)
+
+        /// <summary>
+        /// Reserve rounds after picking up an ammo box that restores <paramref name="share"/> of a full
+        /// reserve. Never past full, and always at least one round if there is room for one.
+        /// </summary>
+        public static int ReserveAfterPickup(int reserve, int fullReserve, float share)
+        {
+            if (fullReserve <= 0) return reserve < 0 ? 0 : reserve;
+            int have = reserve < 0 ? 0 : reserve;
+            if (have >= fullReserve) return have;
+            float s = share < 0f ? 0f : (share > 1f ? 1f : share);
+            int add = (int)Math.Ceiling(fullReserve * (double)s);
+            if (add < 1) add = 1;
+            return Math.Min(fullReserve, have + add);
+        }
+
+        /// <summary>True if a weapon with <paramref name="reserve"/> rounds in reserve could take more.</summary>
+        public static bool WantsAmmo(int reserve, int fullReserve) => fullReserve > 0 && reserve < fullReserve;
+
+        /// <summary>
+        /// A yes or no that is the same on every run for the same <paramref name="seed"/>: whether a dead guard
+        /// or a broken locker leaves ammunition behind.
+        /// </summary>
+        public static bool Chance(int seed, float chance)
+        {
+            if (chance <= 0f) return false;
+            if (chance >= 1f) return true;
+            uint x = (uint)seed;
+            x ^= x >> 16; x *= 0x7feb352d;
+            x ^= x >> 15; x *= 0x846ca68b;
+            x ^= x >> 16;
+            return (x >> 8) / 16777216f < chance;
+        }
+
         private static float Clamp(float value, float min, float max) => value < min ? min : (value > max ? max : value);
     }
 }

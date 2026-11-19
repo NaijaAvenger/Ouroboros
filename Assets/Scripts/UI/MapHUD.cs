@@ -183,7 +183,8 @@ namespace Ouroboros.UI
             {
                 var d = drops[i];
                 if (d == null || d.Object == null || (d.transform.position - origin).sqrMagnitude > rangeSq) continue;
-                Place(markers[used++], me, d.transform.position + Vector3.up * 0.6f, "Loot", LootColour, width, height, false, 10);
+                // [v0.23] Place(markers[used++], me, d.transform.position + Vector3.up * 0.6f, "Loot", LootColour, width, height, false, 10);
+                Place(markers[used++], me, d.transform.position + Vector3.up * 0.6f, d.IsAmmo ? "Ammo" : "Loot", d.IsAmmo ? Color.white : LootColour, width, height, false, 10); // (v0.24)
             }
             return used;
         }

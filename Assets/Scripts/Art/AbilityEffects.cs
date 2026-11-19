@@ -125,6 +125,12 @@ namespace Ouroboros.Art
                     DetonateCharges(player);
                     break;
 
+                case Core.AbilityVisualKind.ToggleCharge:
+                    // (v0.24) one key for both: this peer knows which by whether that player has a charge down
+                    if (charges.TryGetValue(player, out var down) && down.Count > 0) DetonateCharges(player);
+                    else PlaceCharge(player, feet, visual.Radius, crew);
+                    break;
+
                 case Core.AbilityVisualKind.Drone:
                     ReconDrone.Launch(feet + Vector3.up * 1.6f, visual.Radius, Mathf.Max(2f, visual.Seconds), colour, crew);
                     break;

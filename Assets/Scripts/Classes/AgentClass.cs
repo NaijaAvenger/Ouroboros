@@ -36,7 +36,8 @@ namespace Ouroboros.Classes
             // [v0.11] description = "Versatile field operative with balanced combat capabilities and tactical support options.";
             // (v0.12, M4) the Shield. The enum and file keep the old name; players see this one.
             className = "Shield";
-            description = "Frontline protector. Takes the first hit behind a shield, lifts the damage of the whole crew, and holds the ground others need.";
+            // [v0.23] description = "Frontline protector. Takes the first hit behind a shield, lifts the damage of the whole crew, and holds the ground others need.";
+            description = "Point man. Goes through the door first behind a shield, blinds the room with a flashbang, and breaches what is locked.";
 
             // Agent has balanced stats across all categories
             maxHealth = 100f;
@@ -45,9 +46,12 @@ namespace Ouroboros.Classes
             movement.CanDoubleJump = true;                                   // v0.7
 
             DefineAbility(0, "Tactical Shield", cooldown: 20f, staminaCost: 20f, duration: tacticalShieldDuration);
-            DefineAbility(1, "Damage Boost",    cooldown: 18f, staminaCost: 15f, duration: damageBoostDuration);
-            DefineAbility(2, "Recon Drone",     cooldown: 25f, staminaCost: 10f, duration: reconRevealDuration);
-            DefineAbility(3, "Flashbang",       cooldown: 12f, staminaCost: 10f, duration: flashbangDuration);
+            // (v0.24) Two abilities: shield up, flash, go. The damage boost and the drone belonged to other
+            //         roles (a crew's damage perk now comes from a vault; the Cipher does the seeing).
+            // [v0.23] DefineAbility(1, "Damage Boost",    cooldown: 18f, staminaCost: 15f, duration: damageBoostDuration);
+            // [v0.23] DefineAbility(2, "Recon Drone",     cooldown: 25f, staminaCost: 10f, duration: reconRevealDuration);
+            // [v0.23] DefineAbility(3, "Flashbang",       cooldown: 12f, staminaCost: 10f, duration: flashbangDuration);
+            DefineAbility(1, "Flashbang",       cooldown: 12f, staminaCost: 10f, duration: flashbangDuration);
         }
 
         // [v0.1] public override void UseAbility(int abilityIndex) { switch ... }
@@ -56,9 +60,10 @@ namespace Ouroboros.Classes
             switch (abilityIndex)
             {
                 case 0: return DeployTacticalShield();
-                case 1: return ActivateDamageBoost();
-                case 2: return DeployReconDrone();
-                case 3: return FlashBang();
+                // [v0.23] case 1: return ActivateDamageBoost();
+                // [v0.23] case 2: return DeployReconDrone();
+                // [v0.23] case 3: return FlashBang();
+                case 1: return FlashBang();
             }
             return false;
         }
@@ -69,7 +74,8 @@ namespace Ouroboros.Classes
             switch (slot)
             {
                 case 0: return new Core.AbilityVisual(Core.AbilityVisualKind.Shimmer, 1.4f, 0.5f, new Color(0.3f, 0.9f, 1f));
-                case 1: return new Core.AbilityVisual(Core.AbilityVisualKind.Shimmer, 1.2f, 0.5f, new Color(1f, 0.3f, 0.2f));
+                // [v0.23] case 1: return new Core.AbilityVisual(Core.AbilityVisualKind.Shimmer, 1.2f, 0.5f, new Color(1f, 0.3f, 0.2f));
+                case 1: return new Core.AbilityVisual(Core.AbilityVisualKind.Flash, flashbangRadius, 0.35f, Color.white, 2f); // (v0.24) the flashbang moved here
                 case 2: return new Core.AbilityVisual(Core.AbilityVisualKind.Drone, reconDroneRange, reconRevealDuration, new Color(1f, 0.25f, 0.9f));
                 case 3: return new Core.AbilityVisual(Core.AbilityVisualKind.Flash, flashbangRadius, 0.35f, Color.white, 2f);
                 default: return default;

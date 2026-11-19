@@ -29,6 +29,8 @@ namespace Ouroboros.Core
         Beam,
         /// <summary>A charge left on the floor until it is detonated.</summary>
         PlaceCharge,
+        /// <summary>(v0.24) One ability that does both: sets a charge if the player has none down, sets it off if they have.</summary>
+        ToggleCharge,
         /// <summary>Every charge this player placed goes off.</summary>
         DetonateCharges,
         /// <summary>A drone that climbs, scans and leaves.</summary>
@@ -135,13 +137,18 @@ namespace Ouroboros.Core
 
             if (data.abilities != null)
             {
-                int count = Mathf.Min(data.abilities.Length, abilitySlots.Length);
+                // [v0.23] int count = Mathf.Min(data.abilities.Length, abilitySlots.Length);
+                // (v0.24) A class asset tunes the abilities the class has; it cannot add any, and an entry made
+                //         for a different ability (an asset from before the kits were cut to two) is ignored.
+                int count = Mathf.Min(data.abilities.Length, GameConstants.ABILITIES_PER_CLASS);
                 for (int i = 0; i < count; i++)
                 {
                     var a = data.abilities[i];
                     if (a == null) continue;
                     AbilitySlot slot = abilitySlots[i];
-                    if (!string.IsNullOrEmpty(a.abilityName)) slot.Name = a.abilityName;
+                    if (string.IsNullOrEmpty(slot.Name)) continue;
+                    if (!string.IsNullOrEmpty(a.abilityName) && a.abilityName != slot.Name) continue;
+                    // [v0.23] if (!string.IsNullOrEmpty(a.abilityName)) slot.Name = a.abilityName;
                     if (a.cooldown > 0f) slot.Cooldown = a.cooldown;
                     if (a.energyCost > 0f) slot.StaminaCost = a.energyCost;
                     if (a.duration > 0f) slot.Duration = a.duration;
@@ -173,7 +180,8 @@ namespace Ouroboros.Core
         public virtual bool UseAbility(int abilityIndex)
         {
             if (!isInitialized) return false;
-            if (abilityIndex < 0 || abilityIndex >= GameConstants.MAX_ABILITY_SLOTS) return false;
+            // [v0.23] if (abilityIndex < 0 || abilityIndex >= GameConstants.MAX_ABILITY_SLOTS) return false;
+            if (abilityIndex < 0 || abilityIndex >= GameConstants.ABILITIES_PER_CLASS) return false; // (v0.24) two abilities
 
             AbilitySlot slot = abilitySlots[abilityIndex];
             if (string.IsNullOrEmpty(slot.Name)) return false;

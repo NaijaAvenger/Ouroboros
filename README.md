@@ -129,13 +129,15 @@ You hold one weapon at a time (v0.13). Left click fires it, right click aims dow
 | Sprint (drains stamina) | Shift | L3 (left stick click) |
 | Jump | Space | A |
 | Interact: **hold** while aiming at a device to quick-hack it; **press** at a vault to jack in (then 1-4 answer the signs, press again to jack out); hold for cards, notes and doors | F | X |
-| Abilities 1–4 | 1 2 3 4 | D-pad ↑ → ↓ ← |
-| Ping what you are looking at for your crew | MMB or T | none by default |
+| Abilities 1 and 2 | 1 2 | D-pad ↑ → |
+| Tactical (EMP, breaching kit, bypass key, scanner, grapple) | E | RB |
+| Change class or gear at your gate | B | D-pad ← |
+| Ping what you are looking at for your crew | MMB or T | D-pad ↓ |
 | Fire the weapon in hand | LMB | RT |
 | Aim down sights (tighter spread, less kick, slower walk, no sprint) | RMB (hold) | LT (hold) |
 | Swap weapon | Mouse wheel, or X | Select |
 | Utility | Q | LB |
-| Gadget: Breaching Kit, EMP Emitter, Bypass Key or Loot Scanner (chosen in the lobby) | E | RB |
+| Ammo: walk over an ammo box; a redeploy refills | - | - |
 | Reload | R | Y |
 | Slide (while sprinting) | Ctrl | B |
 | Grapple (Smith, or anyone carrying the Grapple Line gadget) | G | R3 |

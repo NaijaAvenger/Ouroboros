@@ -205,10 +205,30 @@ namespace Ouroboros.Equipment
 
             for (int i = 0; i < SLOTS; i++) Equip(i, 0);
 
-            if (classData == null || classData.startingEquipment == null) return;
-            foreach (var item in classData.startingEquipment)
+            // [v0.23] if (classData == null || classData.startingEquipment == null) return;
+            // [v0.23] foreach (var item in classData.startingEquipment)
+            // [v0.23] {
+            // [v0.23]     if (item != null) Equip(item);
+            // [v0.23] }
+            if (classData != null && classData.startingEquipment != null)
             {
-                if (item != null) Equip(item);
+                foreach (var item in classData.startingEquipment)
+                {
+                    if (item != null) Equip(item);
+                }
+            }
+            // (v0.24) The specialist's own tactical, whatever the class asset listed: the assets were written
+            //         before each specialist had a signature one. The player can still pick another.
+            var specialist = owner != null ? owner.ClassType : (classData != null ? classData.classType : Core.PlayerClassType.None);
+            var tactical = Data.Kit.DefaultTactical(specialist);
+            if (tactical != Data.GadgetType.None && Registry != null && Registry.items != null)
+            {
+                foreach (var item in Registry.items)
+                {
+                    if (item == null || item.kind != Data.EquipmentKind.Gadget || item.gadget != tactical) continue;
+                    Equip(item);
+                    break;
+                }
             }
             // (v0.13) a fresh kit starts with the primary in hand
             if (SlotItemIds[(int)EquipmentSlotType.Primary] != 0) ActiveSlot = (int)EquipmentSlotType.Primary;
@@ -506,6 +526,58 @@ namespace Ouroboros.Equipment
             int taken = Mathf.Min(needed, Reserve[slot]);
             Magazine.Set(slot, Magazine[slot] + taken);
             Reserve.Set(slot, Reserve[slot] - taken);
+        }
+
+        /// <summary>
+        /// (v0.24) Every weapon back to a full magazine and a full reserve, and no reload in progress. A redeploy
+        /// calls this: nobody comes back into the fight with the empty gun they died holding. State authority only.
+        /// </summary>
+        public void RefillAll()
+        {
+            if (!Object.HasStateAuthority) return;
+            for (int slot = 0; slot < SLOTS; slot++)
+            {
+                var data = GetData(slot);
+                if (data == null || !data.UsesAmmo) continue;
+                Magazine.Set(slot, data.magazineSize);
+                Reserve.Set(slot, data.reserveAmmo);
+                ReloadTimers.Set(slot, TickTimer.None);
+            }
+        }
+
+        /// <summary>(v0.24) True if any weapon carried could take more reserve ammunition.</summary>
+        public bool WantsAmmo
+        {
+            get
+            {
+                if (Object == null) return false;
+                for (int slot = 0; slot < SLOTS; slot++)
+                {
+                    var data = GetData(slot);
+                    if (data != null && data.UsesAmmo && Core.CombatRules.WantsAmmo(Reserve[slot], data.reserveAmmo)) return true;
+                }
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// (v0.24) An ammo box: every weapon carried gets <paramref name="share"/> of its full reserve back, the
+        /// one in the holster included. Returns false if nothing needed any. State authority only.
+        /// </summary>
+        public bool TakeAmmoBox(float share)
+        {
+            if (!Object.HasStateAuthority) return false;
+            bool took = false;
+            for (int slot = 0; slot < SLOTS; slot++)
+            {
+                var data = GetData(slot);
+                if (data == null || !data.UsesAmmo) continue;
+                int after = Core.CombatRules.ReserveAfterPickup(Reserve[slot], data.reserveAmmo, share);
+                if (after == Reserve[slot]) continue;
+                Reserve.Set(slot, after);
+                took = true;
+            }
+            return took;
         }
 
         public void AddReserveAmmo(int slot, int amount)

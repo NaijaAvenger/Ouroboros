@@ -220,13 +220,14 @@ namespace Ouroboros.UI
             var data = registry != null ? registry.Get(type) : null;
             string stats = data != null ? $"\n{data.maxHealth:0} HP · {data.movementSpeed:0.0} spd" : "";
             string abilities = "";
-            if (data != null && data.abilities != null)
-            {
-                foreach (var a in data.abilities)
-                {
-                    if (a != null && !string.IsNullOrEmpty(a.abilityName)) abilities += "\n• " + a.abilityName;
-                }
-            }
+            // [v0.23] the names came from the class asset, which listed four and could be out of date:
+            // [v0.23] if (data != null && data.abilities != null)
+            // [v0.23] {
+            // [v0.23]     foreach (var a in data.abilities)
+            // [v0.23]     {
+            // [v0.23]         if (a != null && !string.IsNullOrEmpty(a.abilityName)) abilities += "\n• " + a.abilityName;
+            // [v0.23]     }
+            // [v0.23] }
             string perk = "";
             var compType = Network.NetworkPlayer.ClassComponentType(type);
             if (compType != null)
@@ -237,6 +238,23 @@ namespace Ouroboros.UI
                 cls.Initialize();
                 if (data != null) cls.ApplyClassData(data);
                 perk = "\nMove: " + cls.Movement.Describe();
+                // (v0.24) the kit as the class itself defines it: two abilities, and the tactical it starts with
+                for (int a = 0; a < Core.GameConstants.ABILITIES_PER_CLASS; a++)
+                {
+                    string name = cls.GetAbilitySlot(a).Name;
+                    if (!string.IsNullOrEmpty(name)) abilities += "\n• " + name; // no key here: on this screen 1 to 4 pick a class
+                }
+                var tactical = Data.Kit.DefaultTactical(type);
+                var gear = Data.EquipmentRegistry.Active;
+                if (tactical != Data.GadgetType.None && gear != null && gear.items != null)
+                {
+                    foreach (var item in gear.items)
+                    {
+                        if (item == null || item.kind != Data.EquipmentKind.Gadget || item.gadget != tactical) continue;
+                        abilities += "\nTactical: " + item.equipmentName;
+                        break;
+                    }
+                }
                 Destroy(temp);
             }
             return $"[{key}]  {type}{stats}{perk}{abilities}";
@@ -366,7 +384,7 @@ namespace Ouroboros.UI
                 // [v0.13] loadoutLabels[i].text = $"{loadoutSlots[i]}: {(data != null ? data.equipmentName : "-")}";
                 bool gadget = loadoutSlots[i] == Equipment.EquipmentSlotType.Gadget;
                 loadoutLabels[i].text = gadget && data != null
-                    ? $"Gadget: {data.equipmentName}\n{data.description}"
+                    ? $"Tactical: {data.equipmentName}\n{data.description}" // [v0.23] "Gadget: ..."
                     : $"{loadoutSlots[i]}: {(data != null ? data.equipmentName : "-")}";
             }
         }

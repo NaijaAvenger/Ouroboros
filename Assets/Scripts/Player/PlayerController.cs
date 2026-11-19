@@ -633,7 +633,11 @@ namespace Ouroboros.Player
             // [v0.13] if (profile.CanGrapple && pressed.IsSet((int)Core.InputButtons.Grapple) && GrappleCooldown.ExpiredOrNotRunning(Runner))
             // (v0.14) the Grapple Line gadget gives any specialist the Smith's grapple
             bool canGrapple = profile.CanGrapple || (networkLoadout != null && networkLoadout.HasGadget(Data.GadgetType.GrappleLine));
-            if (canGrapple && pressed.IsSet((int)Core.InputButtons.Grapple) && GrappleCooldown.ExpiredOrNotRunning(Runner))
+            // [v0.23] if (canGrapple && pressed.IsSet((int)Core.InputButtons.Grapple) && GrappleCooldown.ExpiredOrNotRunning(Runner))
+            // (v0.24) the tactical key fires the grapple when the Grapple Line is the tactical; G still works
+            bool grapplePressed = pressed.IsSet((int)Core.InputButtons.Grapple)
+                || (pressed.IsSet((int)Core.InputButtons.Gadget) && networkLoadout != null && networkLoadout.HasGadget(Data.GadgetType.GrappleLine));
+            if (canGrapple && grapplePressed && GrappleCooldown.ExpiredOrNotRunning(Runner))
             {
                 Vector3 origin = networkPlayer.EyePosition;
                 if (Physics.Raycast(origin, networkPlayer.AimDirection, out RaycastHit hit, profile.GrappleRange, worldMask, QueryTriggerInteraction.Ignore)
@@ -747,8 +751,9 @@ namespace Ouroboros.Player
         {
             if (pressed.IsSet((int)Core.InputButtons.Ability1)) networkPlayer.UseAbility(0);
             if (pressed.IsSet((int)Core.InputButtons.Ability2)) networkPlayer.UseAbility(1);
-            if (pressed.IsSet((int)Core.InputButtons.Ability3)) networkPlayer.UseAbility(2);
-            if (pressed.IsSet((int)Core.InputButtons.Ability4)) networkPlayer.UseAbility(3);
+            // [v0.23] if (pressed.IsSet((int)Core.InputButtons.Ability3)) networkPlayer.UseAbility(2);
+            // [v0.23] if (pressed.IsSet((int)Core.InputButtons.Ability4)) networkPlayer.UseAbility(3);
+            // (v0.24) two abilities. Keys 3 and 4 still answer sign puzzles and pick a class; they fire nothing.
         }
 
         private void HandleInteract(NetworkButtons held)

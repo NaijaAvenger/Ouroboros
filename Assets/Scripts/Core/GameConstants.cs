@@ -14,6 +14,12 @@ namespace Ouroboros.Core
         public const int MAX_PLAYERS = MAX_TEAMS * PLAYERS_PER_TEAM;
 
         public const int MAX_ABILITY_SLOTS = 4;
+        /// <summary>
+        /// (v0.24) How many abilities a specialist has. A kit is two abilities, one tactical and two weapons.
+        /// MAX_ABILITY_SLOTS stays at four because it sizes networked arrays and the keys 1 to 4, which the
+        /// class picker and the sign puzzles still use.
+        /// </summary>
+        public const int ABILITIES_PER_CLASS = 2;
         public const int MAX_EQUIPMENT_SLOTS = 6;
         public const int MAX_TECH_SLOTS = 3;
         /// <summary>Number of entries in <see cref="InputButtons"/> (keep in sync).</summary>

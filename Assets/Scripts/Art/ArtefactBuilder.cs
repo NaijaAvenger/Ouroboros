@@ -194,6 +194,22 @@ namespace Ouroboros.Art
             return root;
         }
 
+        /// <summary>(v0.24) An ammo box: an olive tin with a hinged lid, a belt of brass rounds across it, on a white ring.</summary>
+        public static Transform BuildAmmo(Transform parent)
+        {
+            var root = new GameObject("Ammo Box").transform;
+            root.SetParent(parent, false);
+            var olive = new Color(0.32f, 0.37f, 0.2f);
+            Box(root, new Vector3(0f, 0.11f, 0f), new Vector3(0.36f, 0.22f, 0.2f), olive);
+            Box(root, new Vector3(0f, 0.235f, 0f), new Vector3(0.38f, 0.03f, 0.22f), new Color(0.24f, 0.28f, 0.15f));
+            Box(root, new Vector3(0f, 0.27f, 0f), new Vector3(0.14f, 0.04f, 0.03f), Iron);                       // the handle
+            Box(root, new Vector3(0f, 0.13f, 0.102f), new Vector3(0.2f, 0.07f, 0.006f), new Color(0.95f, 0.85f, 0.3f)); // the stencil
+            for (int i = 0; i < 6; i++)
+                Cylinder(root, new Vector3(-0.15f + i * 0.06f, 0.035f, 0.17f), new Vector3(0.035f, 0.04f, 0.035f), Brass, new Vector3(90f, 0f, 0f));
+            Cylinder(root, new Vector3(0f, 0.005f, 0f), new Vector3(0.6f, 0.004f, 0.6f), new Color(0.85f, 0.95f, 1f), default, emissive: true);
+            return root;
+        }
+
         /// <summary>The loot case: a hard case with brass corners, a handle and a lit lock.</summary>
         public static Transform BuildCase(Transform parent)
         {

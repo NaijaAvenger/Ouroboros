@@ -155,6 +155,8 @@ namespace Ouroboros.GameMode
 
             if (Object.HasStateAuthority)
             {
+                AI.BaseAIAgent.AgentDied += OnGuardDiedForAmmo;          // (v0.24)
+                Interaction.Breakable.Broken += OnContainerBrokenForAmmo;
                 CurrentState = GameState.WaitingForPlayers;
                 ExtractionOpen = false;
                 WinningTeam = Core.TeamID.None;
@@ -164,6 +166,8 @@ namespace Ouroboros.GameMode
         public override void Despawned(NetworkRunner runner, bool hasState)
         {
             if (Instance == this) Instance = null;
+            AI.BaseAIAgent.AgentDied -= OnGuardDiedForAmmo;
+            Interaction.Breakable.Broken -= OnContainerBrokenForAmmo;
         }
 
         public override void Render()
@@ -361,6 +365,33 @@ namespace Ouroboros.GameMode
                     p.MarkFor(Core.TeamID.None, 1.5f); // (v0.18) the one mark every crew sees
                 }
             }
+        }
+
+        // ------------------------------------------------------------------
+        // Ammunition (v0.24): boxes on the floor. A redeploy refills on its own (NetworkPlayer.ResetForRespawn).
+
+        /// <summary>Leaves an ammo box at <paramref name="position"/>. It is a loot pickup with no value. State authority only.</summary>
+        public bool SpawnAmmo(Vector3 position)
+        {
+            return SpawnLoot(position, 1, LootDrop.AmmoItemId, Config.ammoBoxLifetime);
+        }
+
+        private int ammoRolls;
+
+        private void OnGuardDiedForAmmo(AI.BaseAIAgent agent)
+        {
+            if (Object == null || !Object.HasStateAuthority || agent == null || !IsMatchLive) return;
+            if (Core.CombatRules.Chance(unchecked((int)Runner.Tick * 31 + ++ammoRolls * 7919), Config.ammoDropChanceGuard))
+                SpawnAmmo(agent.transform.position + new Vector3(0.5f, -0.5f, 0.3f));
+        }
+
+        private void OnContainerBrokenForAmmo(Interaction.Breakable container)
+        {
+            if (Object == null || !Object.HasStateAuthority || container == null || !IsMatchLive) return;
+            // Crates and lockers are where a building keeps its spare rounds; a cash register is not.
+            if (container.Kind != Interaction.BreakableKind.Crate && container.Kind != Interaction.BreakableKind.Locker) return;
+            if (Core.CombatRules.Chance(unchecked((int)Runner.Tick * 17 + ++ammoRolls * 104729), Config.ammoDropChanceContainer))
+                SpawnAmmo(container.Position + new Vector3(-0.4f, 0.4f, 0.5f));
         }
 
         /// <summary>
@@ -641,6 +672,9 @@ namespace Ouroboros.GameMode
                 Runner.Spawn(idCardPrefabObject, victim.transform.position + Vector3.up * 0.3f + Vector3.right * 0.6f, Quaternion.identity, null,
                     (runner, obj) => { var card = obj.GetComponent<Interaction.IDCardDrop>(); if (card != null) { card.OwnerTeam = team; card.OwnerId = victimId; } });
             }
+
+            // (v0.24) and their spare rounds, for whoever gets to the body
+            if (Config.ammoDropOnPlayerDeath && CanSpawnLoot) SpawnAmmo(victim.transform.position + Vector3.up * 0.3f - Vector3.right * 0.7f);
 
             // (v0.10) named items fall as separate pickups around the body; whatever is left over is loose loot
             deathItemScratch.Clear();

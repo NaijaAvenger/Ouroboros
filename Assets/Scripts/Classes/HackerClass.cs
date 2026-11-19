@@ -47,8 +47,10 @@ namespace Ouroboros.Classes
             // [v0.10] DefineAbility(1, "Disable Camera", cooldown: 20f, staminaCost: 10f);
             DefineAbility(0, "Remote Hack",    cooldown: 15f, staminaCost: 15f, duration: hackDuration);
             DefineAbility(1, "Net Sight",      cooldown: 22f, staminaCost: 10f, duration: netSightDuration);
-            DefineAbility(2, "EMP Blast",      cooldown: 25f, staminaCost: 25f, duration: empDuration);
-            DefineAbility(3, "Data Mine",      cooldown: 30f, staminaCost: 20f, duration: dataMineRevealDuration);
+            // (v0.24) Two abilities. The EMP is the Cipher's tactical now (the EMP Emitter), and Data Mine did
+            //         what Net Sight already does.
+            // [v0.23] DefineAbility(2, "EMP Blast",      cooldown: 25f, staminaCost: 25f, duration: empDuration);
+            // [v0.23] DefineAbility(3, "Data Mine",      cooldown: 30f, staminaCost: 20f, duration: dataMineRevealDuration);
         }
 
         // [v0.1] public override void UseAbility(int abilityIndex) { switch ... }
@@ -59,8 +61,8 @@ namespace Ouroboros.Classes
                 case 0: return HackSystem();
                 // [v0.10] case 1: return DisableSecurityCamera();
                 case 1: return NetSight();
-                case 2: return EMPBlast();
-                case 3: return DataMine();
+                // [v0.23] case 2: return EMPBlast();
+                // [v0.23] case 3: return DataMine();
             }
             return false;
         }

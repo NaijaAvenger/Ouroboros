@@ -260,5 +260,38 @@ namespace Ouroboros.Tests
             Assert.That(CombatRules.ZoomSensitivity(80f, zoomed), Is.EqualTo(0.5f).Within(1e-3f), "At 2x zoom the view should turn half as fast.");
             Assert.That(CombatRules.ZoomSensitivity(80f, 100f), Is.EqualTo(1f), "A wider view never speeds the look up.");
         }
+    
+        // ---- ammunition (v0.24)
+
+        [Test]
+        public void ReserveAfterPickup_RestoresAShare_AndNeverPassesFull()
+        {
+            Assert.That(CombatRules.ReserveAfterPickup(10, 90, 0.5f), Is.EqualTo(55));
+            Assert.That(CombatRules.ReserveAfterPickup(80, 90, 0.5f), Is.EqualTo(90));
+            Assert.That(CombatRules.ReserveAfterPickup(90, 90, 0.5f), Is.EqualTo(90));
+            Assert.That(CombatRules.ReserveAfterPickup(0, 24, 0.5f), Is.EqualTo(12));
+            Assert.That(CombatRules.ReserveAfterPickup(0, 5, 0.01f), Is.EqualTo(1), "a box is never worth nothing");
+            Assert.That(CombatRules.ReserveAfterPickup(7, 0, 0.5f), Is.EqualTo(7), "a weapon with no reserve is left alone");
+            Assert.That(CombatRules.ReserveAfterPickup(-3, 20, 2f), Is.EqualTo(20));
+        }
+
+        [Test]
+        public void WantsAmmo_OnlyWhenThereIsRoom()
+        {
+            Assert.That(CombatRules.WantsAmmo(10, 90), Is.True);
+            Assert.That(CombatRules.WantsAmmo(90, 90), Is.False);
+            Assert.That(CombatRules.WantsAmmo(0, 0), Is.False);
+        }
+
+        [Test]
+        public void Chance_IsRepeatable_AndRoughlyAsOftenAsAsked()
+        {
+            Assert.That(CombatRules.Chance(1234, 0.6f), Is.EqualTo(CombatRules.Chance(1234, 0.6f)));
+            Assert.That(CombatRules.Chance(5, 0f), Is.False);
+            Assert.That(CombatRules.Chance(5, 1f), Is.True);
+            int yes = 0;
+            for (int seed = 0; seed < 2000; seed++) if (CombatRules.Chance(seed * 7919 + 13, 0.6f)) yes++;
+            Assert.That(yes, Is.InRange(1100, 1300), "about 60% of 2000");
+        }
     }
 }

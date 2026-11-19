@@ -496,19 +496,23 @@ namespace Ouroboros.EditorTools
                 ClassAsset(Core.PlayerClassType.Hacker, "Hacker", 85f, 5.5f, 7.8f,
                     // [v0.11] "Electronic warfare specialist capable of disabling security systems and hacking enemy equipment.",
                     "Reads the building like a pattern. Hacks faster and from further than anyone, chains one hack into the next, and sees the network through walls.",
-                    ("System Hack", 15f, 15f, 5f), ("Disable Camera", 20f, 10f, 5f), ("EMP Blast", 25f, 25f, 4f), ("Data Mine", 30f, 20f, 5f)),
+                    // [v0.23] ("System Hack", 15f, 15f, 5f), ("Disable Camera", 20f, 10f, 5f), ("EMP Blast", 25f, 25f, 4f), ("Data Mine", 30f, 20f, 5f)),
+                    ("Remote Hack", 15f, 15f, 5f), ("Net Sight", 22f, 10f, 6f)), // (v0.24) two abilities; the names must match the class
                 ClassAsset(Core.PlayerClassType.Saboteur, "Saboteur", 90f, 6f, 8.5f,
                     // [v0.11] "Stealth operative skilled in setting traps, sabotaging equipment, and silent elimination.",
                     "Ambush specialist. Lays traps, vanishes, climbs where nobody looks, and is gone before the smoke clears.",
-                    ("Place Trap", 6f, 10f, 0f), ("Stealth Mode", 25f, 25f, 10f), ("Sabotage", 18f, 15f, 8f), ("Smoke Bomb", 15f, 10f, 8f)),
+                    // [v0.23] ("Place Trap", 6f, 10f, 0f), ("Stealth Mode", 25f, 25f, 10f), ("Sabotage", 18f, 15f, 8f), ("Smoke Bomb", 15f, 10f, 8f)),
+                    ("Place Trap", 6f, 10f, 0f), ("Stealth Mode", 25f, 25f, 10f)),
                 ClassAsset(Core.PlayerClassType.Demolitions, "Demolitions", 110f, 4.5f, 6.5f,
                     // [v0.11] "Explosives expert capable of breaching reinforced structures and creating area denial zones.",
                     "Breacher. Makes doors where there are none, carries the heavy charges, and swings across gaps on a grapple line.",
-                    ("Place Explosive", 2f, 5f, 0f), ("Detonate", 4f, 0f, 0f), ("Breaching Charge", 20f, 20f, 0f), ("Incendiary", 18f, 15f, 5f)),
+                    // [v0.23] ("Place Explosive", 2f, 5f, 0f), ("Detonate", 4f, 0f, 0f), ("Breaching Charge", 20f, 20f, 0f), ("Incendiary", 18f, 15f, 5f)),
+                    ("Remote Charge", 1.2f, 5f, 0f), ("Breaching Charge", 20f, 20f, 0f)),
                 ClassAsset(Core.PlayerClassType.Agent, "Agent", 100f, 5.2f, 7.5f,
                     // [v0.11] "Versatile field operative with balanced combat capabilities and tactical support options.",
                     "Frontline protector. Takes the first hit behind a shield, lifts the damage of the whole crew, and holds the ground others need.",
-                    ("Tactical Shield", 20f, 20f, 8f), ("Damage Boost", 18f, 15f, 6f), ("Recon Drone", 25f, 10f, 6f), ("Flashbang", 12f, 10f, 3f)),
+                    // [v0.23] ("Tactical Shield", 20f, 20f, 8f), ("Damage Boost", 18f, 15f, 6f), ("Recon Drone", 25f, 10f, 6f), ("Flashbang", 12f, 10f, 3f)),
+                    ("Tactical Shield", 20f, 20f, 8f), ("Flashbang", 12f, 10f, 3f)),
             };
 
             foreach (var data in list)
@@ -1222,8 +1226,11 @@ namespace Ouroboros.EditorTools
                 {
                     case Core.PlayerClassType.Hacker:      gadget = Find("EMP Emitter"); break;
                     case Core.PlayerClassType.Saboteur:    gadget = Find("Bypass Key"); break;
-                    case Core.PlayerClassType.Demolitions: gadget = Find("Breaching Kit"); break;
-                    default:                               gadget = Find("Loot Scanner"); break;
+                    // [v0.23] case Core.PlayerClassType.Demolitions: gadget = Find("Breaching Kit"); break;
+                    // [v0.23] default:                               gadget = Find("Loot Scanner"); break;
+                    // (v0.24) as Data.Kit.DefaultTactical, which is what the game goes by at run time
+                    case Core.PlayerClassType.Demolitions: gadget = Find("Grapple Line"); break;
+                    default:                               gadget = Find("Breaching Kit"); break;
                 }
                 if (gadget == null) continue;
                 var list = new List<Data.EquipmentData>(cls.startingEquipment ?? new Data.EquipmentData[0]) { gadget };

@@ -33,19 +33,26 @@ namespace Ouroboros.Classes
             // [v0.11] description = "Explosives expert capable of breaching reinforced structures and creating area denial zones.";
             // (v0.12, M4) the Smith. The enum and file keep the old name; players see this one.
             className = "Smith";
-            description = "Breacher. Makes doors where there are none, carries the heavy charges, and swings across gaps on a grapple line.";
+            description = "Breacher. Makes doors where there are none, carries the heavy charges, and swings across gaps on a grapple line."; // (v0.24) the line is now the tactical
 
             // Demolitions has high health but slower movement
             maxHealth = 110f;
             movementSpeed = 4.5f;
             sprintSpeed = 6.5f;
-            movement.CanGrapple = true; movement.GrappleRange = 28f;          // v0.7: hook to reach breach points
+            // [v0.23] movement.CanGrapple = true; movement.GrappleRange = 28f;          // v0.7: hook to reach breach points
+            // (v0.24) The grapple is the Smith's tactical now (the Grapple Line), on the tactical key like
+            //         everyone else's, and can be swapped for another. It is no longer built into the class.
+            movement.GrappleRange = 28f;
             currentExplosivesCount = maxExplosives;
 
-            DefineAbility(0, "Place Explosive",  cooldown: 2f,  staminaCost: 5f);
-            DefineAbility(1, "Detonate",         cooldown: 4f,  staminaCost: 0f);
-            DefineAbility(2, "Breaching Charge", cooldown: 20f, staminaCost: 20f);
-            DefineAbility(3, "Incendiary",       cooldown: 18f, staminaCost: 15f, duration: incendiaryDuration);
+            // (v0.24) Two abilities. Placing and detonating were two keys for one idea: now the first press sets
+            //         a charge and the next sets it off. The incendiary is gone.
+            // [v0.23] DefineAbility(0, "Place Explosive",  cooldown: 2f,  staminaCost: 5f);
+            // [v0.23] DefineAbility(1, "Detonate",         cooldown: 4f,  staminaCost: 0f);
+            // [v0.23] DefineAbility(2, "Breaching Charge", cooldown: 20f, staminaCost: 20f);
+            // [v0.23] DefineAbility(3, "Incendiary",       cooldown: 18f, staminaCost: 15f, duration: incendiaryDuration);
+            DefineAbility(0, "Remote Charge",    cooldown: 1.2f, staminaCost: 5f);
+            DefineAbility(1, "Breaching Charge", cooldown: 20f,  staminaCost: 20f);
         }
 
         // [v0.1] public override void UseAbility(int abilityIndex) { switch ... }
@@ -53,10 +60,13 @@ namespace Ouroboros.Classes
         {
             switch (abilityIndex)
             {
-                case 0: return PlaceExplosive();
-                case 1: return DetonateExplosives();
-                case 2: return BreachingCharge();
-                case 3: return IncendiaryGrenade();
+                // [v0.23] case 0: return PlaceExplosive();
+                // [v0.23] case 1: return DetonateExplosives();
+                // [v0.23] case 2: return BreachingCharge();
+                // [v0.23] case 3: return IncendiaryGrenade();
+                // (v0.24) one charge at a time: down, then off
+                case 0: return armedCharges.Count > 0 ? DetonateExplosives() : PlaceExplosive();
+                case 1: return BreachingCharge();
             }
             return false;
         }
@@ -67,9 +77,11 @@ namespace Ouroboros.Classes
             var fire = new Color(1f, 0.55f, 0.12f);
             switch (slot)
             {
-                case 0: return new Core.AbilityVisual(Core.AbilityVisualKind.PlaceCharge, explosiveRadius, 0f, fire);
-                case 1: return new Core.AbilityVisual(Core.AbilityVisualKind.DetonateCharges, explosiveRadius, 0f, fire);
-                case 2: return new Core.AbilityVisual(Core.AbilityVisualKind.Blast, 2.5f, 0f, fire, 1.5f);
+                // [v0.23] case 0: return new Core.AbilityVisual(Core.AbilityVisualKind.PlaceCharge, explosiveRadius, 0f, fire);
+                // [v0.23] case 1: return new Core.AbilityVisual(Core.AbilityVisualKind.DetonateCharges, explosiveRadius, 0f, fire);
+                // [v0.23] case 2: return new Core.AbilityVisual(Core.AbilityVisualKind.Blast, 2.5f, 0f, fire, 1.5f);
+                case 0: return new Core.AbilityVisual(Core.AbilityVisualKind.ToggleCharge, explosiveRadius, 0f, fire);
+                case 1: return new Core.AbilityVisual(Core.AbilityVisualKind.Blast, 2.5f, 0f, fire, 1.5f);
                 case 3: return new Core.AbilityVisual(Core.AbilityVisualKind.Fire, incendiaryRadius, 1.6f, fire, 3f);
                 default: return default;
             }

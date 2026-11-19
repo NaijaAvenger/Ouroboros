@@ -84,6 +84,9 @@ namespace Ouroboros.Core
             // (v0.17) crew ping: middle mouse, or T. Every pad button is taken, so a pad has none until one is rebound.
             Button(InputButtons.Ping, "Ping", "<Mouse>/middleButton", null);
             Get(InputButtons.Ping).AddBinding("<Keyboard>/t", groups: KeyboardGroup);
+            // (v0.24) With two abilities, D-pad down and left do nothing during play, so a pad gets its ping
+            //         and its gear screen at last. They still answer sign puzzles 3 and 4.
+            Get(InputButtons.Ping).AddBinding("<Gamepad>/dpad/down", groups: GamepadGroup);
 
             CursorToggle = Map.AddAction("CursorToggle", InputActionType.Button);
             CursorToggle.AddBinding("<Keyboard>/escape", groups: KeyboardGroup);
@@ -92,6 +95,7 @@ namespace Ouroboros.Core
             // (v0.23) B: the class and gear screen at the crew's gate. Every pad button is taken, so a pad has none yet.
             Loadout = Map.AddAction("Loadout", InputActionType.Button);
             Loadout.AddBinding("<Keyboard>/b", groups: KeyboardGroup);
+            Loadout.AddBinding("<Gamepad>/dpad/left", groups: GamepadGroup); // (v0.24)
 
             DebugHudToggle = Map.AddAction("DebugHudToggle", InputActionType.Button);
             DebugHudToggle.AddBinding("<Keyboard>/f1", groups: KeyboardGroup);

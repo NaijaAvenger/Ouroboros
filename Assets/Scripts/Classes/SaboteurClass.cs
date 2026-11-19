@@ -35,7 +35,8 @@ namespace Ouroboros.Classes
             // [v0.11] description = "Stealth operative skilled in setting traps, sabotaging equipment, and silent elimination.";
             // (v0.12, M4) the Spider. The enum and file keep the old name; players see this one.
             className = "Spider";
-            description = "Ambush specialist. Lays traps, vanishes, climbs where nobody looks, and is gone before the smoke clears.";
+            // [v0.23] description = "Ambush specialist. Lays traps, vanishes, climbs where nobody looks, and is gone before the smoke clears.";
+            description = "Ambush specialist. Lays traps, vanishes, climbs where nobody looks, and lets itself in through locked doors.";
 
             // Saboteur has balanced stats with high stealth capabilities
             maxHealth = 90f;
@@ -45,8 +46,10 @@ namespace Ouroboros.Classes
 
             DefineAbility(0, "Place Trap",   cooldown: 6f,  staminaCost: 10f);
             DefineAbility(1, "Stealth Mode", cooldown: 25f, staminaCost: 25f, duration: stealthDuration);
-            DefineAbility(2, "Sabotage",     cooldown: 18f, staminaCost: 15f, duration: sabotageDuration);
-            DefineAbility(3, "Smoke Bomb",   cooldown: 15f, staminaCost: 10f, duration: smokeDuration);
+            // (v0.24) Two abilities: the trap and the cloak are the Spider. Sabotage overlapped with hacking a
+            //         rival's gear, which anyone can do, and the smoke with the cloak.
+            // [v0.23] DefineAbility(2, "Sabotage",     cooldown: 18f, staminaCost: 15f, duration: sabotageDuration);
+            // [v0.23] DefineAbility(3, "Smoke Bomb",   cooldown: 15f, staminaCost: 10f, duration: smokeDuration);
         }
 
         // [v0.1] public override void UseAbility(int abilityIndex) { switch ... }
@@ -56,8 +59,8 @@ namespace Ouroboros.Classes
             {
                 case 0: return PlaceTrap();
                 case 1: return ActivateStealth();
-                case 2: return SabotageEquipment();
-                case 3: return SmokeBomb();
+                // [v0.23] case 2: return SabotageEquipment();
+                // [v0.23] case 3: return SmokeBomb();
             }
             return false;
         }

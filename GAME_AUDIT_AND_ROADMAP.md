@@ -98,6 +98,22 @@ rivals steal the deposit. That difference is the biggest gap. In order of what I
 Already here in some form: several ways into every vault, gadgets, map events (their game-show events),
 low gravity, destructible containers, a carried objective, loot dropped on death.
 
+### Ammo and the smaller kit (v0.24, code complete, not seen running)
+
+| Request | State |
+|---------|-------|
+| Respawn with full ammo | A redeploy refills every weapon's magazine and reserve. A revive in the field does not |
+| Ammo drops | Ammo boxes: from a dead guard six times in ten, from a broken crate or locker three in ten, from a dead player always. A box gives every weapon carried half its reserve back. It is a pickup with no cash value and its own model |
+| Too much per character | Each specialist had four abilities, two weapons, a gadget and passive gear. A kit is now **two weapons, two abilities and one tactical** |
+| "Their tactical (grapple, EMP, etc.)" | The gadget slot is the tactical, on one key, with a card of its own in the kit bar. Each specialist starts with the one that fits: Cipher the EMP Emitter, Spider the Bypass Key, Smith the Grapple Line, Shield the Breaching Kit. Any of them can be swapped for another on the class screen |
+| "Make sure it makes sense" | What went, and why: the Cipher's EMP Blast (it is the tactical now) and Data Mine (Net Sight does it); the Spider's Sabotage (anyone can jam a rival by hacking them) and Smoke Bomb; the Smith's separate Detonate key (one key now places, then detonates) and Incendiary; the Shield's Damage Boost (a crew's damage perk comes from a vault) and Recon Drone (the Cipher does the seeing) |
+
+Design choices worth knowing: the Smith's grapple was built into the class and is now the Smith's tactical,
+so a Smith who swaps it for a Breaching Kit gives up the grapple; the passive items (armour, stim rig, hollow
+points) are still applied where a class asset lists them, but they were never a choice on the class screen and
+are a candidate to remove outright; the code for the removed abilities is still in the class files, unused,
+so bringing one back is a one-line change.
+
 ### Clean picture, vault worth, sound reach, prep and gear changes (v0.23, code complete, not seen running)
 
 | Request | State |
@@ -109,8 +125,8 @@ low gravity, destructible containers, a carried objective, loot dropped on death
 | Change class and gear at the spawn or after respawning | At your own crew's gate, or for 15 seconds after a redeploy, B opens the class and gear screen. A class change keeps your share of health |
 
 Design choices worth knowing: sound does not yet pass less easily through walls or floors, only over
-distance; a revive in the field does not open the gear window, only a redeploy at the gate; a gamepad has no
-button for the gear screen, for the same reason it has none for the ping.
+distance; a revive in the field does not open the gear window, only a redeploy at the gate. (A gamepad had no
+button for the gear screen or the ping; since v0.24 the two freed D-pad directions are those.)
 
 ### Class select, loot models and cameras (v0.22, code complete, not seen running)
 
@@ -574,7 +590,7 @@ Decision 2 affects the local `ViewMode.cs`: if it is a first/third-person toggle
    models) and builds the `Galleria` scene. Expect it to take a while: it places several thousand objects
    and bakes a two-level NavMesh.
 2. With the Galleria scene open, press Play and choose **Solo**.
-3. Work through sections 7s, 7r, 7q, 7p, 7o, 7n, 7m and 7l of `PHASE0_BRINGUP.md` first (the newest work), then 7j and 7k, then 7e to 7i,
+3. Work through sections 7t, 7s, 7r, 7q, 7p, 7o, 7n, 7m and 7l of `PHASE0_BRINGUP.md` first (the newest work), then 7j and 7k, then 7e to 7i,
    and list what breaks. The Grand Vaults (v0.21) need **Recreate Galleria Map**; "Update Galleria Map" does not add them.
 4. Tell me the frame rate. If it is low, the first cuts are the ceiling lights and the number of props.
 5. Find native speakers of Nigerian Pidgin, Swahili or Sheng, Twi and isiZulu to rewrite the crew radio lines

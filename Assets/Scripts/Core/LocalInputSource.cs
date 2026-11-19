@@ -280,6 +280,7 @@ namespace Ouroboros.Core
                     case InputButtons.Grapple:   return "R3";
                     case InputButtons.NextWeapon: return "Select";
                     case InputButtons.PrevWeapon: return "Select";
+                    case InputButtons.Ping:      return "D-Down"; // (v0.24)
                 }
             }
             switch (button)

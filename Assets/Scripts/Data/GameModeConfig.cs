@@ -145,6 +145,18 @@ namespace Ouroboros.Data
         [Tooltip("(v0.2) Drop carried loot as a pickup on death (otherwise it is lost).")]
         public bool dropLootOnDeath = true;
 
+        [Header("Ammunition (v0.24)")]
+        [Tooltip("How often a dead guard leaves an ammo box.")]
+        [Range(0f, 1f)] public float ammoDropChanceGuard = 0.6f;
+        [Tooltip("How often a broken crate or locker leaves an ammo box.")]
+        [Range(0f, 1f)] public float ammoDropChanceContainer = 0.3f;
+        [Tooltip("A dead player always leaves an ammo box.")]
+        public bool ammoDropOnPlayerDeath = true;
+        [Tooltip("Share of a full reserve an ammo box gives back, to every weapon carried.")]
+        [Range(0.1f, 1f)] public float ammoBoxShare = 0.5f;
+        [Tooltip("Seconds an ammo box stays on the floor.")]
+        public float ammoBoxLifetime = 90f;
+
         [Header("Changing class and gear during a match (v0.23)")]
         [Tooltip("A player may change class and gear during the match while standing at their own crew's gate, and for a moment after a redeploy.")]
         public bool allowLoadoutChangeAtGate = true;

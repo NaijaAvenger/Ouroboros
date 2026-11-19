@@ -441,11 +441,15 @@ namespace Ouroboros.UI
             Bound("Hack (hold on a device), jack in (press at a vault)", Core.InputButtons.Interact);
             Bound("Ability 1", Core.InputButtons.Ability1);
             Bound("Ability 2", Core.InputButtons.Ability2);
-            Bound("Ability 3", Core.InputButtons.Ability3);
-            Bound("Ability 4", Core.InputButtons.Ability4);
-            Bound("Utility", Core.InputButtons.Utility);
-            Bound("Gadget", Core.InputButtons.Gadget);
-            Bound("Grapple (Smith)", Core.InputButtons.Grapple);
+            // [v0.23] Bound("Ability 3", Core.InputButtons.Ability3);
+            // [v0.23] Bound("Ability 4", Core.InputButtons.Ability4);
+            // [v0.23] Bound("Utility", Core.InputButtons.Utility);
+            // [v0.23] Bound("Gadget", Core.InputButtons.Gadget);
+            // [v0.23] Bound("Grapple (Smith)", Core.InputButtons.Grapple);
+            // (v0.24) a kit is two abilities and one tactical
+            Bound("Tactical (EMP, breaching kit, bypass key, scanner, grapple)", Core.InputButtons.Gadget);
+            Bound("Grapple, when the Grapple Line is your tactical (same as the tactical key)", Core.InputButtons.Grapple);
+            Fixed("Change class or gear at your gate", Core.LocalInputSource.LoadoutKeyLabel, "D-Left");
             Bound("Ping for your crew", Core.InputButtons.Ping); // (v0.17)
             Fixed("Answer a sign puzzle", "1 2 3 4", "-");
             Fixed("Menu", "Esc", "Start");

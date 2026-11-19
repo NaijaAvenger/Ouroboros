@@ -208,7 +208,8 @@ namespace Ouroboros.Network
                 if (along <= 0f || along > reach || off >= best) continue;
                 best = off; found = true; foundKind = Core.PingKind.Loot; foundPoint = p;
                 var def = d.ItemId > 0 ? Data.LootCatalog.Active.Get(d.ItemId) : null;
-                foundLabel = def != null && !string.IsNullOrEmpty(def.name) ? def.name : $"${d.Value}";
+                // [v0.23] foundLabel = def != null && !string.IsNullOrEmpty(def.name) ? def.name : $"${d.Value}";
+                foundLabel = d.IsAmmo ? "Ammo" : def != null && !string.IsNullOrEmpty(def.name) ? def.name : $"${d.Value}"; // (v0.24)
             }
 
             var cards = Interaction.IDCardDrop.All;

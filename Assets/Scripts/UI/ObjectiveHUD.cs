@@ -276,7 +276,7 @@ namespace Ouroboros.UI
             for (int i = 0; i < drops.Count && !f.LootInReach; i++)
             {
                 var d = drops[i];
-                if (d == null || d.Object == null) continue;
+                if (d == null || d.Object == null || d.IsAmmo) continue; // (v0.24) an ammo box is not loot
                 if (d.ItemId > 0 ? !me.CanCarryItem : me.CarriedLoot >= Core.GameConstants.MAX_CARRIED_LOOT) continue;
                 if ((d.transform.position - at).sqrMagnitude < 14f * 14f) f.LootInReach = true;
             }

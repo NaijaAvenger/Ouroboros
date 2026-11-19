@@ -294,6 +294,16 @@ Awaiting in-engine validation: PHASE0_BRINGUP.md section 7r.
 
 Awaiting in-engine validation: PHASE0_BRINGUP.md section 7s.
 
+### v0.24 — ammo, and a kit of two abilities and one tactical
+- **Ammo**: `CombatRules.ReserveAfterPickup`, `WantsAmmo`, `Chance` (unit-tested). `NetworkLoadout.RefillAll` (called on redeploy), `WantsAmmo`, `TakeAmmoBox`. An ammo box is a `LootDrop` with `ItemId == LootDrop.AmmoItemId`; `ExtractionHeistGameMode.SpawnAmmo` leaves one for dead guards, dead players and broken crates and lockers. `ArtefactBuilder.BuildAmmo`. Config under Ammunition.
+- **Kit size**: `GameConstants.ABILITIES_PER_CLASS = 2`. `BasePlayerClass.UseAbility` refuses a third; `ApplyClassData` ignores asset entries for abilities the class does not have.
+- **Classes**: Cipher keeps Remote Hack and Net Sight; Spider keeps Place Trap and Stealth Mode; Smith has Remote Charge (place, then detonate: `AbilityVisualKind.ToggleCharge`) and Breaching Charge and loses the built-in grapple; Shield keeps Tactical Shield and moves Flashbang to key 2.
+- **Tactical**: the Gadget slot. `Data.Kit.DefaultTactical` gives each specialist theirs on class assignment. The tactical key fires the grapple when the Grapple Line is carried.
+- **HUD**: two ability cards and a tactical card; the class cards and controls list describe the kit.
+- **Input**: gamepad D-pad down pings, D-pad left opens the gear screen.
+
+Awaiting in-engine validation: PHASE0_BRINGUP.md section 7t.
+
 ### Phase 5 — Meta
 - Lobby scene with class picker (`NetworkPlayer.RequestClass` is in place), session browser, late-join handling, host migration.
 - Progression/cosmetics via `ClassData`/`EquipmentData`.

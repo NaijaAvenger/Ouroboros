@@ -504,7 +504,10 @@ namespace Ouroboros.AI
             {
                 var d = drops[i];
                 if (d == null || d.Object == null) continue;
-                if (d.ItemId > 0 ? !me.CanCarryItem : me.CarriedLoot >= Core.GameConstants.MAX_CARRIED_LOOT) continue;
+                // [v0.23] if (d.ItemId > 0 ? !me.CanCarryItem : me.CarriedLoot >= Core.GameConstants.MAX_CARRIED_LOOT) continue;
+                // (v0.24) an ammo box is worth the walk only to a bot whose weapons have room
+                if (d.IsAmmo) { if (me.Loadout == null || !me.Loadout.WantsAmmo) continue; }
+                else if (d.ItemId > 0 ? !me.CanCarryItem : me.CarriedLoot >= Core.GameConstants.MAX_CARRIED_LOOT) continue;
                 float dSq = (d.transform.position - me.Position).sqrMagnitude;
                 if (dSq < bestSq) { bestSq = dSq; at = d.transform.position; found = true; interact = false; }
             }
@@ -831,7 +834,8 @@ namespace Ouroboros.AI
             else if (tick >= nextAbilityTick)
             {
                 nextAbilityTick = tick + Ticks(4f + (float)rng.NextDouble() * 4f);
-                int slot = rng.Next(Core.GameConstants.MAX_ABILITY_SLOTS);
+                // [v0.23] int slot = rng.Next(Core.GameConstants.MAX_ABILITY_SLOTS);
+                int slot = rng.Next(Core.GameConstants.ABILITIES_PER_CLASS); // (v0.24)
                 if (me.IsAbilityReady(slot)) abilityToPress = slot;
             }
 

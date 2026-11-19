@@ -30,6 +30,11 @@ namespace Ouroboros.GameMode
         public bool IsPickupReady => PickupDelayTimer.ExpiredOrNotRunning(Runner);
         public Data.LootItemDef Item => ItemId > 0 ? Data.LootCatalog.Active.Get(ItemId) : null;
 
+        /// <summary>(v0.24) The item id that marks a pickup as an ammo box and not loot. It has no cash value.</summary>
+        public const int AmmoItemId = -1;
+        /// <summary>(v0.24) True for an ammo box: taken by walking over it, by anyone whose weapons have room.</summary>
+        public bool IsAmmo => ItemId == AmmoItemId;
+
         /// <summary>
         /// (v0.10) Sets what this pickup is. Call from the spawn callback, before <see cref="Spawned"/> runs.
         /// <paramref name="lifetimeSeconds"/> of 0 keeps the prefab's default.
@@ -80,8 +85,11 @@ namespace Ouroboros.GameMode
             // [v0.21] float size = item.tier == Data.LootTier.Legendary ? 1.35f : (item.tier == Data.LootTier.Rare ? 1.15f : 1f);
             // [v0.21] var model = Art.ArtefactBuilder.Build(holder, item.shape, item.tier);
             float size = item == null ? 1.25f : item.tier == Data.LootTier.Legendary ? 1.35f : (item.tier == Data.LootTier.Rare ? 1.15f : 1f);
-            var model = item != null ? Art.ArtefactBuilder.Build(holder, item.shape, item.tier)
-                                     : Art.ArtefactBuilder.BuildCash(holder, Value); // (v0.22) loose money: notes and coins, by how much
+            // [v0.23] var model = item != null ? Art.ArtefactBuilder.Build(holder, item.shape, item.tier)
+            // [v0.23]                          : Art.ArtefactBuilder.BuildCash(holder, Value); // (v0.22) loose money: notes and coins, by how much
+            var model = IsAmmo ? Art.ArtefactBuilder.BuildAmmo(holder)                       // (v0.24)
+                      : item != null ? Art.ArtefactBuilder.Build(holder, item.shape, item.tier)
+                      : Art.ArtefactBuilder.BuildCash(holder, Value);
             model.localScale = Vector3.one * size;
             model.gameObject.AddComponent<Art.PickupSpin>();
             Core.Juice.PopIn(model, 0.4f); // (v0.15)
@@ -103,6 +111,17 @@ namespace Ouroboros.GameMode
             var candidates = Network.NetworkPlayer.FindPlayersInRadius(transform.position, pickupRadius, Core.TeamID.None, aliveOnly: true);
             foreach (var player in candidates)
             {
+                // (v0.24) an ammo box goes to the first player over it whose weapons have room; it is not loot
+                if (IsAmmo)
+                {
+                    var gm = ExtractionHeistGameMode.Instance;
+                    var kit = player.Loadout;
+                    if (kit == null || !kit.TakeAmmoBox(gm != null ? gm.Config.ammoBoxShare : 0.5f)) continue;
+                    RPC_PickedUp(player.PlayerRef, 0, AmmoItemId);
+                    Runner.Despawn(Object);
+                    return;
+                }
+
                 // (v0.10) a named item is taken whole, and only by someone with a free hand
                 if (ItemId > 0)
                 {

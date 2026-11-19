@@ -39,6 +39,13 @@ namespace Ouroboros.Player
             Network.NetworkPlayer.PlayerExtracted += OnExtracted;
             Equipment.NetworkLoadout.WeaponFired += OnWeaponFired;
             Equipment.NetworkLoadout.ReloadStarted += OnReloadStarted;
+            GameMode.LootDrop.PickedUp += OnPickedUp; // (v0.24)
+        }
+
+        /// <summary>(v0.24) Taking an ammo box sounds like loading a weapon.</summary>
+        private void OnPickedUp(Network.NetworkPlayer who, int itemId, int amount)
+        {
+            if (who == player && itemId == GameMode.LootDrop.AmmoItemId) Play(Core.ProceduralSfx.Reload, Audio.Sfx.Whisper);
         }
 
         private void OnDestroy()
@@ -47,6 +54,7 @@ namespace Ouroboros.Player
             Network.NetworkPlayer.PlayerExtracted -= OnExtracted;
             Equipment.NetworkLoadout.WeaponFired -= OnWeaponFired;
             Equipment.NetworkLoadout.ReloadStarted -= OnReloadStarted;
+            GameMode.LootDrop.PickedUp -= OnPickedUp;
         }
 
         private static readonly Color PlayerTracerColor = new Color(1f, 0.92f, 0.55f, 0.9f);

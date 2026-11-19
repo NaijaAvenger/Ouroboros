@@ -649,6 +649,40 @@ Changing class and gear during a match:
 - [ ] Another crew's gate does nothing for you.
 - [ ] A revive in the field does not open the window; only a redeploy does.
 
+## 7t. Ammo, and a kit of two abilities and one tactical (v0.24)
+Setup: none. The class assets in `Assets/Ouroboros/Classes` still list the old four abilities; the game now ignores entries that do not match the class's own, so nothing needs regenerating.
+
+Ammo:
+- [ ] Die with an empty or half-empty gun and redeploy: both weapons are back to a full magazine and a full reserve. A revive in the field does **not** refill.
+- [ ] A dead guard leaves an ammo box about six times in ten; a broken crate or locker about three in ten; a dead player always.
+- [ ] The box is an olive tin with a belt of brass rounds and a white ring. Walk over it: "+ Ammo" in the feed, a loading sound, and every weapon you carry gets half its full reserve back, the holstered one too.
+- [ ] With full reserves you walk over a box and it stays for someone else.
+- [ ] A box is not loot: it adds nothing to what you carry, the objective never calls it loot, and a ping on one reads **LOOT  Ammo**.
+- [ ] Boxes disappear after 90 seconds.
+- [ ] The five numbers are on `GameModeConfig` under Ammunition.
+
+The kit. Every specialist now has two weapons, two abilities and one tactical:
+
+| Specialist | 1 | 2 | Tactical it starts with | Movement |
+|------------|---|---|-------------------------|----------|
+| Cipher | Remote Hack | Net Sight | EMP Emitter | glide |
+| Spider | Place Trap | Stealth Mode | Bypass Key | wall climb |
+| Smith | Remote Charge | Breaching Charge | Grapple Line | none: the grapple is now the tactical |
+| Shield | Tactical Shield | Flashbang | Breaching Kit | double jump |
+
+- [ ] The bar at the bottom of the screen shows two ability cards and a third, gold-edged card marked **TACTICAL** with its key, name and cooldown.
+- [ ] Keys 3 and 4 do nothing in play. They still pick a class on the class screen and answer sign puzzles.
+- [ ] The tactical key (E) uses whatever tactical you carry, the Grapple Line included. G still fires the grapple too.
+- [ ] Smith, **Remote Charge**: the first press sets a charge at your feet, the next sets it off, wherever you are. One charge at a time.
+- [ ] Smith without the Grapple Line (swap it on the class screen) cannot grapple at all.
+- [ ] Shield's key 2 is the Flashbang. The damage boost and the recon drone are gone.
+- [ ] Cipher has no EMP Blast ability; the EMP Emitter tactical does that job. Data Mine is gone.
+- [ ] Spider has no Sabotage and no Smoke Bomb.
+- [ ] The class cards list the two abilities and the tactical. The loadout row reads "Tactical", and any specialist can still swap theirs for another.
+- [ ] Changing class gives you that class's own tactical again.
+- [ ] Gamepad: D-pad up and right are the abilities; D-pad down now pings and D-pad left opens the gear screen at your gate.
+- [ ] Tell me if a specialist feels thin with two, or if you would rather keep a different pair. Which two each keeps is a few lines per class.
+
 ## 7d. Expected flow and troubleshooting
 **Expected flow on Play (dev config):** spectator camera orbits the arena → session starts → your player spawns → the
 **class picker** appears with the cursor free (state *Waiting for players*) → host presses **Start match now** (or the
