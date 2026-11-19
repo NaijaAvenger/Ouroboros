@@ -255,6 +255,14 @@ Awaiting in-engine validation: PHASE0_BRINGUP.md section 7n.
 
 Awaiting in-engine validation: PHASE0_BRINGUP.md section 7o.
 
+### v0.20 — sound, compass, spectating
+- **Sound** (`Core/ProceduralSfx.cs`, synthesised): footsteps (four takes), guard boots (three), landing, slide, pickup, coin drop, cash-out start, banked, alarm, countdown tick, lift bell, two pings, revive chime. `Audio/Footsteps.cs` plays steps by distance covered for players (`PlayerFeedback`) and guards (`BaseAIAgent.DressModel`). `MatchFeedback` plays the money and crew cues; `CashOutStation.Render` ticks the last ten seconds; `ExtractionPoint` rings on opening.
+- **Compass**: `UI/CompassHUD.cs`. The top panel, banner, cash-out ticker and hack warning moved down 50 px.
+- **Spectating**: `PlayerController.UpdateSpectate` moves the local camera behind a living crewmate while the player is down or away (`PlayerController.Spectating`). `HeistHUD` drops the death overlay while watching; `ObjectiveHUD` names the crewmate and the keys.
+- No announcer voice, by decision.
+
+Awaiting in-engine validation: PHASE0_BRINGUP.md section 7p.
+
 ### Phase 5 — Meta
 - Lobby scene with class picker (`NetworkPlayer.RequestClass` is in place), session browser, late-join handling, host migration.
 - Progression/cosmetics via `ClassData`/`EquipmentData`.

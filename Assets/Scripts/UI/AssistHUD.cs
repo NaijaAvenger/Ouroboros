@@ -20,6 +20,7 @@ namespace Ouroboros.UI
     public class AssistHUD : MonoBehaviour
     {
         private const string RootName = "assist-hud";
+        private static readonly bool ShowDownedCard = false;
         private const int MaxPings = 8, MaxRevives = 3;
         private static readonly Color GoColour = new Color(0.92f, 0.96f, 1f);
         private static readonly Color EnemyColour = new Color(1f, 0.3f, 0.22f);
@@ -241,7 +242,10 @@ namespace Ouroboros.UI
             else if (prompt.resolvedStyle.display != DisplayStyle.None) prompt.style.display = DisplayStyle.None;
 
             // ---- word for the player who is down
-            if (show && mine != null && !me.IsAlive)
+            // [v0.19] if (show && mine != null && !me.IsAlive)
+            // (v0.20) off: the objective tracker says the same thing ("YOU ARE DOWN ..."), and this card sat
+            //         where the top panel now is since the compass moved it down.
+            if (ShowDownedCard && show && mine != null && !me.IsAlive)
             {
                 downedText.text = mine.ReviveProgress > 0f
                     ? $"A crewmate is reviving you   {mine.ReviveProgress:P0}"

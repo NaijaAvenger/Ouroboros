@@ -30,6 +30,7 @@ namespace Ouroboros.Player
             }
 
             if (GetComponent<HackTether>() == null) gameObject.AddComponent<HackTether>(); // (v0.11) no prefab change needed
+            Audio.Footsteps.Attach(gameObject, Audio.Footsteps.Kind.Player); // (v0.20)
             player.Died += OnDied;
             player.Respawned += OnRespawned;
             player.Damaged += OnDamaged;
@@ -103,7 +104,12 @@ namespace Ouroboros.Player
         private void Update()
         {
             // Loot gain has no dedicated event; cheap poll of the replicated value.
-            if (player.CarriedLoot > lastLoot) Play(Library?.lootGained);
+            // [v0.19] if (player.CarriedLoot > lastLoot) Play(Library?.lootGained);   // silent until a clip was assigned
+            if (player.CarriedLoot > lastLoot)
+            {
+                var lib = Library;
+                Play(lib != null && lib.lootGained != null ? lib.lootGained : Core.ProceduralSfx.Pickup); // (v0.20)
+            }
             lastLoot = player.CarriedLoot;
         }
 

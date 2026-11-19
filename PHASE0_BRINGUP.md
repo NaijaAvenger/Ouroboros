@@ -494,6 +494,45 @@ Movement and damage feel:
 - [ ] The carried readout (bottom right) reads **CARRYING $X** and jumps when it grows.
 - [ ] The top panel now reads only the phase: HEIST IN PROGRESS or LIFTS OPEN.
 
+## 7p. Sound, compass, spectating (v0.20)
+Setup: none. Every sound here is synthesised in code, like the gunshots; none needs an audio file. They are placeholders: judge whether each one reads, not whether it is pretty.
+
+Footsteps:
+- [ ] Your own steps are quiet and follow your speed: slower rhythm walking, faster sprinting, none in the air or standing still.
+- [ ] Other players' steps are positional and can be heard from about 26 m, louder at a sprint. You can tell which side they are on with headphones.
+- [ ] Guards have a lower, heavier boot. You can tell a patrol from a player by ear.
+- [ ] A stealthed rival makes no footsteps. A stealthed crewmate still does.
+- [ ] Landing from a drop thuds. Starting a slide scrapes.
+- [ ] Tell me if rival steps carry too far or not far enough: it is one number (`maxDistance` in `Audio/Footsteps.cs`).
+
+Money and crew:
+- [ ] Picking up loot plays two bright notes (it was silent unless a clip was assigned).
+- [ ] Starting a cash-out rings a till at the station; your own crew also hears it wherever they are.
+- [ ] Adding to a cash-out drops coins at the station.
+- [ ] The last ten seconds of a cash-out tick once a second at the station. The tick stops while it is being hijacked.
+- [ ] Banking plays a rising run of bells: at the station for everyone near, and in your ear if it was your crew's.
+- [ ] A hijack sounds a two-tone alarm at the station, and in the ear of both crews involved.
+- [ ] A crewmate's ping blips; an ENEMY ping is lower and falls. Rival crews' pings are silent.
+- [ ] A revive chimes for the two players involved, and at the spot for anyone near.
+- [ ] A lift opening rings two soft bells at the lift.
+
+Compass (top of the screen):
+- [ ] A strip shows the half-circle in front of you with N, NE, E... and a gold needle in the middle. N is gold. It turns smoothly as you look around. North is the Bank end of the Galleria.
+- [ ] Pips sit under the strip at the bearing of: the vault the objective points at (gold, **VAULT**), free cash-out stations (small gold; the nearest reads **CASH OUT** while you carry loot), your crew's cash-out (**DEFEND**), a rival's (**STEAL**, red), open lifts (green; the nearest reads **LIFT**), downed crewmates (**REVIVE**), crew pings, crewmates (small, crew colour) and rivals your crew has marked (magenta).
+- [ ] Labelled pips show the distance, and "up" or "down" when the target is on the other floor.
+- [ ] Something behind you shows as a dimmed pip at the end of the strip on the side to turn toward.
+- [ ] The top panel, banners, the cash-out ticker and the hack warning all moved down to make room. Check nothing overlaps on your screen size, and that the strip does not run under the cash board.
+
+Spectating:
+- [ ] About a second and a half after you die, the view moves behind a living crewmate, over their right shoulder, looking where they look. The red "YOU DIED" screen goes away so you can watch.
+- [ ] Fire steps to the next crewmate, Aim to the previous. The objective tracker says who you are watching and shows the keys.
+- [ ] The camera pulls in when the crewmate has their back to a wall, and does not clip through it.
+- [ ] You hear what the crewmate hears. The compass turns with them.
+- [ ] If that crewmate dies, the view moves to another. With nobody left, it returns to your body and the old overlay.
+- [ ] When you are revived or redeploy, the view returns to your own eyes at once.
+- [ ] The same happens after you extract while crewmates are still inside.
+- [ ] You can never watch a rival.
+
 ## 7d. Expected flow and troubleshooting
 **Expected flow on Play (dev config):** spectator camera orbits the arena → session starts → your player spawns → the
 **class picker** appears with the cursor free (state *Waiting for players*) → host presses **Start match now** (or the

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using Fusion;
 
@@ -239,9 +240,99 @@ namespace Ouroboros.Player
             }
         }
 
+        // ------------------------------------------------------------------
+        // Spectating (v0.20): while the local player is down or away, their camera rides behind a crewmate
+        //
+        // It is the same camera, moved: the HUD, the outlines, the compass and the audio listener all come
+        // along, so the downed player sees and hears what their crew does. Only crewmates can be watched, so
+        // it gives away nothing a living crewmate could not say. Fire and Aim step to the next and the
+        // previous crewmate. With nobody left to watch, the view stays with the body as before.
+
+        /// <summary>The crewmate the local player is watching, or null. For the HUD.</summary>
+        public static Network.NetworkPlayer Spectating { get; private set; }
+
+        private const float SpectateDelay = 1.6f; // let the death land before the view leaves the body
+        private Network.NetworkPlayer spectateTarget;
+        private float downSince = -1f, spectateYaw, spectatePitch;
+        private Vector3 spectatePosition;
+        private bool spectateSnap;
+        private static readonly List<Network.NetworkPlayer> spectateList = new List<Network.NetworkPlayer>();
+
+        private bool CanWatch(Network.NetworkPlayer p)
+        {
+            return p != null && p.Object != null && p != networkPlayer && p.Team == networkPlayer.Team && p.IsActiveInMatch;
+        }
+
+        private Network.NetworkPlayer NextCrewmate(Network.NetworkPlayer current, int step)
+        {
+            spectateList.Clear();
+            var all = Network.NetworkPlayer.All;
+            for (int i = 0; i < all.Count; i++) if (CanWatch(all[i])) spectateList.Add(all[i]);
+            if (spectateList.Count == 0) return null;
+            int index = spectateList.IndexOf(current);
+            if (index < 0) return spectateList[0];
+            return spectateList[((index + step) % spectateList.Count + spectateList.Count) % spectateList.Count];
+        }
+
+        /// <summary>Moves the camera behind a crewmate while the local player is out of the fight. True if it did.</summary>
+        private bool UpdateSpectate()
+        {
+            bool down = networkPlayer != null && networkPlayer.Object != null && (!networkPlayer.IsAlive || networkPlayer.IsExtracted);
+            if (!down)
+            {
+                spectateTarget = null;
+                if (Spectating != null) Spectating = null;
+                downSince = -1f;
+                return false;
+            }
+            if (downSince < 0f) downSince = Time.time;
+            if (Time.time - downSince < SpectateDelay) { Spectating = null; return false; }
+
+            if (!CanWatch(spectateTarget)) { spectateTarget = NextCrewmate(spectateTarget, 1); spectateSnap = true; }
+            if (spectateTarget == null) { Spectating = null; return false; }
+
+            if (!UI.GameMenu.IsOpen)
+            {
+                int step = Core.LocalInputSource.Pressed(Core.InputButtons.Primary) ? 1
+                         : Core.LocalInputSource.Pressed(Core.InputButtons.Secondary) ? -1 : 0;
+                if (step != 0)
+                {
+                    var next = NextCrewmate(spectateTarget, step);
+                    if (next != null && next != spectateTarget) { spectateTarget = next; spectateSnap = true; }
+                }
+            }
+            Spectating = spectateTarget;
+
+            // Over the right shoulder, looking where they look, pulled in when a wall is behind them.
+            var t = spectateTarget;
+            float wantPitch = Mathf.Clamp(t.LookPitch, -50f, 60f);
+            float ease = 1f - Mathf.Exp(-10f * Time.deltaTime);
+            spectateYaw = spectateSnap ? t.LookYaw : Mathf.LerpAngle(spectateYaw, t.LookYaw, ease);
+            spectatePitch = spectateSnap ? wantPitch : Mathf.Lerp(spectatePitch, wantPitch, ease);
+            Quaternion look = Quaternion.Euler(spectatePitch, spectateYaw, 0f);
+            Vector3 head = t.EyePosition + Vector3.up * 0.25f;
+            Vector3 back = look * new Vector3(0.55f, 0.25f, -3.2f);
+            float reach = back.magnitude;
+            Vector3 direction = back / reach;
+            if (Physics.SphereCast(head, 0.22f, direction, out RaycastHit hit, reach, worldMask, QueryTriggerInteraction.Ignore)
+                && hit.collider.GetComponentInParent<Network.NetworkPlayer>() != t)
+            {
+                reach = Mathf.Max(0.4f, hit.distance);
+            }
+            Vector3 want = head + direction * reach;
+            spectatePosition = spectateSnap ? want : Vector3.Lerp(spectatePosition, want, 1f - Mathf.Exp(-16f * Time.deltaTime));
+            spectateSnap = false;
+
+            cameraTransform.SetPositionAndRotation(spectatePosition, look);
+            if (viewCamera == null) viewCamera = cameraTransform.GetComponentInChildren<Camera>();
+            if (viewCamera != null) viewCamera.fieldOfView = Core.GameSettings.FieldOfView;
+            return true;
+        }
+
         public override void Render()
         {
             if (!Object.HasInputAuthority || cameraTransform == null) return;
+            if (UpdateSpectate()) return; // (v0.20) the camera is with a crewmate
             // [v0.14] cameraTransform.localRotation = Quaternion.Euler(localPitch, 0f, 0f);
             float targetY = IsSliding ? cameraSlideHeight : cameraStandHeight;
             // [v0.14] var lp = cameraTransform.localPosition;

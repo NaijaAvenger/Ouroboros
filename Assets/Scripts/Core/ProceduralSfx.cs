@@ -53,6 +53,101 @@ namespace Ouroboros.Core
             (t, n) => n * Decay(t, 5f) * 0.9f + Sine(55f, t) * Decay(t, 4f) * 0.8f));
 
         // ------------------------------------------------------------------
+        // (v0.20) Movement, money and crew cues. The same rule as above: placeholders until real audio exists.
+
+        private static AudioClip[] steps, boots;
+        private static AudioClip land, slide, pickup, coinDrop, cashStart, cashBanked, cashAlarm, cashTick, liftDing, pingBlip, pingEnemy, reviveChime;
+
+        /// <summary>A player's footfall on a hard floor. Four takes, so a run does not sound like a machine.</summary>
+        public static AudioClip Footstep(int take)
+        {
+            if (steps == null)
+            {
+                steps = new AudioClip[4];
+                for (int i = 0; i < steps.Length; i++)
+                {
+                    float tone = 105f + i * 9f, snap = 58f + i * 6f;
+                    steps[i] = Make("sfx_step_" + i, 0.12f, 31 + i,
+                        (t, n) => n * Decay(t, snap) * 0.5f + Sine(tone - 180f * t, t) * Decay(t, 40f) * 0.55f);
+                }
+            }
+            return steps[((take % steps.Length) + steps.Length) % steps.Length];
+        }
+
+        /// <summary>A guard's boot: lower and heavier than a player's step, so the two are told apart by ear.</summary>
+        public static AudioClip BootStep(int take)
+        {
+            if (boots == null)
+            {
+                boots = new AudioClip[3];
+                for (int i = 0; i < boots.Length; i++)
+                {
+                    float tone = 74f + i * 6f;
+                    boots[i] = Make("sfx_boot_" + i, 0.16f, 41 + i,
+                        (t, n) => n * Decay(t, 42f) * 0.42f + Sine(tone - 110f * t, t) * Decay(t, 28f) * 0.75f);
+                }
+            }
+            return boots[((take % boots.Length) + boots.Length) % boots.Length];
+        }
+
+        /// <summary>Landing from a drop: a thud with some grit.</summary>
+        public static AudioClip Land => land != null ? land : (land = Make("sfx_land", 0.3f, 45,
+            (t, n) => n * Decay(t, 22f) * 0.6f + Sine(72f - 90f * t, t) * Decay(t, 14f) * 0.9f));
+
+        /// <summary>The scrape of a slide.</summary>
+        public static AudioClip Slide => slide != null ? slide : (slide = Make("sfx_slide", 0.55f, 46,
+            (t, n) => n * Decay(t, 4.5f) * 0.32f * (0.6f + 0.4f * Sine(27f, t))));
+
+        /// <summary>Loot picked up: two quick bright notes.</summary>
+        public static AudioClip Pickup => pickup != null ? pickup : (pickup = Make("sfx_pickup", 0.2f, 47,
+            (t, n) => Bell(t, 0f, 1320f, 26f) * 0.35f + Bell(t, 0.06f, 1760f, 20f) * 0.35f));
+
+        /// <summary>Loot going into a station: three coins on metal.</summary>
+        public static AudioClip CoinDrop => coinDrop != null ? coinDrop : (coinDrop = Make("sfx_coin_drop", 0.45f, 48,
+            (t, n) => Bell(t, 0f, 2100f, 22f) * 0.3f + Bell(t, 0.08f, 2650f, 24f) * 0.28f + Bell(t, 0.17f, 2350f, 18f) * 0.3f));
+
+        /// <summary>A cash-out starting: the drawer of a till, then its bell.</summary>
+        public static AudioClip CashStart => cashStart != null ? cashStart : (cashStart = Make("sfx_cash_start", 0.8f, 49,
+            (t, n) => Click(t, 0.005f, n) * 0.8f + Click(t, 0.07f, n) * 0.5f + Bell(t, 0.1f, 1568f, 5f) * 0.42f + Bell(t, 0.1f, 2349f, 7f) * 0.2f));
+
+        /// <summary>Money banked: a rising run of four bells and a shimmer. The best sound in the game should be this one.</summary>
+        public static AudioClip CashBanked => cashBanked != null ? cashBanked : (cashBanked = Make("sfx_cash_banked", 1.25f, 50,
+            (t, n) => Bell(t, 0f, 1047f, 6f) * 0.3f + Bell(t, 0.09f, 1319f, 6f) * 0.3f + Bell(t, 0.18f, 1568f, 6f) * 0.3f
+                    + Bell(t, 0.27f, 2093f, 3.5f) * 0.36f + (t > 0.27f ? n * Decay(t - 0.27f, 7f) * 0.07f : 0f)));
+
+        /// <summary>A cash-out stolen: a two-tone alarm.</summary>
+        public static AudioClip CashAlarm => cashAlarm != null ? cashAlarm : (cashAlarm = Make("sfx_cash_alarm", 0.72f, 51,
+            (t, n) => Mathf.Sign(Sine(((int)(t / 0.12f) % 2 == 0) ? 740f : 554f, t)) * 0.2f * Mathf.Clamp01((0.72f - t) * 8f)));
+
+        /// <summary>The last seconds of a cash-out, one per second.</summary>
+        public static AudioClip CashTick => cashTick != null ? cashTick : (cashTick = Make("sfx_cash_tick", 0.07f, 52,
+            (t, n) => Sine(1250f, t) * Decay(t, 55f) * 0.5f + Click(t, 0f, n) * 0.3f));
+
+        /// <summary>A lift arriving: two soft bells.</summary>
+        public static AudioClip LiftDing => liftDing != null ? liftDing : (liftDing = Make("sfx_lift_ding", 1.2f, 53,
+            (t, n) => Bell(t, 0f, 1319f, 3.2f) * 0.4f + Bell(t, 0.28f, 1047f, 2.8f) * 0.4f));
+
+        /// <summary>A crewmate's ping.</summary>
+        public static AudioClip PingBlip => pingBlip != null ? pingBlip : (pingBlip = Make("sfx_ping", 0.16f, 54,
+            (t, n) => Sine(1480f, t) * Window(t, 0f, 0.05f) * 0.4f + Sine(1976f, t) * Window(t, 0.05f, 0.16f) * 0.4f));
+
+        /// <summary>A crewmate's ping on a threat: lower and falling, so it is told apart without looking.</summary>
+        public static AudioClip PingEnemy => pingEnemy != null ? pingEnemy : (pingEnemy = Make("sfx_ping_enemy", 0.2f, 55,
+            (t, n) => Sine(880f, t) * Window(t, 0f, 0.07f) * 0.45f + Sine(660f, t) * Window(t, 0.07f, 0.2f) * 0.45f));
+
+        /// <summary>A crewmate back on their feet: three rising notes.</summary>
+        public static AudioClip ReviveChime => reviveChime != null ? reviveChime : (reviveChime = Make("sfx_revive", 0.7f, 56,
+            (t, n) => Bell(t, 0f, 660f, 7f) * 0.32f + Bell(t, 0.11f, 880f, 7f) * 0.32f + Bell(t, 0.22f, 1320f, 4.5f) * 0.36f));
+
+        /// <summary>A struck note starting at <paramref name="at"/>: a tone, an inharmonic overtone, and a decay.</summary>
+        private static float Bell(float t, float at, float hz, float decay)
+        {
+            if (t < at) return 0f;
+            float u = t - at;
+            return (Sine(hz, u) + 0.4f * Sine(hz * 2.76f, u)) * Decay(u, decay);
+        }
+
+        // ------------------------------------------------------------------
 
         /// <summary>Builds a mono clip from a per-sample function of (time in seconds, white noise in -1..1).</summary>
         private static AudioClip Make(string name, float seconds, int seed, Func<float, float, float> sample)

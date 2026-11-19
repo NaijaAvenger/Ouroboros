@@ -335,6 +335,7 @@ namespace Ouroboros.GameMode
             column.SetActive(false);
         }
         private Renderer screenBack;
+        private int tickedSecond = -1;
         private const float MarkerHeight = 3.8f;
         private Transform marker;
         private readonly List<Renderer> markerParts = new List<Renderer>();
@@ -346,6 +347,15 @@ namespace Ouroboros.GameMode
             bool active = IsActive;
             bool hijack = IsBeingHijacked;
             Color crew = active && Core.TeamUtil.IsValid(OwnerTeam) ? Art.CrewStyle.Get(OwnerTeam).Primary : new Color(0.35f, 0.9f, 0.5f);
+
+            // (v0.20) the last ten seconds tick, at the station: the sound of a cash-out about to land
+            int second = active && !hijack && Remaining <= 10f ? Mathf.CeilToInt(Remaining) : -1;
+            if (second != tickedSecond)
+            {
+                if (second > 0)
+                    AudioSource.PlayClipAtPoint(Core.ProceduralSfx.CashTick, transform.position + Vector3.up * 1.5f, 0.9f);
+                tickedSecond = second;
+            }
 
             // (v0.18) the marker bobs and turns all the time, so the station catches the eye even when idle
             if (marker != null)

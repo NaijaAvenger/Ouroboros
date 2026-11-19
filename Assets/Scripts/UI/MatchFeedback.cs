@@ -40,6 +40,67 @@ namespace Ouroboros.UI
             Equipment.Projectile.Exploded += OnExploded;
             AI.BaseAIAgent.AgentFired += OnAgentFired; // (v0.9)
             Interaction.SentryTurret.Fired += OnTurretFired; // (v0.11)
+            GameMode.CashOutStation.Moment += OnCashOut;     // (v0.20)
+            Network.NetworkPlayer.Pinged += OnPinged;
+            Network.NetworkPlayer.Revived += OnRevived;
+        }
+
+        // ------------------------------------------------------------------
+        // (v0.20) Money and crew cues. Each is heard at the place it happens, so it can be walked toward, and
+        // again flat in the ear of the crews it concerns, so it is never missed.
+
+        private void OnCashOut(GameMode.CashOutStation station, GameMode.CashOutMoment moment, Core.TeamID team, Core.TeamID from, int value)
+        {
+            if (station == null) return;
+            var me = Network.NetworkPlayer.FindLocal();
+            bool mine = me != null && me.Team == team, wasMine = me != null && me.Team == from && Core.TeamUtil.IsValid(from);
+            Vector3 at = station.transform.position + Vector3.up * 1.5f;
+            switch (moment)
+            {
+                case GameMode.CashOutMoment.Started:
+                    At(Core.ProceduralSfx.CashStart, at, 1f);
+                    if (mine) Play(Core.ProceduralSfx.CashStart, 0.5f);
+                    break;
+                case GameMode.CashOutMoment.Added:
+                    At(Core.ProceduralSfx.CoinDrop, at, 0.9f);
+                    break;
+                case GameMode.CashOutMoment.Hijacked:
+                    At(Core.ProceduralSfx.CashAlarm, at, 1f);
+                    if (mine || wasMine) Play(Core.ProceduralSfx.CashAlarm, 0.6f);
+                    break;
+                case GameMode.CashOutMoment.Banked:
+                    At(Core.ProceduralSfx.CashBanked, at, 1f);
+                    if (mine) Play(Core.ProceduralSfx.CashBanked, 0.85f);
+                    break;
+            }
+        }
+
+        private void OnPinged(Network.NetworkPlayer by, Core.PingKind kind, Vector3 position, string label)
+        {
+            var me = Network.NetworkPlayer.FindLocal();
+            if (me == null || by == null || by.Team != me.Team) return; // a crew's pings are its own
+            Play(kind == Core.PingKind.Enemy ? Core.ProceduralSfx.PingEnemy : Core.ProceduralSfx.PingBlip, 0.7f);
+        }
+
+        private void OnRevived(Network.NetworkPlayer revived, Network.NetworkPlayer by)
+        {
+            if (revived == null) return;
+            var me = Network.NetworkPlayer.FindLocal();
+            if (me != null && (revived == me || by == me)) Play(Core.ProceduralSfx.ReviveChime, 0.8f);
+            else At(Core.ProceduralSfx.ReviveChime, revived.transform.position, 0.9f);
+        }
+
+        private void At(AudioClip clip, Vector3 position, float volume)
+        {
+            var lib = Library;
+            if (clip != null) AudioSource.PlayClipAtPoint(clip, position, volume * (lib != null ? lib.matchVolume : 1f));
+        }
+
+        private void Play(AudioClip clip, float volume)
+        {
+            if (clip == null || audioSource == null) return;
+            var lib = Library;
+            audioSource.PlayOneShot(clip, volume * (lib != null ? lib.matchVolume : 1f));
         }
 
         /// <summary>(v0.11) Sentry turret shots: tracer in the owner's colour (red for the facility) and a positional shot sound.</summary>
@@ -84,6 +145,9 @@ namespace Ouroboros.UI
         {
             AI.BaseAIAgent.AgentFired -= OnAgentFired;
             Interaction.SentryTurret.Fired -= OnTurretFired;
+            GameMode.CashOutStation.Moment -= OnCashOut;
+            Network.NetworkPlayer.Pinged -= OnPinged;
+            Network.NetworkPlayer.Revived -= OnRevived;
             Equipment.Projectile.Exploded -= OnExploded;
             GameMode.ExtractionHeistGameMode.StateChanged -= OnStateChanged;
             GameMode.ExtractionHeistGameMode.ExtractionOpened -= OnExtractionOpened;

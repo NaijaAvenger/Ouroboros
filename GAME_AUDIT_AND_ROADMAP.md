@@ -92,7 +92,7 @@ rivals steal the deposit. That difference is the biggest gap. In order of what I
 | 6 | **Passing the loot.** Throw the case or a loot item to a crewmate | Makes the carry a team play and not one player's burden | Small |
 | 7 | **A cost for a crew wipe.** A wiped crew loses a share of what it has banked | Makes a wipe matter beyond the respawn timer | Small |
 | 8 | **Movement gadgets.** Deployable jump pad and zipline | The Galleria has two levels and long halls; these would open it up | Medium |
-| 9 | **Spectating crewmates while down** | Dead time is watch time | Small |
+| 9 | **Spectating crewmates while down** | Dead time is watch time | **Done in code (v0.20), not play-tested** |
 | 10 | **Structural destruction** | The Finals' signature, and a very large engineering job. More weak walls and breakable floors get most of the feel for a fraction of the cost | Very large |
 
 Already here in some form: several ways into every vault, gadgets, map events (their game-show events),
@@ -113,7 +113,7 @@ first second. Ouroboros had the pieces (markers, banners, a feed) but nothing th
 | One current objective | Always on screen | None. The rule was a sentence in the timer panel | **Objective tracker**: one instruction and how, chosen from the player's situation, with a marker on the target |
 | The score | Cash totals are the biggest numbers on screen | A 300 px table of 12 to 14 px text headed "TEAMS", with points and loot in separate columns | **Cash board**: one large figure per crew, a banked and carried bar toward the quota, richest first |
 | First-match teaching | Tutorial and practice range (Finals), briefing (Hyenas) | A premise line on the class picker | **Briefing card** before the match and for its first seconds: take it, bank it, get out |
-| Where things are | Objective icons through walls | Stations, exits, rival cash-outs, crewmates, pings | Adds the nearest vault. Still no map or compass |
+| Where things are | Objective icons through walls | Stations, exits, rival cash-outs, crewmates, pings | Adds the nearest vault, and since v0.20 a **compass strip** with a pip for each of them |
 | Whose is what | Team colour on everything | Crew colours on players, stations, turrets | Unchanged |
 
 **Does the game feel good in the hand?**
@@ -126,13 +126,14 @@ first second. Ouroboros had the pieces (markers, banners, a feed) but nothing th
 | Money arriving | Coins fly, numbers tick, the announcer shouts | A feed line and a pickup sound | **Added**: figures pop on the board and on the carried readout. Banking still has no sound of its own |
 | Jump forgiveness | Coyote time and jump buffering, so a jump a frame late still happens | None: a jump pressed a tick after leaving a ledge is lost | **Not done.** It changes the predicted movement code and wants testing with two clients. Small, and worth doing next |
 | Mantle and slide | Mantle anything waist to head height; slide keeps momentum | Have both | Tune by playing |
-| Sound | Every action has one; footsteps tell you who is near | Clip slots for shots, reloads, hits, kills, pickups and match events; no footsteps at all, no announcer voice | **Not done**, needs audio assets. The largest remaining feel gap |
+| Sound | Every action has one; footsteps tell you who is near | Clip slots for shots, reloads, hits, kills, pickups and match events; no footsteps at all, no announcer voice | **Added in v0.20**, synthesised in code: footsteps for players and guards, landing, slide, pickup, and every cash-out, ping, revive and lift cue. No announcer voice, by decision. All of it is placeholder until real audio exists |
 | Hit stop / time effects | Brief freeze on a kill | None, on purpose: slowing local time would desynchronise a networked peer | Leave |
 | Animation | Full first-person arms, reloads, inspect | Code-built view model that kicks when fired, dips to reload and centres when aiming; no sway, no arms | Needs real art |
 
-**What I would do next for feel, in order:** coyote time and jump buffering; footsteps and a cash sound; a
-compass strip or minimap; spectating crewmates while down; a short kill-cam on the death recap. And the
-session that tunes numbers: time to kill, recoil, the 60 second cash-out, the quota.
+**What I would do next for feel, in order:** coyote time and jump buffering; a short kill-cam on the death
+recap; real audio in place of the synthesised placeholders. And the session that tunes numbers: time to kill,
+recoil, the 60 second cash-out, the quota, how far footsteps carry. (Footsteps and cash sounds, the compass
+and spectating were on this list and arrived in v0.20.)
 
 ### Markers, cash-out markers and lift exits (v0.18, code complete, not seen running)
 
@@ -521,7 +522,7 @@ Decision 2 affects the local `ViewMode.cs`: if it is a first/third-person toggle
    models) and builds the `Galleria` scene. Expect it to take a while: it places several thousand objects
    and bakes a two-level NavMesh.
 2. With the Galleria scene open, press Play and choose **Solo**.
-3. Work through sections 7o, 7n, 7m and 7l of `PHASE0_BRINGUP.md` first (the newest work), then 7j and 7k, then 7e to 7i,
+3. Work through sections 7p, 7o, 7n, 7m and 7l of `PHASE0_BRINGUP.md` first (the newest work), then 7j and 7k, then 7e to 7i,
    and list what breaks. On a Galleria scene you already built, run **Update Galleria Map (keeps the scene)** first.
 4. Tell me the frame rate. If it is low, the first cuts are the ceiling lights and the number of props.
 5. Find native speakers of Nigerian Pidgin, Swahili or Sheng, Twi and isiZulu to rewrite the crew radio lines

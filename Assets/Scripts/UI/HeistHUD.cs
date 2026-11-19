@@ -117,6 +117,7 @@ namespace Ouroboros.UI
             if (GetComponent<AssistHUD>() == null) gameObject.AddComponent<AssistHUD>(); // (v0.17) crew pings and revives
             if (GetComponent<ExitHUD>() == null) gameObject.AddComponent<ExitHUD>(); // (v0.18) nearest exit once the getaway is called
             if (GetComponent<ObjectiveHUD>() == null) gameObject.AddComponent<ObjectiveHUD>(); // (v0.19) what to do next, and the briefing
+            if (GetComponent<CompassHUD>() == null) gameObject.AddComponent<CompassHUD>(); // (v0.20) bearings to everything worth walking to
 
             var ps = document.panelSettings;
             Debug.Log($"[HeistHUD] Enabled. PanelSettings='{(ps != null ? ps.name : "NONE")}', theme='{(ps != null && ps.themeStyleSheet != null ? ps.themeStyleSheet.name : "NONE")}', " +
@@ -214,7 +215,8 @@ namespace Ouroboros.UI
             // Top centre: state + timer
             var top = Panel(PanelBg);
             top.style.position = Position.Absolute;
-            top.style.top = 12; top.style.left = Length.Percent(50);
+            // [v0.19] top.style.top = 12; top.style.left = Length.Percent(50);
+            top.style.top = 62; top.style.left = Length.Percent(50); // (v0.20) the compass strip and its labels sit above
             top.style.translate = new Translate(Length.Percent(-50), 0);
             top.style.alignItems = Align.Center;
             top.style.minWidth = 260;
@@ -229,7 +231,8 @@ namespace Ouroboros.UI
             // Banner under the timer
             bannerLabel = Text("", 26, LootColor, bold: true);
             bannerLabel.style.position = Position.Absolute;
-            bannerLabel.style.top = 90; bannerLabel.style.left = Length.Percent(50);
+            // [v0.19] bannerLabel.style.top = 90; bannerLabel.style.left = Length.Percent(50);
+            bannerLabel.style.top = 140; bannerLabel.style.left = Length.Percent(50); // (v0.20) moved down with the top panel
             bannerLabel.style.translate = new Translate(Length.Percent(-50), 0);
             bannerLabel.style.display = DisplayStyle.None;
             bannerLabel.style.unityTextAlign = TextAnchor.MiddleCenter;
@@ -987,7 +990,15 @@ namespace Ouroboros.UI
                 return;
             }
 
-            if (local.IsExtracted)
+            // (v0.20) While the camera is with a crewmate the full-screen overlay goes away, so they can be
+            //         watched; the objective tracker carries the state and the keys. The overlay still shows
+            //         for the first moment after dying, and whenever there is nobody to watch.
+            if (Player.PlayerController.Spectating != null && (local.IsExtracted || !local.IsAlive))
+            {
+                deathOverlay.style.display = DisplayStyle.None;
+            }
+            // [v0.19] if (local.IsExtracted)
+            else if (local.IsExtracted)
             {
                 deathOverlay.style.display = DisplayStyle.Flex;
                 deathOverlay.style.backgroundColor = new Color(0f, 0.25f, 0.1f, 0.45f);

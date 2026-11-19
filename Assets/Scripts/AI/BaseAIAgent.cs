@@ -178,6 +178,7 @@ namespace Ouroboros.AI
             var walk = gameObject.AddComponent<Art.CharacterAnimator>();
             walk.Model = built;
             Art.ThreatOutline.Attach(gameObject, Art.ThreatOutline.Hostile); // (v0.17) a guard is easy to lose against a busy room
+            Audio.Footsteps.Attach(gameObject, Audio.Footsteps.Kind.Guard);  // (v0.20) and now a patrol can be heard coming
         }
 
         public override void Despawned(NetworkRunner runner, bool hasState)

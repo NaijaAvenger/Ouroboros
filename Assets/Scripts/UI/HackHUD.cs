@@ -263,7 +263,7 @@ namespace Ouroboros.UI
         {
             warningPanel = new VisualElement { pickingMode = PickingMode.Ignore };
             warningPanel.style.position = Position.Absolute;
-            warningPanel.style.left = Length.Percent(50); warningPanel.style.top = 120;
+            warningPanel.style.left = Length.Percent(50); warningPanel.style.top = 170; // [v0.19] 120, before the compass moved the top of the HUD down
             warningPanel.style.translate = new Translate(Length.Percent(-50), 0);
             warningPanel.style.minWidth = 320;
             warningPanel.style.backgroundColor = new Color(0.25f, 0.02f, 0.02f, 0.9f);

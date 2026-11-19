@@ -50,7 +50,8 @@ namespace Ouroboros.UI
 
             ticker = new VisualElement { pickingMode = PickingMode.Ignore };
             ticker.style.position = Position.Absolute;
-            ticker.style.top = 132; ticker.style.left = 0; ticker.style.right = 0;
+            // [v0.19] ticker.style.top = 132; ticker.style.left = 0; ticker.style.right = 0;
+            ticker.style.top = 182; ticker.style.left = 0; ticker.style.right = 0; // (v0.20) below the compass, the top panel and the banner
             ticker.style.alignItems = Align.Center;
             root.Add(ticker);
             for (int i = 0; i < MaxRows; i++) rows[i] = BuildRow();

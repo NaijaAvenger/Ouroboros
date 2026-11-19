@@ -361,6 +361,13 @@ namespace Ouroboros.UI
                     break;
             }
 
+            // (v0.20) down or away, the camera rides with a crewmate: say who, and how to change
+            var watching = Player.PlayerController.Spectating;
+            if (watching != null && (objective == Core.Objective.AwaitRevive || objective == Core.Objective.Redeploying || objective == Core.Objective.Away))
+            {
+                detail += $"\nWatching {watching.DisplayName}.   [{Core.LocalInputSource.Hint(Core.InputButtons.Primary)}] next   [{Core.LocalInputSource.Hint(Core.InputButtons.Secondary)}] previous";
+            }
+
             Show(tracker, title.Length > 0);
             trackerTitle.text = title;
             trackerTitle.style.color = colour;
