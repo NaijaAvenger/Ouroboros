@@ -402,8 +402,8 @@ First, the thing I could not see:
 Seeing what can shoot you:
 - [ ] Guards, elites and snipers have a bright red outline. It is hidden by walls: it marks what you can see, it does not show through.
 - [ ] The outline stays readable across the atrium (it widens with distance) and is not a thick blob up close.
-- [ ] Sentry turrets are now about 2.4 m tall: a tripod foot with a yellow ring, a pedestal, a twin-barrelled head that turns, and a beacon on a mast. Beacon and eye are amber when idle, red when locked on, dark when off.
-- [ ] Shooting the turret's head and upper body counts (the hit box grew with the model).
+- [ ] Sentry turrets are now about 2.6 m tall: a tripod foot with a yellow ring, a pedestal, a twin-barrelled head that turns, and a beacon on a mast. Tracers leave from the barrels. Beacon and eye are amber when idle, red when locked on, dark when off.
+- [ ] Shooting the turret's head and upper body counts (the hit box grew with the model), and a turret still sees and shoots a player standing right next to it.
 - [ ] A turret is outlined red; hijacked, it is outlined in the crew's colour; shot down or blacked out, it has no outline.
 - [ ] Cameras are half as big again and outlined amber, turning red while they have someone in view, and losing the outline when disabled.
 - [ ] Settings > **Threat outlines** switches all of it off and on.

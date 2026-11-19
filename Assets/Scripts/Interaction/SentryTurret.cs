@@ -96,13 +96,16 @@ namespace Ouroboros.Interaction
                 head.SetParent(transform, true);
                 head.position = new Vector3(transform.position.x, floorY + muzzleHeight, transform.position.z);
             }
-            Art.GearBuilder.BuildTurret(transform, head, floorY, out beacon, out eye);
+            Art.GearBuilder.BuildTurret(transform, head, floorY, MuzzlePosition.y, out beacon, out eye);
 
-            // The hit box grows with the model: 1 m square and 1.9 m tall, standing on the floor.
+            // The hit box grows with the model: 1 m square, from the floor to just over the gun. It must hold
+            // the muzzle: the turret looks and fires from there, and a ray that starts inside a collider does
+            // not hit it, so the turret can never block its own view.
             Vector3 s = transform.lossyScale;
+            float tall = Mathf.Max(1.2f, MuzzlePosition.y - floorY + 0.35f);
             var box = gameObject.AddComponent<BoxCollider>();
-            box.center = transform.InverseTransformPoint(new Vector3(transform.position.x, floorY + 0.95f, transform.position.z));
-            box.size = new Vector3(1f / Mathf.Max(0.01f, s.x), 1.9f / Mathf.Max(0.01f, s.y), 1f / Mathf.Max(0.01f, s.z));
+            box.center = transform.InverseTransformPoint(new Vector3(transform.position.x, floorY + tall * 0.5f, transform.position.z));
+            box.size = new Vector3(1f / Mathf.Max(0.01f, s.x), tall / Mathf.Max(0.01f, s.y), 1f / Mathf.Max(0.01f, s.z));
 
             outline = Art.ThreatOutline.Attach(gameObject, Art.ThreatOutline.Hostile);
         }

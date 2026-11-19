@@ -210,11 +210,13 @@ namespace Ouroboros.Art
 
         /// <summary>
         /// (v0.17) A sentry turret big enough to notice: a tripod foot with a hazard ring, a pedestal, and a
-        /// twin-barrelled head with a sensor eye and a status beacon on a mast, about 2.4 m to the top.
+        /// twin-barrelled head with a sensor eye and a status beacon on a mast, about 2.6 m to the top.
         /// The foot is built under <paramref name="owner"/> at <paramref name="floorY"/>; the gun is built
-        /// under <paramref name="head"/>, which the turret turns to face its target.
+        /// under <paramref name="head"/>, which the turret turns to face its target, with its barrels at
+        /// <paramref name="muzzleY"/> so shots leave from where the turret really sees and fires from.
         /// </summary>
-        public static void BuildTurret(Transform owner, Transform head, float floorY, out Renderer beacon, out Renderer eye)
+        // [v0.17 first draft] public static void BuildTurret(Transform owner, Transform head, float floorY, out Renderer beacon, out Renderer eye)
+        public static void BuildTurret(Transform owner, Transform head, float floorY, float muzzleY, out Renderer beacon, out Renderer eye)
         {
             var metal = ArtMaterials.Colour(Gunmetal);
             var dark = ArtMaterials.Colour(Polymer);
@@ -232,12 +234,17 @@ namespace Ouroboros.Art
                 var turn = Quaternion.Euler(0f, leg * 120f, 0f);
                 Prim.Box(root, "Leg", turn * new Vector3(0f, 0.22f, 0.45f), new Vector3(0.24f, 0.16f, 0.95f), dark, new Vector3(0f, leg * 120f, 0f));
             }
-            Prim.Rod(root, "Pedestal", new Vector3(0f, 0.6f, 0f), new Vector3(0.5f, 0.42f, 0.5f), metal);
-            Prim.Rod(root, "Collar", new Vector3(0f, 1.04f, 0f), new Vector3(0.74f, 0.05f, 0.74f), hazard);
+            // [v0.17 first draft] a 1 m pedestal, which left the barrels 0.6 m below the point shots came from
+            // Prim.Rod(root, "Pedestal", new Vector3(0f, 0.6f, 0f), new Vector3(0.5f, 0.42f, 0.5f), metal);
+            // Prim.Rod(root, "Collar", new Vector3(0f, 1.04f, 0f), new Vector3(0.74f, 0.05f, 0.74f), hazard);
+            float neck = Mathf.Max(0.5f, muzzleY - floorY - 0.3f); // the pedestal reaches up to just under the gun
+            Prim.Rod(root, "Pedestal", new Vector3(0f, 0.18f + (neck - 0.18f) * 0.5f, 0f), new Vector3(0.5f, (neck - 0.18f) * 0.5f, 0.5f), metal);
+            Prim.Rod(root, "Collar", new Vector3(0f, neck, 0f), new Vector3(0.74f, 0.05f, 0.74f), hazard);
 
             var gun = Prim.Group(head, "Turret Head");
             Vector3 hs = head.lossyScale;
             gun.localScale = new Vector3(1f / Mathf.Max(0.01f, hs.x), 1f / Mathf.Max(0.01f, hs.y), 1f / Mathf.Max(0.01f, hs.z));
+            gun.position = new Vector3(head.position.x, muzzleY + 0.03f, head.position.z); // the barrels sit 3 cm below the gun's centre
             Prim.Box(gun, "Body", Vector3.zero, new Vector3(0.78f, 0.5f, 0.95f), metal);
             Prim.Rod(gun, "Drum", new Vector3(0f, -0.04f, -0.56f), new Vector3(0.5f, 0.22f, 0.5f), dark, new Vector3(0f, 0f, 90f));
             foreach (float side in new[] { -1f, 1f })
@@ -248,8 +255,8 @@ namespace Ouroboros.Art
             }
             var glow = ArtMaterials.Emissive(new Color(0.9f, 0.75f, 0.2f));
             eye = Prim.Ball(gun, "Eye", new Vector3(0f, 0.1f, 0.48f), new Vector3(0.24f, 0.24f, 0.12f), glow).GetComponent<Renderer>();
-            Prim.Rod(gun, "Mast", new Vector3(0f, 0.55f, -0.25f), new Vector3(0.06f, 0.3f, 0.06f), dark);
-            beacon = Prim.Ball(gun, "Beacon", new Vector3(0f, 0.97f, -0.25f), new Vector3(0.3f, 0.3f, 0.3f), glow).GetComponent<Renderer>();
+            Prim.Rod(gun, "Mast", new Vector3(0f, 0.42f, -0.25f), new Vector3(0.06f, 0.17f, 0.06f), dark);
+            beacon = Prim.Ball(gun, "Beacon", new Vector3(0f, 0.7f, -0.25f), new Vector3(0.3f, 0.3f, 0.3f), glow).GetComponent<Renderer>();
         }
 
         // ------------------------------------------------------------------
