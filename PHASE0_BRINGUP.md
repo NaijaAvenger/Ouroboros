@@ -533,6 +533,63 @@ Spectating:
 - [ ] The same happens after you extract while crewmates are still inside.
 - [ ] You can never watch a rival.
 
+## 7q. Grand Vaults (v0.21)
+Setup: **Ouroboros > Setup > Recreate Galleria Map (overwrites the scene)**. The vaults are new scene objects, so "Update Galleria Map" is not enough this time. The Freeport is unchanged and still has the old small vaults.
+
+The four vaults, one per wing. Each is a room behind a steel door with a round hatch and a wheel, and a lamp bar over it: red shut, amber being drilled, green open.
+
+| Vault | Where | Opens by | Perk inside |
+|-------|-------|----------|-------------|
+| Main Vault | Bank, north, past the laser corridor | Key (two guards, one elite). Also its weak wall, and the time lock at 8 minutes | Iron Skin |
+| Cash Cage | Services, south, off the Loading Dock | Drill (an elite stands on the door) | Quick Hands |
+| Auction Strongroom | Luxe Wing, east | Lock console. Also its weak wall | Hot Shots |
+| Cold Store | Market Hall, west | Any of the three (two guards, one elite) | Second Wind |
+
+Finding them:
+- [ ] With nothing in hand the objective reads **CRACK A VAULT**, names the nearest shut vault and says, for that vault, which ways in it has and where each stands ("kill its guards (2 left)", "set the drill and hold the doorway for 50 s", "crack the lock at the console").
+- [ ] A gold **VAULT** marker sits on that door through walls, and the compass has a pip for every shut vault with the nearest one named.
+- [ ] Standing at a door shows a card with one line per way in, and the line you can act on in colour.
+
+Key:
+- [ ] The card reads "on its guards: N left". Kill them all: the key appears where the last one fell, turning in the air with a gold outline, a **KEY** marker and a feed line for every crew.
+- [ ] Walk over it to take it: jingle, feed line, a "[Main Vault key]" tag in your status line, and the objective becomes **OPEN THE MAIN VAULT**.
+- [ ] Hold Interact at the door with the key: it opens at once.
+- [ ] Die carrying it and it falls where you fell, for anyone.
+- [ ] A guard that was not standing near the door at the start is not one of the vault's guards and does not count.
+
+Drill:
+- [ ] Hold Interact at the door for 2 s: a rig appears on the door, every crew gets a banner and a ticker row ("LAGOS  DRILLING THE CASH CAGE  0:50"), the alarm rises and guards come.
+- [ ] It runs by itself, throwing sparks and buzzing, while one of your crew is within 14 m of the door. Everyone leave, and the ticker says it is running back; it is abandoned when it reaches zero.
+- [ ] The objective reads **DEFEND THE DRILL**, or **THE DRILL IS RUNNING BACK** in red.
+- [ ] A rival holding Interact at the door for 3 s pulls the plug: alarm sound, feed line, drill gone. Your objective for a rival's drill says so.
+- [ ] After 50 s the door opens.
+
+Lock:
+- [ ] The console stands just outside, beside the door. Its prompt reads "... Lock - cracking it opens the vault". Press Interact to jack in and answer the signs, as at a safe. It is the hardest set, in two passes.
+- [ ] Finishing it opens the door. No drill banner, no ticker row.
+
+Open:
+- [ ] The door sinks into the floor with a deep roll and a bell that every crew hears, and a banner: "THE MAIN VAULT IS OPEN".
+- [ ] Inside, laid out on the floor: three legendary pieces, two rare ones and four piles of cash, about $6,000 in all. Check none of it is inside a shelf or a strongbox.
+- [ ] On the pedestal a gem turns in the perk's colour. Hold Interact for 1.5 s: your whole crew has the perk until the match ends, with a banner saying what it does and a tag in everyone's status line. The gem goes and the pedestal lamp takes your crew's colour.
+- [ ] A second crew gets the loot that is left but not the perk.
+- [ ] Emptying one vault brings a crew to the quota, or close: the getaway is called. Tell me if it should take one vault or a vault and a bit.
+- [ ] Blowing the Main Vault's or the Strongroom's weak wall with a Breaching Kit lays the loot out too, with the door still shut.
+- [ ] At 8 minutes the Main Vault's time lock opens it for everyone.
+
+The perks (numbers in `Core/VaultRules.cs`):
+- [ ] **Iron Skin**: the crew takes 20% less damage.
+- [ ] **Hot Shots**: the crew deals 15% more damage.
+- [ ] **Second Wind**: health starts coming back after 3 s, not 6, and at 24 a second, not 12.
+- [ ] **Quick Hands**: revives, cash-out deposits, hijacks, setting a drill and pulling a plug all take 40% less time.
+
+Safes (what the old vaults became):
+- [ ] Safe Deposit, Stockroom, Server Vault and the four hall safes work as before. Once every Grand Vault is open the objective reads **CRACK A SAFE**.
+
+Bots:
+- [ ] A bot crew goes to a vault, sets a drill where it can and stands by it; fights a keyed vault's guards and carries the key to the door; cracks a lock console; pulls the plug on a rival's drill; takes the perk; picks up the loot.
+- [ ] Bots following you do not start a drill. They do stand by yours, carry a key they hold to the door, and take a perk.
+
 ## 7d. Expected flow and troubleshooting
 **Expected flow on Play (dev config):** spectator camera orbits the arena → session starts → your player spawns → the
 **class picker** appears with the cursor free (state *Waiting for players*) → host presses **Start match now** (or the

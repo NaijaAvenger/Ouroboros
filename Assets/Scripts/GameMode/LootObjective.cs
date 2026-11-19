@@ -48,6 +48,14 @@ namespace Ouroboros.GameMode
         [Tooltip("Seconds spilled items stay before they disappear.")]
         [SerializeField] private float lootLifetime = 240f;
 
+        [Header("Grand Vault lock (v0.21)")]
+        [Tooltip("Set on the lock console beside a Grand Vault's door. Cracking this console opens that vault; it holds no loot of its own and does not come back.")]
+        [SerializeField] private Interaction.GrandVault opensVault;
+
+        /// <summary>(v0.21) True for the lock console of a Grand Vault: a puzzle that opens a door, not a box of loot.</summary>
+        public bool IsVaultLock => opensVault != null;
+        public Interaction.GrandVault OpensVault => opensVault;
+
         [Header("Deep hack (v0.12)")]
         [Tooltip("Signs: match the pattern. Pulse: strike on the beat. Mixed alternates the two.")]
         [SerializeField] private HackPuzzleMode puzzleMode = HackPuzzleMode.Mixed;
@@ -120,6 +128,14 @@ namespace Ouroboros.GameMode
                 // Temporary hack unlock expired
                 HackUnlockTimer = TickTimer.None;
                 IsUnlocked = false;
+            }
+
+            // (v0.21) a lock console is finished with once its vault is open, however that happened
+            if (opensVault != null && opensVault.Object != null && (opensVault.Opened || !opensVault.Allows(Core.VaultMethod.Crack)))
+            {
+                if (CapturingTeam != Core.TeamID.None) Cancel();
+                IsAvailable = false;
+                return;
             }
 
             var gm = ExtractionHeistGameMode.Instance;
@@ -239,6 +255,19 @@ namespace Ouroboros.GameMode
                 IsContested = false;
                 AlarmSystem.Raise(gm != null ? gm.Config.alarmOnObjectiveStage : 10f, objectiveName);
                 RPC_StageDone(team, StagesDone, Stages);
+                return;
+            }
+
+            // (v0.21) the lock of a Grand Vault: the door opens, and the loot is whatever is in the room behind it
+            if (opensVault != null)
+            {
+                CapturingTeam = Core.TeamID.None;
+                Progress = 0f;
+                IsContested = false;
+                IsAvailable = false;
+                StagesDone = 0;
+                gm?.OnObjectiveCompleted(team, this);
+                if (opensVault.Object != null) opensVault.OpenByCrack(team);
                 return;
             }
 

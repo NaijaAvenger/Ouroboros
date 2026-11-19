@@ -193,20 +193,41 @@ namespace Ouroboros.UI
             used = 0;
             Vector3 at = me.Position;
 
-            // ---- the vault the objective points at
-            if (ObjectiveHUD.Current == Core.Objective.CrackVault)
+            // ---- (v0.21) Grand Vaults: every one still shut, the nearest named; keys on the floor; our drill; perks
+            // [v0.20] one pip, on the nearest loot objective, and only while the instruction was to crack it:
+            // [v0.20] if (ObjectiveHUD.Current == Core.Objective.CrackVault)
+            // [v0.20] {
+            // [v0.20] GameMode.LootObjective vault = null;
+            // [v0.20] float bestSq = float.MaxValue;
+            // [v0.20] var vaults = GameMode.LootObjective.All;
+            // [v0.20] for (int i = 0; i < vaults.Count; i++)
+            // [v0.20] {
+            // [v0.20] var v = vaults[i];
+            // [v0.20] if (v == null || v.Object == null || !v.IsAvailable) continue;
+            // [v0.20] float sq = (v.transform.position - at).sqrMagnitude;
+            // [v0.20] if (sq < bestSq) { bestSq = sq; vault = v; }
+            // [v0.20] }
+            // [v0.20] if (vault != null) Add(vault.transform.position, Gold, "VAULT", at, 1.2f);
+            // [v0.20] }
+
+            var nearestVault = Interaction.GrandVault.NearestShut(at, out _);
+            int myPerks = GameMode.ExtractionHeistGameMode.PerksOf(me.Team);
+            var grands = Interaction.GrandVault.All;
+            for (int i = 0; i < grands.Count; i++)
             {
-                GameMode.LootObjective vault = null;
-                float bestSq = float.MaxValue;
-                var vaults = GameMode.LootObjective.All;
-                for (int i = 0; i < vaults.Count; i++)
+                var g = grands[i];
+                if (g == null || g.Object == null) continue;
+                if (!g.Opened)
                 {
-                    var v = vaults[i];
-                    if (v == null || v.Object == null || !v.IsAvailable) continue;
-                    float sq = (v.transform.position - at).sqrMagnitude;
-                    if (sq < bestSq) { bestSq = sq; vault = v; }
+                    bool ours = g.IsDrilling && g.DrillTeam == me.Team;
+                    bool theirs = g.IsDrilling && !ours;
+                    Add(g.DoorPoint, ours ? CrewSkin.Accent(me.Team) : theirs ? Red : Gold, ours ? "DRILL" : (g == nearestVault ? "VAULT" : ""), at, ours || g == nearestVault ? 1.25f : 0.95f);
+                    if (g.KeyState == Core.VaultKeyState.Dropped) Add(g.KeyPosition, Gold, "KEY", at, 1f);
                 }
-                if (vault != null) Add(vault.transform.position, Gold, "VAULT", at, 1.2f);
+                else if (g.PerkAvailable && !Core.VaultRules.Has(myPerks, g.Perk))
+                {
+                    Add(g.PerkPoint, Interaction.GrandVault.PerkColour(g.Perk), "PERK", at, 1.1f);
+                }
             }
 
             // ---- lifts, once the getaway is called

@@ -436,7 +436,13 @@ namespace Ouroboros.EditorTools
 
             // ---- Doors first: vaults and events refer to them by name
             var doors = Group(content, "Doors");
+            s_grandVaults.Clear(); s_grandVaultWalls.Clear(); // (v0.21)
             foreach (var d in GalleriaDoors) BuildGalleriaDoor(doors, d, vaultDoors, weakWalls);
+            // (v0.21) a Grand Vault's weak wall is a door of its own, built after it or before it: link them now
+            foreach (var pair in s_grandVaultWalls)
+            {
+                if (s_grandVaults.TryGetValue(pair.Key, out var grand) && weakWalls.TryGetValue(pair.Value, out var weak)) SetReference(grand, "weakWall", weak);
+            }
 
             // ---- Everything else
             var props = Group(content, "Props");
@@ -603,6 +609,23 @@ namespace Ouroboros.EditorTools
                         break;
                     }
 
+                    // ---- (v0.21) Grand Vaults: the perk pedestal inside, and the lock console outside by the door
+                    case "VaultPerk":
+                        if (s_grandVaults.TryGetValue(item.Arg, out var perkVault)) SetVector3(perkVault, "perkPoint", floor);
+                        break;
+                    case "VaultLock":
+                    {
+                        if (!s_grandVaults.TryGetValue(item.Arg, out var lockVault)) break;
+                        // The same console as a safe, with the hardest signs, two passes, and nothing inside: cracking it opens the door.
+                        var console = VaultObjective(vaults, item.Arg + " Lock", floor + Vector3.up * 0.7f, Data.LootTier.Legendary, 0, false, 9f);
+                        console.transform.localScale = new Vector3(0.9f, 1.4f, 0.5f);
+                        console.transform.rotation = Quaternion.Euler(0f, item.Yaw, 0f);
+                        SetInt(console, "stages", 2);
+                        SetFloat(console, "interactRadius", 2.6f);
+                        SetReference(console, "opensVault", lockVault);
+                        break;
+                    }
+
                     // ---- security
                     case "Post":
                     {
@@ -684,7 +707,7 @@ namespace Ouroboros.EditorTools
             TryBakeNavMesh();
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ScenePath);
-            Debug.Log($"[Ouroboros] Galleria content ready: {GalleriaZones.Length} zones, {GalleriaDoors.Length} doors, {objectives.Count} vaults, " +
+            Debug.Log($"[Ouroboros] Galleria content ready: {GalleriaZones.Length} zones, {GalleriaDoors.Length} doors, {s_grandVaults.Count} Grand Vaults, {objectives.Count} safes, " +
                       $"{breakables.childCount} breakables, {posts} guard posts and two patrols, {events.Count} map events.");
         }
 
@@ -745,6 +768,10 @@ namespace Ouroboros.EditorTools
         // ------------------------------------------------------------------
         // Doors
 
+        // (v0.21) Grand Vaults by name, and the weak wall each one names, gathered while the doors are built.
+        private static readonly Dictionary<string, Interaction.GrandVault> s_grandVaults = new Dictionary<string, Interaction.GrandVault>();
+        private static readonly Dictionary<string, string> s_grandVaultWalls = new Dictionary<string, string>();
+
         private static void BuildGalleriaDoor(Transform parent, GDoor d, Dictionary<string, Interaction.VaultDoor> vaultDoors, Dictionary<string, Interaction.Breakable> weakWalls)
         {
             float y = LevelY(d.Level);
@@ -773,7 +800,11 @@ namespace Ouroboros.EditorTools
                 {
                     var lockType = Interaction.VaultLockType.Keycard;
                     var colour = Interaction.KeycardColor.None;
-                    if (d.Arg.StartsWith("Keycard:")) { lockType = Interaction.VaultLockType.Keycard; System.Enum.TryParse(d.Arg.Substring(8), out colour); }
+                    // (v0.21) "Grand:<ways in, joined by +>:<perk>:<weak wall>" makes this the door of a Grand Vault
+                    string[] grandArgs = d.Arg.StartsWith("Grand:") ? d.Arg.Split(':') : null;
+                    if (grandArgs != null) lockType = Interaction.VaultLockType.Grand;
+                    // [v0.20] if (d.Arg.StartsWith("Keycard:")) { ... } else System.Enum.TryParse(d.Arg, out lockType);
+                    else if (d.Arg.StartsWith("Keycard:")) { lockType = Interaction.VaultLockType.Keycard; System.Enum.TryParse(d.Arg.Substring(8), out colour); }
                     else System.Enum.TryParse(d.Arg, out lockType);
 
                     var doorGo = new GameObject(label + " Door");
@@ -783,7 +814,8 @@ namespace Ouroboros.EditorTools
                     visual.name = "DoorVisual";
                     visual.transform.SetParent(doorGo.transform, false);
                     visual.transform.localScale = new Vector3(d.Width, doorHeight, 0.6f);
-                    trim = lockType == Interaction.VaultLockType.Keycard ? Interaction.KeycardPickup.ToColor(colour)
+                    trim = lockType == Interaction.VaultLockType.Grand ? Gold
+                         : lockType == Interaction.VaultLockType.Keycard ? Interaction.KeycardPickup.ToColor(colour)
                          : lockType == Interaction.VaultLockType.PlayerCard ? new Color(0.8f, 0.8f, 0.9f)
                          : lockType == Interaction.VaultLockType.Passcode ? new Color(0.2f, 0.9f, 0.9f)
                          : new Color(0.9f, 0.2f, 0.2f);
@@ -801,6 +833,31 @@ namespace Ouroboros.EditorTools
                     SetReference(door, "doorVisual", visual);
                     SetReference(door, "navObstacle", obstacle);
                     vaultDoors[label] = door;
+
+                    if (grandArgs != null)
+                    {
+                        var grand = doorGo.AddComponent<Interaction.GrandVault>();
+                        int methods = 0;
+                        if (grandArgs.Length > 1)
+                        {
+                            foreach (string m in grandArgs[1].Split('+'))
+                                if (System.Enum.TryParse(m, out Core.VaultMethod method)) methods |= (int)method;
+                        }
+                        SetEnum(grand, "methods", methods == 0 ? (int)Core.VaultMethod.All : methods);
+                        if (grandArgs.Length > 2 && System.Enum.TryParse(grandArgs[2], out Core.VaultPerk perk)) SetEnum(grand, "perk", (int)perk);
+                        // The strongroom is the zone that carries the vault's name.
+                        foreach (var z in GalleriaZones)
+                        {
+                            if (z.Name != label || z.Level != d.Level) continue;
+                            SetVector3(grand, "roomCentre", new Vector3(z.X, y, z.Z));
+                            SetVector2(grand, "roomSize", new Vector2(z.W, z.D));
+                            SetVector3(grand, "perkPoint", new Vector3(z.X, y, z.Z)); // a VaultPerk item moves it
+                            break;
+                        }
+                        SetFloat(grand, "interactRadius", 3.4f);
+                        s_grandVaults[label] = grand;
+                        if (grandArgs.Length > 3 && grandArgs[3].Length > 0) s_grandVaultWalls[label] = grandArgs[3];
+                    }
                     break;
                 }
                 case "Maglock":

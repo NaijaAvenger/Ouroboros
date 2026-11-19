@@ -34,7 +34,12 @@ namespace Ouroboros.UI
         private Network.NetworkPlayer local;
         private Core.Objective shown = Core.Objective.None;
         private float nextRefresh, liveSince = -1f;
-        private GameMode.LootObjective vaultTarget;
+        // [v0.20] private GameMode.LootObjective vaultTarget;
+        // (v0.21) the world marker for whatever the instruction points at
+        private bool hasTarget;
+        private Vector3 targetPoint;
+        private string targetWord = "";
+        private float targetClose;
 
         /// <summary>The instruction on screen right now, for other HUD parts and for tests in the editor.</summary>
         public static Core.Objective Current { get; private set; }
@@ -101,7 +106,8 @@ namespace Ouroboros.UI
             var heading = Text("HOW A HEIST GOES", 26, Calm, true);
             heading.style.marginBottom = 8;
             card.Add(heading);
-            card.Add(Step("1", "TAKE IT", "Crack vaults, break containers, pick up what falls out."));
+            // [v0.20] card.Add(Step("1", "TAKE IT", "Crack vaults, break containers, pick up what falls out."));
+            card.Add(Step("1", "TAKE IT", "Four vaults hold the real money, and one is about a whole quota. A vault door opens to its guards' key, to a drill you set and defend, or to a lock you crack. Safes and containers are small change on the way."));
             card.Add(Step("2", "BANK IT", "Carry it to a cash-out station. Banking takes a minute and every crew is told where, so hold the station. A rival who gets to it steals the lot. So can you."));
             briefingQuota = Text("", 15, Color.white, false);
             card.Add(Step("3", "GET OUT", briefingQuota));
@@ -270,21 +276,64 @@ namespace Ouroboros.UI
                 if (d.ItemId > 0 ? !me.CanCarryItem : me.CarriedLoot >= Core.GameConstants.MAX_CARRIED_LOOT) continue;
                 if ((d.transform.position - at).sqrMagnitude < 14f * 14f) f.LootInReach = true;
             }
+            // [v0.20] the "vault" was the nearest loot objective: a box. Those are safes now (v0.21).
             GameMode.LootObjective vault = null;
             float vaultSq = float.MaxValue;
             var vaults = GameMode.LootObjective.All;
             for (int i = 0; i < vaults.Count; i++)
             {
                 var v = vaults[i];
-                if (v == null || v.Object == null || !v.IsAvailable) continue;
+                // [v0.20] if (v == null || v.Object == null || !v.IsAvailable) continue;
+                if (v == null || v.Object == null || !v.IsAvailable || v.IsVaultLock) continue; // a lock console belongs to its vault's door
                 float sq = (v.transform.position - at).sqrMagnitude;
                 if (sq < vaultSq) { vaultSq = sq; vault = v; }
             }
-            f.VaultAvailable = vault != null;
+            // [v0.20] f.VaultAvailable = vault != null;
+            f.SafeAvailable = vault != null;
+
+            // ---- (v0.21) Grand Vaults: the nearest one still shut, a key in hand or on the floor, our drill, a perk
+            var grand = Interaction.GrandVault.NearestShut(at, out float grandDistance);
+            f.VaultAvailable = grand != null;
+            var keyFor = Interaction.GrandVault.KeyCarriedBy(me);
+            f.CarryingVaultKey = keyFor != null && me.IsActiveInMatch;
+            Interaction.GrandVault drilling = null, keyOnFloor = null, perkAt = null;
+            float keySq = 45f * 45f, perkSq = 30f * 30f;
+            int myPerks = GameMode.ExtractionHeistGameMode.PerksOf(me.Team);
+            var grands = Interaction.GrandVault.All;
+            for (int i = 0; i < grands.Count; i++)
+            {
+                var g = grands[i];
+                if (g == null || g.Object == null) continue;
+                if (g.IsDrilling && g.DrillTeam == me.Team) drilling = g;
+                if (!g.Opened && g.KeyState == Core.VaultKeyState.Dropped)
+                {
+                    float sq = (g.KeyPosition - at).sqrMagnitude;
+                    if (sq < keySq) { keySq = sq; keyOnFloor = g; }
+                }
+                if (g.PerkAvailable && !Core.VaultRules.Has(myPerks, g.Perk))
+                {
+                    float sq = (g.PerkPoint - at).sqrMagnitude;
+                    if (sq < perkSq) { perkSq = sq; perkAt = g; }
+                }
+            }
+            f.OwnDrillRunning = drilling != null;
+            f.VaultKeyInReach = keyOnFloor != null;
+            f.PerkInReach = perkAt != null;
 
             var objective = Core.ObjectiveRules.Choose(f);
             Current = objective;
-            vaultTarget = objective == Core.Objective.CrackVault ? vault : null;
+            // [v0.20] vaultTarget = objective == Core.Objective.CrackVault ? vault : null;
+            // (v0.21) the marker goes on whatever the instruction points at
+            hasTarget = true;
+            switch (objective)
+            {
+                case Core.Objective.CrackVault:  targetPoint = grand.DoorPoint + Vector3.up * 2.6f; targetWord = "VAULT"; targetClose = grand.InteractRadius + 1.5f; break;
+                case Core.Objective.UseVaultKey: targetPoint = keyFor.DoorPoint + Vector3.up * 2.6f; targetWord = "USE KEY"; targetClose = keyFor.InteractRadius; break;
+                case Core.Objective.DefendDrill: targetPoint = drilling.DoorPoint + Vector3.up * 2.6f; targetWord = "DRILL"; targetClose = 6f; break;
+                case Core.Objective.ClaimPerk:   targetPoint = perkAt.PerkPoint + Vector3.up * 2.2f; targetWord = "PERK"; targetClose = 2.5f; break;
+                case Core.Objective.CrackSafe:   targetPoint = vault.transform.position + Vector3.up * 2.4f; targetWord = "SAFE"; targetClose = vault.InteractRadius + 2f; break;
+                default: hasTarget = false; break;
+            }
 
             string key = Core.LocalInputSource.Hint(Core.InputButtons.Interact);
             string title, detail;
@@ -294,9 +343,35 @@ namespace Ouroboros.UI
                 case Core.Objective.GetReady:
                     title = "GET READY"; detail = "The heist starts in a moment."; colour = Muted;
                     break;
+                // [v0.20] case Core.Objective.CrackVault:
+                // [v0.20]     title = "CRACK A VAULT";
+                // [v0.20]     detail = $"{vault.ObjectiveName}   {Mathf.Sqrt(vaultSq):0} m" + (me.CarriedLoot > 0 ? ... : "\nLoot it, then bank it at a cash-out station.");
+                // [v0.20]     break;
                 case Core.Objective.CrackVault:
                     title = "CRACK A VAULT";
-                    detail = $"{vault.ObjectiveName}   {Mathf.Sqrt(vaultSq):0} m" + (me.CarriedLoot > 0 ? $"\nOr bank the ${me.CarriedLoot:N0} you carry at a cash-out station." : "\nLoot it, then bank it at a cash-out station.");
+                    detail = $"{grand.VaultName}   {grandDistance:0} m\n{WaysIn(grand, me)}";
+                    break;
+                case Core.Objective.CrackSafe:
+                    title = "CRACK A SAFE";
+                    detail = $"{vault.ObjectiveName}   {Mathf.Sqrt(vaultSq):0} m\n"
+                           + (Interaction.GrandVault.All.Count > 0 ? "Every vault is open. A safe holds less and cracks quicker." : "Loot it, then bank it at a cash-out station.");
+                    break;
+                case Core.Objective.UseVaultKey:
+                    title = $"OPEN THE {keyFor.VaultName.ToUpperInvariant()}"; colour = Good;
+                    detail = $"You have its key.   {Vector3.Distance(at, keyFor.DoorPoint):0} m\nHold [{key}] at the door. Die, and the key falls where you fell.";
+                    break;
+                case Core.Objective.DefendDrill:
+                    title = drilling.DrillDefended ? "DEFEND THE DRILL" : "THE DRILL IS RUNNING BACK";
+                    colour = drilling.DrillDefended ? Good : Urgent;
+                    detail = $"{drilling.VaultName}   {Clock(drilling.DrillRemaining)} to go   {Vector3.Distance(at, drilling.DoorPoint):0} m\nKeep one of you within {drilling.DefendRadius:0} m of the door. A rival at the door can pull the plug.";
+                    break;
+                case Core.Objective.ClaimPerk:
+                    title = "TAKE THE PERK"; colour = Interaction.GrandVault.PerkColour(perkAt.Perk);
+                    detail = $"{Core.VaultRules.PerkName(perkAt.Perk)}: {Core.VaultRules.PerkEffect(perkAt.Perk)}.   {Mathf.Sqrt(perkSq):0} m\nHold [{key}] at the pedestal. First crew only.";
+                    break;
+                case Core.Objective.TakeVaultKey:
+                    title = "TAKE THE VAULT KEY";
+                    detail = $"{keyOnFloor.VaultName} key   {Mathf.Sqrt(keySq):0} m\nWalk over it, then carry it to the door.";
                     break;
                 case Core.Objective.FindLoot:
                     title = "FIND LOOT"; detail = "Every vault is open. Break containers, and take what rivals drop.";
@@ -380,6 +455,28 @@ namespace Ouroboros.UI
             }
         }
 
+        /// <summary>(v0.21) The ways into a shut vault, in a sentence each, with where each one stands right now.</summary>
+        private static string WaysIn(Interaction.GrandVault v, Network.NetworkPlayer me)
+        {
+            if (v.IsDrilling && v.DrillTeam != me.Team)
+                return $"{Core.TeamUtil.DisplayName(v.DrillTeam)} is drilling it: {Clock(v.DrillRemaining)} to go. Pull the plug at the door, or let them open it for you.";
+
+            var ways = new System.Text.StringBuilder();
+            void Way(string text) { if (ways.Length > 0) ways.Append("\nOr: "); ways.Append(text); }
+            if (v.Allows(Core.VaultMethod.Key))
+            {
+                var carrier = v.KeyCarrier;
+                if (v.KeyState == Core.VaultKeyState.Guarded) Way($"kill its guards ({v.GuardsLeft} left). The last one drops the key.");
+                else if (v.KeyState == Core.VaultKeyState.Dropped) Way("its key is on the floor. Take it to the door.");
+                else if (carrier != null && carrier.Team == me.Team) Way($"{carrier.DisplayName} has its key. Cover them to the door.");
+                else if (v.KeyState == Core.VaultKeyState.Carried) Way("a rival has its key. Take it off them.");
+            }
+            if (v.Allows(Core.VaultMethod.Drill)) Way($"set the drill at the door and hold the doorway for {v.DrillTotal:0} s.");
+            if (v.Allows(Core.VaultMethod.Crack)) Way("crack the lock at the console beside the door.");
+            string text = ways.ToString();
+            return text.Length > 0 ? char.ToUpperInvariant(text[0]) + text.Substring(1) : "";
+        }
+
         private static string RedeployNote(Network.NetworkPlayer me)
         {
             float? t = me.RespawnTimer.IsRunning ? me.RespawnTimer.RemainingTime(me.Runner) : null;
@@ -388,16 +485,16 @@ namespace Ouroboros.UI
 
         private void PlaceMarker(Network.NetworkPlayer me)
         {
-            var v = vaultTarget;
+            // [v0.20] var v = vaultTarget;   // the marker followed a loot objective; now it follows targetPoint
             float width = root.resolvedStyle.width, height = root.resolvedStyle.height;
-            if (v == null || v.Object == null || !me.IsActiveInMatch || float.IsNaN(width) || width <= 0f) { Show(marker, false); return; }
+            if (!hasTarget || !me.IsActiveInMatch || float.IsNaN(width) || width <= 0f) { Show(marker, false); return; }
             if (localCamera == null) localCamera = me.GetComponentInChildren<Camera>();
             if (localCamera == null) { Show(marker, false); return; }
 
-            float distance = Vector3.Distance(me.Position, v.transform.position);
-            if (distance < v.InteractRadius + 2f) { Show(marker, false); return; } // at the vault: its own prompt takes over
+            float distance = Vector3.Distance(me.Position, targetPoint);
+            if (distance < targetClose + 2f) { Show(marker, false); return; } // there already: the prompt at the thing takes over
 
-            Vector3 vp = localCamera.WorldToViewportPoint(v.transform.position + Vector3.up * 2.4f);
+            Vector3 vp = localCamera.WorldToViewportPoint(targetPoint);
             const float margin = 0.07f;
             bool behind = vp.z <= 0.01f;
             if (behind) { vp.x = 1f - vp.x; vp.y = 1f - vp.y; }
@@ -411,7 +508,8 @@ namespace Ouroboros.UI
             }
             marker.style.left = vp.x * width;
             marker.style.top = (1f - vp.y) * height;
-            markerText.text = $"VAULT  {distance:0}m";
+            // [v0.20] markerText.text = $"VAULT  {distance:0}m";
+            markerText.text = $"{targetWord}  {distance:0}m";
             Show(marker, true);
         }
     }

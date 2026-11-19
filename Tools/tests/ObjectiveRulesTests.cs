@@ -99,6 +99,51 @@ namespace Ouroboros.Rules.Tests
             Assert.That(ObjectiveRules.Choose(f), Is.EqualTo(Objective.Away));
         }
 
+        // ---- (v0.21) Grand Vaults
+
+        [Test]
+        public void AVaultKeyInHand_GoesToTheDoor_BeforeAnythingThatOnlyMakesMoney()
+        {
+            var f = Playing(); f.CarryingVaultKey = true; f.Carrying = 5000; f.RivalCashOutRunning = true; f.LootInReach = true;
+            Assert.That(ObjectiveRules.Choose(f), Is.EqualTo(Objective.UseVaultKey));
+            f.OwnCashOutRunning = true;
+            Assert.That(ObjectiveRules.Choose(f), Is.EqualTo(Objective.DefendCashOut), "money already down still comes first");
+        }
+
+        [Test]
+        public void ARunningDrill_IsDefended_BeforeBankingOrStealing()
+        {
+            var f = Playing(); f.OwnDrillRunning = true; f.Carrying = 5000; f.RivalCashOutRunning = true;
+            Assert.That(ObjectiveRules.Choose(f), Is.EqualTo(Objective.DefendDrill));
+            f.CrewmateDownInReach = true;
+            Assert.That(ObjectiveRules.Choose(f), Is.EqualTo(Objective.ReviveCrewmate));
+        }
+
+        [Test]
+        public void InAnOpenVault_ThePerkComesBeforeTheLoot()
+        {
+            var f = Playing(); f.PerkInReach = true; f.LootInReach = true;
+            Assert.That(ObjectiveRules.Choose(f), Is.EqualTo(Objective.ClaimPerk));
+            f.PerkInReach = false;
+            Assert.That(ObjectiveRules.Choose(f), Is.EqualTo(Objective.GrabLoot));
+        }
+
+        [Test]
+        public void AKeyOnTheFloor_IsPickedUp_BeforeWalkingToAVault()
+        {
+            var f = Playing(); f.VaultKeyInReach = true;
+            Assert.That(ObjectiveRules.Choose(f), Is.EqualTo(Objective.TakeVaultKey));
+        }
+
+        [Test]
+        public void WithEveryVaultOpen_TheSafesAreWhatIsLeft()
+        {
+            var f = Playing(); f.VaultAvailable = false; f.SafeAvailable = true;
+            Assert.That(ObjectiveRules.Choose(f), Is.EqualTo(Objective.CrackSafe));
+            f.VaultAvailable = true;
+            Assert.That(ObjectiveRules.Choose(f), Is.EqualTo(Objective.CrackVault), "a Grand Vault always comes before a safe");
+        }
+
         [Test]
         public void WorthBanking_IsAnEighthOfTheQuota_WithAFloor()
         {

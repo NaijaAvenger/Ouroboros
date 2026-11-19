@@ -98,6 +98,27 @@ rivals steal the deposit. That difference is the biggest gap. In order of what I
 Already here in some form: several ways into every vault, gadgets, map events (their game-show events),
 low gravity, destructible containers, a carried objective, loot dropped on death.
 
+### Grand Vaults (v0.21, code complete, not seen running)
+
+The vault was a box you hacked. It is now what you described from Hyenas: a room behind a locked door, the
+main thing a crew is in the building for, with the small boxes kept as safes on the way.
+
+| Part | State |
+|------|-------|
+| A room, not a box | Four Grand Vaults in the Galleria, one per wing, using the four largest strongrooms. Each has a real vault door (a steel slab with a hatch and wheel that sinks into the floor) and a lamp bar that shows shut, drilling or open |
+| Three ways in | **Key**: the vault's own guards hold it; the last one down drops it; carry it to the door. **Drill**: set it at the door, then hold the doorway for 50 seconds while every crew knows and guards come; it runs back if you leave, and a rival can pull the plug. **Lock**: crack a console beside the door with the sign and pulse puzzles; quiet |
+| Which vault takes which | Main Vault: key. Cash Cage: drill. Auction Strongroom: lock. Cold Store: any of the three. One field per vault (`methods`) changes it, so every vault can take all three if you prefer |
+| The best loot | Three legendary pieces, two rare and four piles of cash per vault, laid out in the room when it opens: about $6,000, against a $6,000 quota. One vault all but calls the getaway |
+| Crew perks | One per vault, for the first crew to reach the pedestal, held by the whole crew to the end of the match: Iron Skin, Hot Shots, Second Wind, Quick Hands |
+| Small vaults stay | Safe Deposit, Stockroom, Server Vault and the four hall safes are unchanged, and are what the objective points at once the Grand Vaults are open |
+| It never stalls | The Main Vault's time lock still opens it for everyone at eight minutes, and two vaults have a weak wall for a Breaching Kit |
+
+Design choices worth knowing: a vault's guards are whichever guards stand within 16 m of its door when the
+match starts, so adding a guard post near a door adds to its key; a key in a pocket has no marker, a key on the
+floor does; the drill needs one crew member near, not a player holding a button, so the crew can fight; loot
+appears only when the vault opens, so nothing can be picked up through a wall. The Freeport still has the old
+vaults; converting it is a few lines per vault in its builder.
+
 ### Feel and clarity next to The Finals and Hyenas (v0.19)
 
 A pass over what the player sees, hears and feels minute to minute, set against the two games this one is
@@ -522,8 +543,8 @@ Decision 2 affects the local `ViewMode.cs`: if it is a first/third-person toggle
    models) and builds the `Galleria` scene. Expect it to take a while: it places several thousand objects
    and bakes a two-level NavMesh.
 2. With the Galleria scene open, press Play and choose **Solo**.
-3. Work through sections 7p, 7o, 7n, 7m and 7l of `PHASE0_BRINGUP.md` first (the newest work), then 7j and 7k, then 7e to 7i,
-   and list what breaks. On a Galleria scene you already built, run **Update Galleria Map (keeps the scene)** first.
+3. Work through sections 7q, 7p, 7o, 7n, 7m and 7l of `PHASE0_BRINGUP.md` first (the newest work), then 7j and 7k, then 7e to 7i,
+   and list what breaks. The Grand Vaults (v0.21) need **Recreate Galleria Map**; "Update Galleria Map" does not add them.
 4. Tell me the frame rate. If it is low, the first cuts are the ceiling lights and the number of props.
 5. Find native speakers of Nigerian Pidgin, Swahili or Sheng, Twi and isiZulu to rewrite the crew radio lines
    in `Assets/Scripts/UI/CrewCallouts.cs`, and someone who can review the artefact names and stories.

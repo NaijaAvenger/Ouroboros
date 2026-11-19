@@ -263,6 +263,20 @@ Awaiting in-engine validation: PHASE0_BRINGUP.md section 7o.
 
 Awaiting in-engine validation: PHASE0_BRINGUP.md section 7p.
 
+### v0.21 — Grand Vaults
+- **Rules** (`Core/VaultRules.cs`, unit-tested): `VaultMethod` (Key, Drill, Crack), `VaultKeyState`, `VaultOpening`, `VaultPerk` and its multipliers, `HoldStep`, `DrillStep`, `DrillAbandoned`, `DetailCleared`, `HaulValue`.
+- **Vault** (`Interaction/GrandVault.cs`): sits beside a `VaultDoor` of the new lock type `Grand`. Holds the key (on the vault's guards, dropped, carried, used), the drill (set, defended, stopped), the loot laid out on opening, and the perk pedestal. Static event `Moment`. Builds its own door face, drill rig, key and pedestal.
+- **Lock**: a `LootObjective` with `opensVault` set is a vault's lock console: cracking it calls `GrandVault.OpenByCrack` and spills nothing.
+- **Perks**: `ExtractionHeistGameMode.TeamPerks`, `PerksOf`, `GrantTeamPerk`. Applied in `NetworkPlayer.ApplyDamage`, `TickRegen`, `IDCardDrop.TickRevive`, `CashOutStation`.
+- **Guards**: `BaseAIAgent.AgentDied`.
+- **Objective**: `UseVaultKey`, `DefendDrill`, `ClaimPerk`, `TakeVaultKey`, `CrackSafe`; `VaultAvailable` now means a Grand Vault is shut.
+- **HUD**: `UI/VaultHUD.cs` (door card, perk card, key marker); drills in the cash-out ticker; announcements and perk tags in `HeistHUD`; vault pips on the compass.
+- **Bots**: `BotBrain.TryGrandVaultGoal`.
+- **Galleria**: Main Vault (key), Cash Cage (drill), Auction Strongroom (lock), Cold Store (any). `VaultPerk` and `VaultLock` items; door argument `Grand:<ways>:<perk>:<weak wall>`. Passcode note and blue keycard removed. Five guard posts added or promoted.
+- The Freeport keeps the old vaults.
+
+Awaiting in-engine validation: PHASE0_BRINGUP.md section 7q.
+
 ### Phase 5 — Meta
 - Lobby scene with class picker (`NetworkPlayer.RequestClass` is in place), session browser, late-join handling, host migration.
 - Progression/cosmetics via `ClassData`/`EquipmentData`.

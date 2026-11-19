@@ -139,6 +139,27 @@ namespace Ouroboros.Core
         public static AudioClip ReviveChime => reviveChime != null ? reviveChime : (reviveChime = Make("sfx_revive", 0.7f, 56,
             (t, n) => Bell(t, 0f, 660f, 7f) * 0.32f + Bell(t, 0.11f, 880f, 7f) * 0.32f + Bell(t, 0.22f, 1320f, 4.5f) * 0.36f));
 
+        // ---- (v0.21) Grand Vaults
+        private static AudioClip drillBuzz, vaultOpen, keyJingle, perkChord;
+
+        /// <summary>Half a second of drill: a rasp over a motor hum. Played end to end while a drill runs.</summary>
+        public static AudioClip DrillBuzz => drillBuzz != null ? drillBuzz : (drillBuzz = Make("sfx_drill", 0.5f, 61,
+            (t, n) => (Mathf.Sign(Sine(118f, t)) * 0.16f + n * 0.22f * (0.6f + 0.4f * Sine(31f, t))) * Mathf.Clamp01(t * 30f) * Mathf.Clamp01((0.5f - t) * 30f)));
+
+        /// <summary>A vault door giving way: bolts, a deep roll, and a bell over it.</summary>
+        public static AudioClip VaultOpen => vaultOpen != null ? vaultOpen : (vaultOpen = Make("sfx_vault_open", 2.2f, 62,
+            (t, n) => Click(t, 0.01f, n) * 0.9f + Click(t, 0.16f, n) * 0.8f + Click(t, 0.3f, n) * 0.7f
+                    + (t > 0.35f ? (Sine(48f, t) * 0.6f + n * 0.18f) * Decay(t - 0.35f, 1.6f) : 0f)
+                    + Bell(t, 0.5f, 523f, 2.2f) * 0.22f + Bell(t, 0.5f, 784f, 2.6f) * 0.16f));
+
+        /// <summary>A key picked up: metal on metal, twice.</summary>
+        public static AudioClip KeyJingle => keyJingle != null ? keyJingle : (keyJingle = Make("sfx_key", 0.4f, 63,
+            (t, n) => Bell(t, 0f, 3100f, 30f) * 0.3f + Bell(t, 0.07f, 3700f, 26f) * 0.28f + Bell(t, 0.16f, 2800f, 20f) * 0.26f));
+
+        /// <summary>A perk taken: a held chord that swells.</summary>
+        public static AudioClip PerkChord => perkChord != null ? perkChord : (perkChord = Make("sfx_perk", 1.4f, 64,
+            (t, n) => (Sine(392f, t) + Sine(494f, t) + Sine(587f, t) + 0.5f * Sine(784f, t)) * 0.13f * Mathf.Clamp01(t * 6f) * Decay(t, 2.2f)));
+
         /// <summary>A struck note starting at <paramref name="at"/>: a tone, an inharmonic overtone, and a decay.</summary>
         private static float Bell(float t, float at, float hz, float decay)
         {

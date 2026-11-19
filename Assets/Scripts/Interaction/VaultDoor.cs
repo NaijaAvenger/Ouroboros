@@ -13,7 +13,10 @@ namespace Ouroboros.Interaction
         /// <summary>Enter the 4-digit code (found on a code note). A wrong code triggers an immediate lockdown.</summary>
         Passcode,
         /// <summary>Overriding it slams the facility into lockdown; survive the timer and the door opens.</summary>
-        Lockdown
+        // [v0.20] Lockdown
+        Lockdown,
+        /// <summary>(v0.21) The door of a Grand Vault. <see cref="GrandVault"/> on the same object decides when it opens.</summary>
+        Grand
     }
 
     [System.Flags]
@@ -60,6 +63,8 @@ namespace Ouroboros.Interaction
         public static event System.Action<VaultDoor> LockdownStarted;
 
         public string VaultName => vaultName;
+        /// <summary>(v0.21) The slab that sinks when the door opens. <see cref="GrandVault"/> dresses it as a vault door.</summary>
+        public GameObject DoorVisual => doorVisual;
         public VaultLockType LockType => lockType;
         public KeycardColor RequiredKeycard => keycardColor;
         public int EnemyCardsRequired => enemyCardsRequired;
@@ -169,7 +174,18 @@ namespace Ouroboros.Interaction
                 case VaultLockType.Passcode:
                     // Entered through KeypadUI → SubmitCode. Holding Interact here does nothing.
                     break;
+
+                case VaultLockType.Grand:
+                    // (v0.21) GrandVault reads the same players and decides. Nothing to do here.
+                    break;
             }
+        }
+
+        /// <summary>(v0.21) Opens the door on another component's say-so (a Grand Vault). State authority only.</summary>
+        public void ForceOpen(Core.TeamID by, string how)
+        {
+            if (!Object.HasStateAuthority || IsOpen) return;
+            Open(by, how);
         }
 
         // ------------------------------------------------------------------

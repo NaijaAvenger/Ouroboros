@@ -250,6 +250,32 @@ namespace Ouroboros.GameMode
         /// <summary>Raised on the state authority when a station's pot is banked (team, value banked).</summary>
         public static event Action<Core.TeamID, int> CashBanked;
 
+        // ------------------------------------------------------------------
+        // Crew perks (v0.21): taken from Grand Vaults, held by the whole crew until the match ends
+
+        /// <summary>One bit per <see cref="Core.VaultPerk"/> a crew holds. See <see cref="Core.VaultRules"/>.</summary>
+        [Networked, Capacity(Core.GameConstants.MAX_TEAMS)]
+        public NetworkArray<int> TeamPerks => default;
+
+        /// <summary>The perks <paramref name="team"/> holds, as a bit mask. Safe to call on any peer, with no match running.</summary>
+        public static int PerksOf(Core.TeamID team)
+        {
+            var gm = Instance;
+            int idx = Core.TeamUtil.ToIndex(team);
+            if (gm == null || gm.Object == null || idx < 0 || idx >= Core.GameConstants.MAX_TEAMS) return 0;
+            return gm.TeamPerks[idx];
+        }
+
+        /// <summary>Gives <paramref name="team"/> a perk for the rest of the match. State authority only.</summary>
+        public bool GrantTeamPerk(Core.TeamID team, Core.VaultPerk perk)
+        {
+            int idx = Core.TeamUtil.ToIndex(team);
+            if (!Object.HasStateAuthority || perk == Core.VaultPerk.None || idx < 0 || idx >= Core.GameConstants.MAX_TEAMS) return false;
+            if (Core.VaultRules.Has(TeamPerks[idx], perk)) return false;
+            TeamPerks.Set(idx, Core.VaultRules.With(TeamPerks[idx], perk));
+            return true;
+        }
+
         /// <summary>What <paramref name="team"/> has safely banked so far. Works on every peer.</summary>
         public int GetTeamBanked(Core.TeamID team)
         {
@@ -435,6 +461,7 @@ namespace Ouroboros.GameMode
                 CrewWipes.Set(i, 0);          // (v0.10)
                 CrewEliminated.Set(i, false); // (v0.10)
                 TeamLoot.Set(i, 0);
+                TeamPerks.Set(i, 0);          // (v0.21)
                 TeamObjectives.Set(i, 0);
                 TeamExtractedCount.Set(i, 0);
                 TeamExtracted.Set(i, false);

@@ -82,7 +82,8 @@ door(0, -6, 54, 6, 56)
 carve(0, -4, 70, 4, 76, 'Vault Corridor', poi=True)
 door(0, -2, 68, 2, 70, 'Laser', 'Vault Corridor Lasers')
 carve(0, -12, 78, 12, 88, 'Main Vault', poi=True)
-door(0, -2, 76, 2, 78, 'Vault', 'Main Vault', 'Passcode')
+# (v0.21) four Grand Vaults, one per wing: Grand:<ways in>:<perk>:<weak wall>. Was 'Passcode'.
+door(0, -2, 76, 2, 78, 'Vault', 'Main Vault', 'Grand:Key:IronSkin:Main Vault Wall')
 carve(0, 16, 70, 38, 88, 'Safe Deposit', poi=True)
 door(0, 24, 68, 28, 70, 'Vault', 'Safe Deposit', 'Keycard:Red')
 carve(0, -38, 70, -14, 88, 'Counting Room', poi=True)
@@ -95,7 +96,7 @@ door(0, -6, -56, 6, -54)
 carve(0, -14, -88, 14, -70, 'Truck Bay', poi=True)
 door(0, -6, -70, 6, -68)
 carve(0, 16, -88, 38, -70, 'Cash Cage', poi=True)
-door(0, 24, -70, 28, -68, 'Vault', 'Cash Cage', 'Keycard:Blue')
+door(0, 24, -70, 28, -68, 'Vault', 'Cash Cage', 'Grand:Drill:QuickHands:')   # (v0.21) was 'Keycard:Blue'
 carve(0, -38, -88, -16, -70, 'Power Room')
 door(0, -28, -70, -24, -68)
 
@@ -109,7 +110,7 @@ carve(0, 74, -24, 106, -12, 'Auction House', poi=True)
 carve(0, 74, -38, 88, -24, 'Auction House')
 door(0, 88, -12, 92, -10)
 carve(0, 90, -38, 106, -26, 'Auction Strongroom', poi=True)
-door(0, 96, -26, 100, -24, 'Vault', 'Auction Strongroom', 'Lockdown')
+door(0, 96, -26, 100, -24, 'Vault', 'Auction Strongroom', 'Grand:Crack:HotShots:Strongroom Wall')   # (v0.21) was 'Lockdown'
 door(0, 88, -34, 90, -30, 'WeakWall', 'Strongroom Wall')
 
 # West anchor: the Market Hall
@@ -125,7 +126,7 @@ carve(0, -106, -24, -74, -12, 'Dispensary')
 carve(0, -88, -38, -74, -24, 'Dispensary')
 door(0, -92, -12, -88, -10)
 carve(0, -106, -38, -90, -26, 'Cold Store', poi=True)
-door(0, -100, -26, -96, -24, 'Vault', 'Cold Store', 'PlayerCard')
+door(0, -100, -26, -96, -24, 'Vault', 'Cold Store', 'Grand:Key+Drill+Crack:SecondWind:')   # (v0.21) was 'PlayerCard'
 
 SHOPS = {
     (1, 1):   ['Tailor', 'Electronics', 'Cafe', 'Barber'],
@@ -286,7 +287,7 @@ FOOT = {'Shelf': (6, 0.9), 'Counter': (4, 0.9), 'Table': (2.2, 2.2), 'Bench': (2
         'B:Crate': (1.1, 1.1), 'B:DisplayCase': (1.2, 1.2), 'B:VendingMachine': (1.1, 0.9), 'B:Atm': (0.9, 0.7), 'B:CashRegister': (0.6, 0.6),
         'B:Locker': (1.2, 0.6), 'B:StrongBox': (1.1, 0.9), 'B:Safe': (0.9, 0.9), 'B:AirdropCrate': (1.6, 1.6),
         'Turret': (1.0, 1.0), 'Power': (0.8, 0.8), 'Terminal': (1.0, 0.5), 'Vault': (1.5, 1.5),
-        'CashOut': (1.6, 1.2)}
+        'CashOut': (1.6, 1.2), 'VaultPerk': (1.5, 1.5), 'VaultLock': (0.9, 0.5)}
 skipped = []
 
 def place(kind, level, x, z, yaw=0, arg='', strict=False, gap=1.2):
@@ -355,7 +356,8 @@ for x in (-3, 3): place('Detector', 0, x, 58, 0)
 place('Sofa', 0, -18, 58, 0); place('Sofa', 0, 18, 58, 0); place('Planter', 0, -36, 62, 0, 'shrub'); place('Desk', 0, 12, 60, 0)
 mark('Camera', 0, 0, 57, arg='0|64'); mark('Camera', 0, -36, 67, arg='-20|58'); mark('Camera', 0, 0, 75, arg='0|70')
 place('Turret', 0, 10, 79.5, 0, strict=True)
-place('Vault', 0, 0, 84, 0, 'Main Vault|Legendary|2|true|10|3|Main Vault|Main Vault Wall', strict=True)
+# [v0.20] place('Vault', 0, 0, 84, 0, 'Main Vault|Legendary|2|true|10|3|Main Vault|Main Vault Wall', strict=True)
+place('VaultPerk', 0, 0, 84, 0, 'Main Vault', strict=True)   # (v0.21) the room is the vault; this is its perk pedestal
 for x in (-9, 9):
     for z in (80, 86): place('B:StrongBox', 0, x, z, 90, 'Rare|1|150')
 place('Lockers', 0, -4, 87.3, 0); place('Lockers', 0, 4, 87.3, 0)
@@ -365,6 +367,7 @@ for z in (74, 78, 82): place('B:Locker', 0, 37.3, z, 90, 'Common|0|90')
 place('Desk', 0, -30, 80, 90); place('Desk', 0, -22, 80, 90)
 place('B:Safe', 0, -36, 86, 0, 'Rare|1|200'); place('B:StrongBox', 0, -18, 86, 0, 'Common|1|220'); place('Lockers', 0, -27, 87.3, 0)
 mark('Post', 0, -8, 60, arg='elite'); mark('Post', 0, 8, 60); mark('Post', 0, 0, 73, arg='elite')
+mark('Post', 0, -2.5, 71.5)   # (v0.21) the Main Vault's second guard: its key falls when both are down
 
 # ---- Services: loading dock, truck bay, cash cage, power room
 for x in (-30, -22, 22, 30): place('CrateStack', 0, x, -58, 0)
@@ -375,12 +378,14 @@ place('Truck', 0, 0, -80, 0)
 for x, z in ((-8, -76), (8, -76), (-8, -84)): place('B:StrongBox', 0, x, z, 0, 'Rare|1|250|dormant')
 place('Van', 0, 9, -84, 0, 'white'); place('Barrels', 0, -11, -72)
 place('Turret', 0, 11, -72, 0, strict=True)
-place('Vault', 0, 27, -80, 0, 'Cash Cage|Rare|3|true|7|1|Cash Cage|', strict=True)
+# [v0.20] place('Vault', 0, 27, -80, 0, 'Cash Cage|Rare|3|true|7|1|Cash Cage|', strict=True)
+place('VaultPerk', 0, 27, -80, 0, 'Cash Cage', strict=True)
 for x in (18, 22, 32, 36): place('B:StrongBox', 0, x, -87, 0, 'Common|0|260')
 place('Power', 0, -36, -86, 0, 'Services Power', strict=True)
 for x in (-30, -26, -22): place('Servers', 0, x, -87.2, 0)
 place('Lockers', 0, -37.3, -78, 90); place('B:Locker', 0, -17.3, -80, 90, 'Common|1|0'); place('Desk', 0, -26, -76, 0)
 mark('Camera', 0, 0, -57, arg='0|-64'); mark('Camera', 0, 12, -71, arg='0|-80'); mark('Post', 0, 0, -62); mark('Post', 0, -27, -74)
+mark('Post', 0, 26, -64.5, arg='elite')   # (v0.21) on the Cash Cage door: whoever drills it has to get past this one
 
 # ---- the Luxe Wing: gallery, jewellers, auction house
 for x in (80, 88, 96): 
@@ -393,8 +398,10 @@ place('Turret', 0, 76, 36, 0, strict=True)
 mark('Camera', 0, 90, 13, arg='90|26'); mark('Camera', 0, 105, 0, arg='90|0')
 for x in (80, 86, 92, 98): place('Seats', 0, x, -16, 0)
 place('Desk', 0, 90, -22, 0); place('Plinth', 0, 102, -22, 0, 'Sword'); place('Sofa', 0, 81, -27, 0)
-place('B:Safe', 0, 76, -37, 0, 'Rare|0|180'); mark('Keycard', 0, 80, -36, arg='Blue')
-place('Vault', 0, 98, -33, 0, 'Auction Strongroom|Rare|3|true|8|2|Auction Strongroom|Strongroom Wall', strict=True)
+place('B:Safe', 0, 76, -37, 0, 'Rare|0|180')   # [v0.20] ; mark('Keycard', 0, 80, -36, arg='Blue'): the Cash Cage is drilled now
+# [v0.20] place('Vault', 0, 98, -33, 0, 'Auction Strongroom|Rare|3|true|8|2|Auction Strongroom|Strongroom Wall', strict=True)
+place('VaultPerk', 0, 98, -33, 0, 'Auction Strongroom', strict=True)
+place('VaultLock', 0, 94.5, -22.8, 0, 'Auction Strongroom', strict=True, gap=0.2)   # the lock console, outside, beside the door
 for z in (-37, -29): place('B:StrongBox', 0, 104.5, z, 90, 'Rare|1|0')
 mark('Post', 0, 76, 0); mark('Post', 0, 94, -20, arg='elite'); mark('Camera', 0, 75, -13, arg='90|-20')
 
@@ -413,10 +420,13 @@ place('CrateStack', 0, -104, 30, 90)
 for x in (-100, -90, -80): place('Shelf', 0, x, -18, 0)
 place('Counter', 0, -84, -13, 0); place('B:CashRegister', 0, -78, -13, 0, 'Common|0|130'); place('B:Locker', 0, -75, -36, 90, 'Common|1|0')
 place('Shelf', 0, -81, -32, 90)
-place('Vault', 0, -98, -32, 0, 'Cold Store|Rare|3|false|7|1|Cold Store|', strict=True)
+# [v0.20] place('Vault', 0, -98, -32, 0, 'Cold Store|Rare|3|false|7|1|Cold Store|', strict=True)
+place('VaultPerk', 0, -98, -32, 0, 'Cold Store', strict=True)
+place('VaultLock', 0, -94.5, -22.8, 0, 'Cold Store', strict=True, gap=0.2)
 for x in (-104, -92): place('B:Crate', 0, x, -37, 0, 'Rare|1|0' if x == -104 else 'Common|1|0')
 mark('Power', 0, -107, 9, arg='Market Power'); mark('Camera', 0, -90, 13, arg='-90|20'); mark('Camera', 0, -107, 0, arg='-90|0')
-mark('Post', 0, -76, 0); mark('Post', 0, -98, -22)
+# [v0.20] mark('Post', 0, -76, 0); mark('Post', 0, -98, -22)
+mark('Post', 0, -76, 0); mark('Post', 0, -98, -22, arg='elite'); mark('Post', 0, -93, -21)   # (v0.21) the Cold Store's two guards hold its key
 mark('Power', 0, 107, 9, arg='Luxe Power'); mark('Power', 0, 37, 67, arg='Bank Power')
 
 # ---- the four corner blocks
@@ -465,7 +475,7 @@ def block(sx, sz):
         P('B:StrongBox', 1, 40, 36, 0, 'Rare|1|0'); P('Lockers', 1, 70.6, 46, 90); M('Keycard', 1, 46, 51, 'Red'); M('Post', 1, 56, 42, 'elite')
     elif up == "Manager's Office":
         P('Desk', 1, 56, 50, 0); P('Sofa', 1, 44, 36, 0); P('Sofa', 1, 66, 36, 0); P('B:Safe', 1, 70.5, 52, 270, 'Rare|1|250')
-        P('Shelf', 1, 46, 52.5, 0); M('Note', 1, 56, 51, 'Main Vault'); M('Post', 1, 50, 44)
+        P('Shelf', 1, 46, 52.5, 0); M('Post', 1, 50, 44)   # [v0.20] M('Note', 1, 56, 51, 'Main Vault'): no passcode any more
     elif up == 'Server Room':
         for x in (44, 48, 52, 60, 64, 68):
             for z in (38, 48): P('Servers', 1, x, z, 90)

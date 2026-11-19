@@ -31,7 +31,19 @@ namespace Ouroboros.Core
         /// <summary>Down, waiting for the redeploy (or out of redeploys).</summary>
         Redeploying,
         /// <summary>Extracted: nothing left to do but watch.</summary>
-        Away
+        // [v0.20] Away
+        Away,
+        // ---- (v0.21) Grand Vaults. Appended so the values above keep their meaning.
+        /// <summary>Carrying a vault's key: take it to the door.</summary>
+        UseVaultKey,
+        /// <summary>The crew's drill is running on a vault door: stay near it.</summary>
+        DefendDrill,
+        /// <summary>Standing in an open vault whose perk nobody has taken.</summary>
+        ClaimPerk,
+        /// <summary>A vault key is lying on the floor close by.</summary>
+        TakeVaultKey,
+        /// <summary>Every Grand Vault is open; the small safes are what is left to crack.</summary>
+        CrackSafe
     }
 
     /// <summary>Everything <see cref="ObjectiveRules.Choose"/> needs to know about the player's situation.</summary>
@@ -48,6 +60,10 @@ namespace Ouroboros.Core
         /// <summary>A station is free, or already the crew's own.</summary>
         public bool StationAvailable;
         public bool LootInReach, VaultAvailable;
+        // ---- (v0.21) Grand Vaults. VaultAvailable now means a Grand Vault is still shut.
+        public bool CarryingVaultKey, OwnDrillRunning, PerkInReach, VaultKeyInReach;
+        /// <summary>A small safe (the old kind of vault) can still be cracked.</summary>
+        public bool SafeAvailable;
     }
 
     /// <summary>
@@ -70,10 +86,17 @@ namespace Ouroboros.Core
             if (f.CrewmateDownInReach) return Objective.ReviveCrewmate;         // a gun back in the fight
             if (f.OwnCashOutRunning) return Objective.DefendCashOut;
 
+            // (v0.21) A vault in the act of opening comes before anything that only makes more money later.
+            if (f.CarryingVaultKey) return Objective.UseVaultKey;
+            if (f.OwnDrillRunning) return Objective.DefendDrill;
+            if (f.PerkInReach) return Objective.ClaimPerk;          // one per vault, first crew only: before the loot beside it
+
             if (f.StationAvailable && f.Carrying > 0 && f.Carrying >= f.WorthBanking) return Objective.CashOut;
             if (f.RivalCashOutRunning) return Objective.StealCashOut;
             if (f.LootInReach) return Objective.GrabLoot;
+            if (f.VaultKeyInReach) return Objective.TakeVaultKey;   // (v0.21)
             if (f.VaultAvailable) return Objective.CrackVault;
+            if (f.SafeAvailable) return Objective.CrackSafe;        // (v0.21)
 
             // Nothing left to open: bank whatever is in hand, however little, or go scavenging.
             if (f.StationAvailable && f.Carrying > 0) return Objective.CashOut;

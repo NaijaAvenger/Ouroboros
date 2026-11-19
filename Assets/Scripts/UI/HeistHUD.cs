@@ -118,6 +118,7 @@ namespace Ouroboros.UI
             if (GetComponent<ExitHUD>() == null) gameObject.AddComponent<ExitHUD>(); // (v0.18) nearest exit once the getaway is called
             if (GetComponent<ObjectiveHUD>() == null) gameObject.AddComponent<ObjectiveHUD>(); // (v0.19) what to do next, and the briefing
             if (GetComponent<CompassHUD>() == null) gameObject.AddComponent<CompassHUD>(); // (v0.20) bearings to everything worth walking to
+            if (GetComponent<VaultHUD>() == null) gameObject.AddComponent<VaultHUD>(); // (v0.21) Grand Vault doors, keys and perks
 
             var ps = document.panelSettings;
             Debug.Log($"[HeistHUD] Enabled. PanelSettings='{(ps != null ? ps.name : "NONE")}', theme='{(ps != null && ps.themeStyleSheet != null ? ps.themeStyleSheet.name : "NONE")}', " +
@@ -141,6 +142,7 @@ namespace Ouroboros.UI
             Interaction.LaserGrid.Tripped += OnLaserTripped;
             GameMode.CashOutStation.Moment += OnCashOutMoment; // (v0.16)
             Network.NetworkPlayer.Revived += OnRevived; // (v0.17)
+            Interaction.GrandVault.Moment += OnVaultMoment; // (v0.21)
             Network.NetworkPlayer.Jammed += OnJammed;
         }
 
@@ -155,6 +157,7 @@ namespace Ouroboros.UI
             Interaction.LaserGrid.Tripped -= OnLaserTripped;
             GameMode.CashOutStation.Moment -= OnCashOutMoment;
             Network.NetworkPlayer.Revived -= OnRevived;
+            Interaction.GrandVault.Moment -= OnVaultMoment;
             Network.NetworkPlayer.Jammed -= OnJammed;
             GameMode.ExtractionHeistGameMode.GetawayCalled -= OnGetawayCalled;
             GameMode.ExtractionHeistGameMode.CrewWiped -= OnCrewWiped;
@@ -728,6 +731,15 @@ namespace Ouroboros.UI
                 if (c != Interaction.KeycardColor.None && local.HasKeycard(c)) keys += $"  [{c} keycard]";
             }
             if (local.EnemyCards > 0) keys += $"  [ID cards: {local.EnemyCards}]";
+            // (v0.21) the vault key in the pocket, and the perks the crew holds
+            var vaultKey = Interaction.GrandVault.KeyCarriedBy(local);
+            if (vaultKey != null) keys += $"  [{vaultKey.VaultName} key]";
+            int perkMask = GameMode.ExtractionHeistGameMode.PerksOf(local.Team);
+            if (perkMask != 0)
+            {
+                foreach (Core.VaultPerk perk in System.Enum.GetValues(typeof(Core.VaultPerk)))
+                    if (Core.VaultRules.Has(perkMask, perk)) keys += $"  [{Core.VaultRules.PerkName(perk)}]";
+            }
             statusLabel.text = StatusText(local.Status) + keys;
             // [v0.9] lootLabel.text = $"${local.CarriedLoot}";
             // [v0.18] lootLabel.text = local.CarriedItemCount > 0 || local.CarriedLoot > 0
@@ -859,7 +871,8 @@ namespace Ouroboros.UI
             Interaction.VaultDoor bestDoor = null; float bestDoorSq = float.MaxValue;
             foreach (var d in Interaction.VaultDoor.All)
             {
-                if (d == null || d.Object == null || d.IsOpen) continue;
+                // [v0.20] if (d == null || d.Object == null || d.IsOpen) continue;
+                if (d == null || d.Object == null || d.IsOpen || d.LockType == Interaction.VaultLockType.Grand) continue; // (v0.21) Grand Vault doors have their own prompt (VaultHUD)
                 float r = d.InteractRadius * 1.6f;
                 float dSq = (d.transform.position - pos).sqrMagnitude;
                 if (dSq <= r * r && dSq < bestDoorSq) { bestDoor = d; bestDoorSq = dSq; }
@@ -918,10 +931,13 @@ namespace Ouroboros.UI
 
             if (bestObj != null && (bestEp == null || bestObjSq <= bestEpSq))
             {
-                zoneTitle.text = bestObj.ObjectiveName + $"  (${bestObj.LootValue})" + (bestObj.Stages > 1 ? $"  stage {Mathf.Min(bestObj.StagesDone + 1, bestObj.Stages)}/{bestObj.Stages}" : "");
+                // [v0.20] zoneTitle.text = bestObj.ObjectiveName + $"  (${bestObj.LootValue})" + (bestObj.Stages > 1 ? ... : "");
+                // (v0.21) a Grand Vault's lock console holds no money of its own: it opens the door beside it
+                zoneTitle.text = bestObj.ObjectiveName + (bestObj.IsVaultLock ? "  -  cracking it opens the vault" : $"  (${bestObj.LootValue})")
+                    + (bestObj.Stages > 1 ? $"  stage {Mathf.Min(bestObj.StagesDone + 1, bestObj.Stages)}/{bestObj.Stages}" : "");
                 SetBar(zoneFill, bestObj.ProgressNormalized, 1f);
                 if (bestObj.IsGated) zoneHint.text = "Open the vault door first";
-                else if (!bestObj.IsAvailable) zoneHint.text = "Depleted";
+                else if (!bestObj.IsAvailable) zoneHint.text = bestObj.IsVaultLock ? "The vault is open" : "Depleted";
                 else if (!bestObj.IsUnlocked) zoneHint.text = "Locked - needs a Hacker";
                 // [v0.10] else if (bestObj.CapturingTeam == Core.TeamID.None) zoneHint.text = $"Hold {Core.LocalInputSource.Hint(Core.InputButtons.Interact)} to crack";
                 // [v0.10] else if (bestObj.IsContested) zoneHint.text = $"{TeamName(bestObj.CapturingTeam)} cracking - CONTESTED";
@@ -1050,6 +1066,54 @@ namespace Ouroboros.UI
         {
             ShowBanner(EventLine(e).ToUpperInvariant());
             AddFeed(EventLine(e), LootColor);
+        }
+
+        /// <summary>
+        /// (v0.21) Grand Vaults are the match, so what happens at one is news for every crew: a drill starting
+        /// or being stopped, a key hitting the floor or being taken, a door opening, a perk going.
+        /// </summary>
+        private void OnVaultMoment(Interaction.GrandVault vault, Interaction.VaultMoment moment, Core.TeamID team, Core.TeamID other, Network.NetworkPlayer who)
+        {
+            if (vault == null) return;
+            string name = vault.VaultName;
+            string upper = name.ToUpperInvariant();
+            bool mine = local != null && local.Object != null && local.Team == team && Core.TeamUtil.IsValid(team);
+            bool wasMine = local != null && local.Object != null && local.Team == other && Core.TeamUtil.IsValid(other);
+            Color colour = Core.TeamUtil.IsValid(team) ? CrewSkin.TextColour(team) : Color.white;
+            switch (moment)
+            {
+                case Interaction.VaultMoment.KeyDropped:
+                    AddFeed($"The {name} key is on the floor", LootColor);
+                    break;
+                case Interaction.VaultMoment.KeyTaken:
+                    AddFeed($"{(who != null ? who.DisplayName.ToString() : TeamName(team))} has the {name} key", colour);
+                    if (who != null && who == local) ShowBanner($"{upper} KEY - TAKE IT TO THE DOOR");
+                    break;
+                case Interaction.VaultMoment.DrillStarted:
+                    AddFeed($"{TeamName(team)} is drilling the {name}", colour);
+                    ShowBanner(mine ? $"DRILL SET - HOLD THE {upper} DOORWAY" : $"{TeamName(team).ToUpperInvariant()} IS DRILLING THE {upper}");
+                    break;
+                case Interaction.VaultMoment.DrillStopped:
+                    if (Core.TeamUtil.IsValid(team)) AddFeed($"{TeamName(team)} pulled the plug on {TeamName(other)}'s drill at the {name}", colour);
+                    else AddFeed($"{TeamName(other)} abandoned the drill at the {name}", Color.white);
+                    if (wasMine) ShowBanner(Core.TeamUtil.IsValid(team) ? "YOUR DRILL WAS STOPPED" : "YOUR DRILL RAN ALL THE WAY BACK");
+                    else if (mine) ShowBanner("DRILL STOPPED");
+                    break;
+                case Interaction.VaultMoment.Opened:
+                {
+                    string how = vault.OpenedHow == Core.VaultOpening.Key ? "with its key"
+                               : vault.OpenedHow == Core.VaultOpening.Drill ? "with a drill"
+                               : vault.OpenedHow == Core.VaultOpening.Crack ? "by cracking the lock"
+                               : vault.OpenedHow == Core.VaultOpening.TimeLock ? "on its time lock" : "through the wall";
+                    AddFeed(Core.TeamUtil.IsValid(team) ? $"{TeamName(team)} opened the {name} {how}" : $"The {name} is open ({how})", LootColor);
+                    ShowBanner(mine ? $"{upper} OPEN - PERK FIRST, THEN THE LOOT" : $"THE {upper} IS OPEN");
+                    break;
+                }
+                case Interaction.VaultMoment.PerkClaimed:
+                    AddFeed($"{TeamName(team)} took {Core.VaultRules.PerkName(vault.Perk)} from the {name}", colour);
+                    if (mine) ShowBanner($"{Core.VaultRules.PerkName(vault.Perk).ToUpperInvariant()}: {Core.VaultRules.PerkEffect(vault.Perk)}");
+                    break;
+            }
         }
 
         /// <summary>(v0.17) A revive is news for the crew it happened to, and a banner for the two players involved.</summary>

@@ -43,6 +43,25 @@ namespace Ouroboros.UI
             GameMode.CashOutStation.Moment += OnCashOut;     // (v0.20)
             Network.NetworkPlayer.Pinged += OnPinged;
             Network.NetworkPlayer.Revived += OnRevived;
+            Interaction.GrandVault.Moment += OnVaultMoment; // (v0.21)
+        }
+
+        /// <summary>(v0.21) A vault door opening is heard by every crew wherever they are; the rest is heard at the vault.</summary>
+        private void OnVaultMoment(Interaction.GrandVault vault, Interaction.VaultMoment moment, Core.TeamID team, Core.TeamID other, Network.NetworkPlayer who)
+        {
+            if (vault == null) return;
+            var me = Network.NetworkPlayer.FindLocal();
+            bool mine = me != null && me.Team == team && Core.TeamUtil.IsValid(team);
+            Vector3 at = vault.DoorPoint + Vector3.up * 1.5f;
+            switch (moment)
+            {
+                case Interaction.VaultMoment.KeyDropped:   At(Core.ProceduralSfx.KeyJingle, vault.KeyPosition, 1f); break;
+                case Interaction.VaultMoment.KeyTaken:     if (who != null && who == me) Play(Core.ProceduralSfx.KeyJingle, 0.8f); else At(Core.ProceduralSfx.KeyJingle, vault.KeyPosition, 1f); break;
+                case Interaction.VaultMoment.DrillStarted: At(Core.ProceduralSfx.CashStart, at, 1f); if (!mine) Play(Core.ProceduralSfx.PingEnemy, 0.5f); break;
+                case Interaction.VaultMoment.DrillStopped: At(Core.ProceduralSfx.CashAlarm, at, 1f); break;
+                case Interaction.VaultMoment.Opened:       At(Core.ProceduralSfx.VaultOpen, at, 1f); Play(Core.ProceduralSfx.VaultOpen, mine ? 0.8f : 0.45f); break;
+                case Interaction.VaultMoment.PerkClaimed:  At(Core.ProceduralSfx.PerkChord, vault.PerkPoint, 1f); if (mine) Play(Core.ProceduralSfx.PerkChord, 0.9f); break;
+            }
         }
 
         // ------------------------------------------------------------------
@@ -148,6 +167,7 @@ namespace Ouroboros.UI
             GameMode.CashOutStation.Moment -= OnCashOut;
             Network.NetworkPlayer.Pinged -= OnPinged;
             Network.NetworkPlayer.Revived -= OnRevived;
+            Interaction.GrandVault.Moment -= OnVaultMoment;
             Equipment.Projectile.Exploded -= OnExploded;
             GameMode.ExtractionHeistGameMode.StateChanged -= OnStateChanged;
             GameMode.ExtractionHeistGameMode.ExtractionOpened -= OnExtractionOpened;

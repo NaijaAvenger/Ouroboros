@@ -173,7 +173,8 @@ namespace Ouroboros.GameMode
             if (depositors.Count > 0)
             {
                 DepositProgress += dt;
-                if (DepositProgress >= depositSeconds)
+                // [v0.20] if (DepositProgress >= depositSeconds)
+                if (DepositProgress >= depositSeconds * Core.VaultRules.ActionTime(ExtractionHeistGameMode.PerksOf(depositors[0].Team))) // (v0.21) Quick Hands
                 {
                     DepositProgress = 0f;
                     for (int i = 0; i < depositors.Count; i++) Deposit(depositors[i], gm);
@@ -188,6 +189,7 @@ namespace Ouroboros.GameMode
             {
                 if (HijackProgress <= 0f) HijackTeam = thief.Team;
                 float seconds = hijackSeconds * (thief.ClassType == Core.PlayerClassType.Hacker ? Mathf.Clamp(cipherHijackMultiplier, 0.2f, 1f) : 1f);
+                seconds *= Core.VaultRules.ActionTime(ExtractionHeistGameMode.PerksOf(thief.Team)); // (v0.21) Quick Hands
                 HijackProgress = Core.MatchRules.HijackStep(HijackProgress, true, ownerPresent, dt, seconds, hijackDrainPerSecond);
                 Contested = ownerPresent;
                 if (HijackProgress >= 1f)

@@ -89,6 +89,8 @@ namespace Ouroboros.AI
         /// Misses are reported too, so tracers and audio can show near misses.
         /// </summary>
         public static event System.Action<BaseAIAgent, Vector3, Vector3, bool> AgentFired;
+        /// <summary>(v0.21) Raised on the state authority when a guard dies, before it despawns: a vault's key may fall here.</summary>
+        public static event System.Action<BaseAIAgent> AgentDied;
 
         [Networked] public float Health { get; set; }
         [Networked] public AIBehaviorState NetworkedState { get; set; }
@@ -500,6 +502,7 @@ namespace Ouroboros.AI
         {
             IsAlive = false;
             StopMoving();
+            AgentDied?.Invoke(this); // (v0.21)
             RPC_OnDeath();
             Debug.Log($"[AI] {agentType} agent died");
             // Despawn next tick so the death RPC is delivered; spawners can pool instead by overriding.

@@ -183,6 +183,25 @@ namespace Ouroboros.UI
 
             // ---- ticker: every cash-out in progress
             int used = 0;
+            // (v0.21) and, above them, every vault being drilled: the same kind of news, in the same place
+            var vaults = Interaction.GrandVault.All;
+            for (int i = 0; i < vaults.Count && used < MaxRows && show; i++)
+            {
+                var v = vaults[i];
+                if (v == null || v.Object == null || !v.IsDrilling) continue;
+                var row = rows[used++];
+                Color crew = CrewSkin.Accent(v.DrillTeam);
+                bool mine = me != null && me.Team == v.DrillTeam;
+                row.Text.text = $"{Core.TeamUtil.DisplayName(v.DrillTeam).ToUpperInvariant()}   DRILLING THE {v.VaultName.ToUpperInvariant()}   {Clock(v.DrillRemaining)}"
+                              + (v.DrillDefended ? "" : "   UNDEFENDED, RUNNING BACK") + (v.StopProgress > 0f ? $"   PLUG {v.StopProgress:P0}" : "");
+                row.Text.style.color = mine ? CrewSkin.TextColour(v.DrillTeam) : Color.white;
+                row.Swatch.style.backgroundColor = crew;
+                row.Fill.style.backgroundColor = crew;
+                row.Fill.style.width = Length.Percent(Mathf.Clamp01(v.DrillDone / Mathf.Max(0.01f, v.DrillTotal)) * 100f);
+                row.HijackFill.style.width = Length.Percent(Mathf.Clamp01(v.StopProgress) * 100f);
+                row.HijackFill.style.opacity = 0.75f;
+                if (row.Root.resolvedStyle.display == DisplayStyle.None) { row.Root.style.display = DisplayStyle.Flex; Core.Juice.Pop(row.Root, 1.15f, 0.25f); }
+            }
             for (int i = 0; i < stations.Count && used < MaxRows && show; i++)
             {
                 var s = stations[i];

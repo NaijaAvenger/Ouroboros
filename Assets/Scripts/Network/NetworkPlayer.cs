@@ -584,6 +584,9 @@ namespace Ouroboros.Network
             {
                 damage *= loadout.DamageTakenMultiplier; // v0.4: armor
             }
+            // (v0.21) crew perks from Grand Vaults: Iron Skin on the one hit, Hot Shots on the one shooting
+            damage *= Core.VaultRules.DamageTaken(GameMode.ExtractionHeistGameMode.PerksOf(Team));
+            if (attacker != null && attacker != this) damage *= Core.VaultRules.DamageDealt(GameMode.ExtractionHeistGameMode.PerksOf(attacker.Team));
 
             // [v0.1] currentClass.TakeDamage(damage);            // BUG: class kept a second health value
             // [v0.1] Health = Mathf.Max(0, Health - damage);     // ...and the shield modifier was ignored here

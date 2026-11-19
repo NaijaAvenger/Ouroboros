@@ -1577,6 +1577,16 @@ namespace Ouroboros.EditorTools
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
+        /// <summary>(v0.21)</summary>
+        private static void SetVector2(Object target, string field, Vector2 value)
+        {
+            var so = new SerializedObject(target);
+            var prop = so.FindProperty(field);
+            if (prop == null) return;
+            prop.vector2Value = value;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
         private static void SetBool(Object target, string field, bool value)
         {
             var so = new SerializedObject(target);

@@ -126,7 +126,9 @@ namespace Ouroboros.Interaction
             }
 
             var config = GameMode.ExtractionHeistGameMode.Instance.Config;
-            ReviveProgress = Core.AssistRules.ReviveStep(ReviveProgress, reviver != null, Runner.DeltaTime, config.reviveSeconds, reviveDrainPerSecond);
+            // [v0.20] ReviveProgress = Core.AssistRules.ReviveStep(ReviveProgress, reviver != null, Runner.DeltaTime, config.reviveSeconds, reviveDrainPerSecond);
+            float reviveSeconds = config.reviveSeconds * Core.VaultRules.ActionTime(GameMode.ExtractionHeistGameMode.PerksOf(OwnerTeam)); // (v0.21) Quick Hands
+            ReviveProgress = Core.AssistRules.ReviveStep(ReviveProgress, reviver != null, Runner.DeltaTime, reviveSeconds, reviveDrainPerSecond);
             if (reviver == null || ReviveProgress < 1f) return false;
 
             var revived = Owner;

@@ -266,6 +266,8 @@ namespace Ouroboros.AI
                 if (toLeader > 12f) { SetGoal(leader.Position, 4f, false); currentObjective = null; return; }
                 // (v0.16) help with a cash-out near the leader, but never start one: where and when to go public is the human's call
                 if (TryCashOutGoal(gm, leader.Position, 16f, allowStart: false)) return;
+                // (v0.21) the same at a Grand Vault: carry a key in, hold a drill, pull a rival's plug, take the perk
+                if (TryGrandVaultGoal(leader.Position, 25f, helpOnly: true)) return;
                 if (TryLootGoal(12f)) return;
                 if (TryObjectiveGoal(leader.Position, 30f, tick)) return;
                 SetGoal(leader.Position, 5f, false);
@@ -290,8 +292,14 @@ namespace Ouroboros.AI
             // (v0.16) 3b. Cash-out stations: hold ours, steal theirs, bank what we carry.
             if (!gm.ExtractionOpen && TryCashOutGoal(gm, me.Position, 70f, allowStart: true)) return;
 
+            // (v0.21) 3c. A Grand Vault in the act of opening, or just opened: a key to carry, a drill to hold, a perk to take.
+            if (!gm.ExtractionOpen && TryGrandVaultGoal(me.Position, 80f, helpOnly: true)) return;
+
             // 4. Loot on the floor nearby.
             if (TryLootGoal(30f)) return;
+
+            // (v0.21) 4b. A Grand Vault to open: these are the match. Safes come after.
+            if (!gm.ExtractionOpen && TryGrandVaultGoal(me.Position, 400f, helpOnly: false)) return;
 
             // 5. A vault.
             if (TryObjectiveGoal(me.Position, 400f, tick)) return;
@@ -346,6 +354,71 @@ namespace Ouroboros.AI
                 if (score < bestScore) { bestScore = score; best = e; }
             }
             return best;
+        }
+
+        /// <summary>
+        /// (v0.21) What to do about Grand Vaults within <paramref name="range"/> of <paramref name="reference"/>.
+        /// With <paramref name="helpOnly"/> a bot only joins something already under way: it carries a key it
+        /// holds to the door, picks up a key on the floor, stands by its crew's drill, pulls the plug on a
+        /// rival's, and takes a perk from an open vault. Without it, it also sets a drill, or goes to fight a
+        /// vault's guards for the key. A vault that only opens by its lock is left to the lock console, which
+        /// the objective goal already knows how to crack.
+        /// </summary>
+        private bool TryGrandVaultGoal(Vector3 reference, float range, bool helpOnly)
+        {
+            var vaults = Interaction.GrandVault.All;
+            if (vaults.Count == 0) return false;
+
+            var keyFor = Interaction.GrandVault.KeyCarriedBy(me);
+            if (keyFor != null)
+            {
+                SetGoal(keyFor.DoorPoint + keyFor.Outward * 1.5f, 1.6f, true);
+                currentObjective = null;
+                return true;
+            }
+
+            int perks = GameMode.ExtractionHeistGameMode.PerksOf(me.Team);
+            bool found = false;
+            float bestScore = float.MaxValue;
+            Vector3 bestPos = default; float bestStop = 1f; bool bestInteract = false;
+            void Consider(float score, Vector3 pos, float stop, bool interact)
+            {
+                if (score >= bestScore) return;
+                bestScore = score; bestPos = pos; bestStop = stop; bestInteract = interact; found = true;
+            }
+
+            for (int i = 0; i < vaults.Count; i++)
+            {
+                var v = vaults[i];
+                if (v == null || v.Object == null) continue;
+                if (v.Opened)
+                {
+                    if (!v.PerkAvailable || Core.VaultRules.Has(perks, v.Perk)) continue;
+                    float toPerk = Flat(v.PerkPoint - reference).magnitude;
+                    if (toPerk <= range) Consider(toPerk - 40f, v.PerkPoint, 1.2f, true);
+                    continue;
+                }
+
+                float distance = Flat(v.DoorPoint - reference).magnitude;
+                if (distance > range) continue;
+                Vector3 front = v.DoorPoint + v.Outward * 1.5f;
+
+                if (v.KeyState == Core.VaultKeyState.Dropped) Consider(Flat(v.KeyPosition - reference).magnitude - 30f, v.KeyPosition, 0.4f, false);
+                if (v.IsDrilling)
+                {
+                    if (v.DrillTeam == me.Team) Consider(distance - 50f, v.DoorPoint + v.Outward * 3f, 3.5f, false); // hold the doorway
+                    else Consider(distance - 20f, front, 1.6f, true);                                              // pull the plug
+                    continue;
+                }
+                if (helpOnly) continue;
+                if (v.Allows(Core.VaultMethod.Drill)) Consider(distance, front, 1.6f, true);
+                else if (v.Allows(Core.VaultMethod.Key) && v.KeyState == Core.VaultKeyState.Guarded) Consider(distance + 5f, v.DoorPoint + v.Outward * 5f, 5f, false);
+            }
+
+            if (!found) return false;
+            SetGoal(bestPos, bestStop, bestInteract);
+            currentObjective = null;
+            return true;
         }
 
         /// <summary>(v0.17) The nearest downed crewmate's ID card within <paramref name="range"/>: stand on it and hold Interact.</summary>

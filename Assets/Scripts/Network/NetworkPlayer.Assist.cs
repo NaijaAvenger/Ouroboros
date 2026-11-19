@@ -280,7 +280,10 @@ namespace Ouroboros.Network
             {
                 var gm = GameMode.ExtractionHeistGameMode.Instance;
                 if (gm == null || gm.Config == null || !IsActiveInMatch) return false;
-                return Core.AssistRules.IsRegenerating(Health, MaxHealth, SecondsSinceDamage, gm.Config.healthRegenDelay, gm.Config.healthRegenPerSecond, gm.Config.healthRegenCap);
+                // [v0.20] return Core.AssistRules.IsRegenerating(Health, MaxHealth, SecondsSinceDamage, gm.Config.healthRegenDelay, gm.Config.healthRegenPerSecond, gm.Config.healthRegenCap);
+                int perks = GameMode.ExtractionHeistGameMode.PerksOf(Team); // (v0.21) Second Wind
+                return Core.AssistRules.IsRegenerating(Health, MaxHealth, SecondsSinceDamage, gm.Config.healthRegenDelay * Core.VaultRules.RegenDelay(perks),
+                    gm.Config.healthRegenPerSecond * Core.VaultRules.RegenRate(perks), gm.Config.healthRegenCap);
             }
         }
 
@@ -289,8 +292,11 @@ namespace Ouroboros.Network
             var gm = GameMode.ExtractionHeistGameMode.Instance;
             if (gm == null || gm.Config == null || gm.Config.healthRegenPerSecond <= 0f) return;
             if (BurnTimer.IsRunning && !BurnTimer.Expired(Runner)) return; // nothing heals while it burns
-            Health = Core.AssistRules.RegenStep(Health, MaxHealth, SecondsSinceDamage, gm.Config.healthRegenDelay,
-                gm.Config.healthRegenPerSecond, gm.Config.healthRegenCap, Runner.DeltaTime);
+            // [v0.20] Health = Core.AssistRules.RegenStep(Health, MaxHealth, SecondsSinceDamage, gm.Config.healthRegenDelay,
+            // [v0.20]     gm.Config.healthRegenPerSecond, gm.Config.healthRegenCap, Runner.DeltaTime);
+            int perks = GameMode.ExtractionHeistGameMode.PerksOf(Team); // (v0.21) Second Wind: sooner and faster
+            Health = Core.AssistRules.RegenStep(Health, MaxHealth, SecondsSinceDamage, gm.Config.healthRegenDelay * Core.VaultRules.RegenDelay(perks),
+                gm.Config.healthRegenPerSecond * Core.VaultRules.RegenRate(perks), gm.Config.healthRegenCap, Runner.DeltaTime);
         }
     }
 }
