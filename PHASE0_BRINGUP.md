@@ -393,6 +393,44 @@ Bots and feel:
 - [ ] A gamepad taps on your crew's start, steal and bank, and warns when a rival starts a cash-out or steals yours.
 - [ ] Balance to report: is 60 s too long or short in the Galleria, are four stations enough, and does the quota still feel right now that banked money counts.
 
+## 7m. Threat outlines, open stairwells, ping, revive, regeneration (v0.17)
+Setup: with the Galleria scene open, run **Ouroboros > Setup > Update Galleria Map (keeps the scene)**, then save. It redraws the zone floors and adds the cash-out stations without rebuilding the map. Everything else here needs no setup.
+
+First, the thing I could not see:
+- [ ] **`OuroborosThreat` in `Assets/Resources/OuroborosShaders` shows no errors in the Inspector.** If it fails, threats simply have no outline and the console says so once; send me the error text.
+
+Seeing what can shoot you:
+- [ ] Guards, elites and snipers have a bright red outline. It is hidden by walls: it marks what you can see, it does not show through.
+- [ ] The outline stays readable across the atrium (it widens with distance) and is not a thick blob up close.
+- [ ] Sentry turrets are now about 2.4 m tall: a tripod foot with a yellow ring, a pedestal, a twin-barrelled head that turns, and a beacon on a mast. Beacon and eye are amber when idle, red when locked on, dark when off.
+- [ ] Shooting the turret's head and upper body counts (the hit box grew with the model).
+- [ ] A turret is outlined red; hijacked, it is outlined in the crew's colour; shot down or blacked out, it has no outline.
+- [ ] Cameras are half as big again and outlined amber, turning red while they have someone in view, and losing the outline when disabled.
+- [ ] Settings > **Threat outlines** switches all of it off and on.
+- [ ] Tell me if the red lines between a guard's body parts are too busy up close. A cleaner silhouette-only version is possible; it costs more draw calls.
+
+The Galleria's openings:
+- [ ] On the upper level, the atrium, the gaps between the walkways and every escalator and staff stair are open: you can see down through them, and no flat coloured floor covers them.
+- [ ] The walkways, bridges and rooms upstairs still have their coloured floors.
+
+Ping (middle mouse button, or T; every gamepad button is already taken, so a pad has no ping yet, tell me which button you would give up):
+- [ ] Looking at a guard, turret, camera or rival and pinging puts a red **ENEMY** marker there with its name and distance. Loot, containers and vaults give gold **LOOT**; doors, terminals and stations give blue **USE**; a downed crewmate's card gives green **REVIVE**; anything else gives white **HERE**.
+- [ ] The marker shows through walls, sticks to the screen edge when out of view, carries the name of who pinged, and fades after 5 to 12 seconds. Pinging again moves your marker.
+- [ ] Rival crews do not see your pings (needs two clients on different crews).
+- [ ] Bots following you walk to a **HERE**, **LOOT**, **USE** or **REVIVE** ping for the next few seconds, then come back.
+
+Revive:
+- [ ] When a crewmate dies, their ID card shows a green **REVIVE name** marker for the crew. Hold Interact at the card for 3.5 s: they stand up where they fell on 40% health, and the card is used up.
+- [ ] Letting go drains the bar. Being EMP'd stops it.
+- [ ] The downed player sees "A crewmate can revive you at your ID card", then the progress, then a "REVIVED BY" banner. The death recap closes.
+- [ ] A revive does not use up a respawn, and it works during the getaway when redeploys do not.
+- [ ] If the downed player redeploys first, the card can no longer revive them. Rivals can still take the card for the Cold Store, which also denies the revive.
+- [ ] Bot crewmates come to revive you, and each other.
+
+Regeneration:
+- [ ] Six seconds after you last took damage, health climbs by 12 a second to full, and the health readout shows a **+** while it does. Taking damage stops it. Burning blocks it.
+- [ ] `GameModeConfig` has the numbers: `healthRegenDelay`, `healthRegenPerSecond` (0 switches it off), `healthRegenCap`, `reviveSeconds`, `reviveHealthFraction`, `allowRevive`.
+
 ## 7d. Expected flow and troubleshooting
 **Expected flow on Play (dev config):** spectator camera orbits the arena → session starts → your player spawns → the
 **class picker** appears with the cursor free (state *Waiting for players*) → host presses **Start match now** (or the

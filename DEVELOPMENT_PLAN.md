@@ -225,6 +225,20 @@ Awaiting in-engine validation: PHASE0_BRINGUP.md section 7k.
 
 Awaiting in-engine validation: PHASE0_BRINGUP.md section 7l.
 
+### v0.17 — threat outlines, open stairwells, ping, revive, regeneration
+- **Threat outlines**: `Assets/Resources/OuroborosShaders/OuroborosThreat.shader` (an inverted hull pushed from the mesh's bounds, so boxes close at the corners), `Art/ThreatOutline.cs` (adds and colours the shells; one material per colour and mesh shape). Hooked from `BaseAIAgent.DressModel`, `SentryTurret`, `SecurityCamera`. Setting `GameSettings.ThreatOutlines`.
+- **Turret**: `GearBuilder.BuildTurret`, built in `SentryTurret.BuildModel` with a larger hit box. Cameras scaled 1.5.
+- **Galleria floors**: `Tools/mapgen/galleria.py` emits `GalleriaZoneFloors` cut from real floor cells and fails if a tint covers a void; the builder draws those in `BuildGalleriaZoneFloors`. Menu **Update Galleria Map (keeps the scene)**.
+- **Rules** (`Core/AssistRules.cs`, unit-tested): `PingKind`, `CanPing`, `PingLifetime`, `DistanceFromRay`, `ReviveStep`, `ReviveHealth`, `RegenStep`, `IsRegenerating`.
+- **Player** (`Network/NetworkPlayer.Assist.cs`): `TryPing` (classifies what is in the crosshair on the state authority), `Pinged`, `TryGetCrewPing`, `Revive`, `Revived`, `TickRegen`, `IsRegenerating`.
+- **Input**: `InputButtons.Ping` (middle mouse, T).
+- **Revive**: `IDCardDrop` knows its owner (`OwnerId`) and runs the revive (`ReviveProgress`, `CanBeRevivedBy`).
+- **HUD**: `UI/AssistHUD.cs` (ping markers, revive markers, prompt, word for the downed player); feed and banners in `HeistHUD`; a "+" on the health readout.
+- **Bots**: revive first (`TryReviveGoal`); a led bot walks to its crew's latest ping.
+- **Config**: `allowRevive`, `reviveSeconds`, `reviveHealthFraction`, `healthRegenDelay`, `healthRegenPerSecond`, `healthRegenCap`.
+
+Awaiting in-engine validation: PHASE0_BRINGUP.md section 7m.
+
 ### Phase 5 — Meta
 - Lobby scene with class picker (`NetworkPlayer.RequestClass` is in place), session browser, late-join handling, host migration.
 - Progression/cosmetics via `ClassData`/`EquipmentData`.

@@ -241,10 +241,22 @@ namespace Ouroboros.AI
             interactAtGoal = false;
             goalStopDistance = 1f;
 
+            // (v0.17) 1b. A crewmate is down and their card is close: nothing a bot can do is worth more.
+            if (TryReviveGoal(40f)) return;
+
             // 2. A human on the crew leads.
             var leader = FindHumanLeader();
             if (leader != null)
             {
+                // (v0.17) a fresh ping from the crew is an order: go there. Enemy pings are left to the gun.
+                if (Network.NetworkPlayer.TryGetCrewPing(me.Team, Runner, 12f, out var ping) && ping.By != me && ping.Kind != Core.PingKind.Enemy
+                    && Flat(ping.Position - me.Position).magnitude > 2.4f)
+                {
+                    // Once there the usual rules take over: loot within reach is picked up, a card is worked.
+                    SetGoal(ping.Position, 1.8f, false);
+                    currentObjective = null;
+                    return;
+                }
                 if (gm.ExtractionOpen)
                 {
                     var exit = ExitContaining(leader.Position);
@@ -334,6 +346,25 @@ namespace Ouroboros.AI
                 if (score < bestScore) { bestScore = score; best = e; }
             }
             return best;
+        }
+
+        /// <summary>(v0.17) The nearest downed crewmate's ID card within <paramref name="range"/>: stand on it and hold Interact.</summary>
+        private bool TryReviveGoal(float range)
+        {
+            var cards = Interaction.IDCardDrop.All;
+            Interaction.IDCardDrop best = null;
+            float bestSq = range * range;
+            for (int i = 0; i < cards.Count; i++)
+            {
+                var c = cards[i];
+                if (c == null || c.Object == null || !c.CanBeRevivedBy(me)) continue;
+                float dSq = (c.transform.position - me.Position).sqrMagnitude;
+                if (dSq < bestSq) { bestSq = dSq; best = c; }
+            }
+            if (best == null) return false;
+            SetGoal(best.transform.position, Mathf.Min(1.2f, best.ReviveRadius * 0.6f), true);
+            currentObjective = null;
+            return true;
         }
 
         /// <summary>

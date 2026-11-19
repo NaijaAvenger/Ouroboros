@@ -232,6 +232,7 @@ namespace Ouroboros.Player
             {
                 HandleAbilities(pressed);
                 HandleInteract(input.Buttons);
+                if (pressed.IsSet((int)Core.InputButtons.Ping)) networkPlayer.TryPing(); // (v0.17)
                 // (v0.11) quick hacks (hold Interact while aiming at a device) and deep hacks (press it at a vault)
                 networkPlayer.TickHacking(input.Buttons.IsSet((int)Core.InputButtons.Interact), pressed.IsSet((int)Core.InputButtons.Interact));
                 // [v0.8] HandleEquipment(pressed, input.Buttons);   // ran on the state authority only

@@ -79,6 +79,9 @@ namespace Ouroboros.Core
             Button(InputButtons.NextWeapon, "NextWeapon", "<Mouse>/scroll/up",   "<Gamepad>/select");
             Button(InputButtons.PrevWeapon, "PrevWeapon", "<Mouse>/scroll/down", null);
             Get(InputButtons.NextWeapon).AddBinding("<Keyboard>/x", groups: KeyboardGroup);
+            // (v0.17) crew ping: middle mouse, or T. Every pad button is taken, so a pad has none until one is rebound.
+            Button(InputButtons.Ping, "Ping", "<Mouse>/middleButton", null);
+            Get(InputButtons.Ping).AddBinding("<Keyboard>/t", groups: KeyboardGroup);
 
             CursorToggle = Map.AddAction("CursorToggle", InputActionType.Button);
             CursorToggle.AddBinding("<Keyboard>/escape", groups: KeyboardGroup);

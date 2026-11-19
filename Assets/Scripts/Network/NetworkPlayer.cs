@@ -224,6 +224,7 @@ namespace Ouroboros.Network
             TickStatusTimers();
             TickBurning();
             TickStamina();
+            TickRegen(); // (v0.17) health comes back out of combat
 
             if (currentClass != null)
             {

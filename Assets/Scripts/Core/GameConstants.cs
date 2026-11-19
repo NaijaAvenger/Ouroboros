@@ -18,7 +18,8 @@ namespace Ouroboros.Core
         public const int MAX_TECH_SLOTS = 3;
         /// <summary>Number of entries in <see cref="InputButtons"/> (keep in sync).</summary>
         // [v0.12] public const int INPUT_BUTTON_COUNT = 14;
-        public const int INPUT_BUTTON_COUNT = 16; // (v0.13) + NextWeapon, PrevWeapon
+        // [v0.16] public const int INPUT_BUTTON_COUNT = 16; // (v0.13) + NextWeapon, PrevWeapon
+        public const int INPUT_BUTTON_COUNT = 17; // (v0.17) + Ping
 
         // ---- v0.2 additions ----
 
@@ -192,6 +193,9 @@ namespace Ouroboros.Core
         /// <summary>(v0.13) Swap to the other weapon. Mouse wheel up.</summary>
         NextWeapon = 14,
         /// <summary>(v0.13) Swap to the other weapon. Mouse wheel down.</summary>
-        PrevWeapon = 15
+        // [v0.16] PrevWeapon = 15
+        PrevWeapon = 15,
+        /// <summary>(v0.17) Mark what you are looking at for your crew. Middle mouse button.</summary>
+        Ping = 16
     }
 }

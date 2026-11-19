@@ -85,8 +85,8 @@ rivals steal the deposit. That difference is the biggest gap. In order of what I
 | # | Missing | Why it matters | Size |
 |---|---------|----------------|------|
 | 1 | **Cash-out stations.** Deposit carried loot at a terminal; it banks over about a minute; everyone is told where; a rival can hijack the deposit by hacking the terminal | Turns banking from an exit into a fight. Gives every vault a second act and uses the counter-hack the game already has | **Done in code (v0.16), not play-tested.** See below |
-| 2 | **Contextual ping.** One key marks what you are looking at for your crew: enemy, loot, door, "go here" | A team shooter without voice chat needs it, and bots can read it | Small |
-| 3 | **Revive, and health that comes back.** A downed crewmate can be brought back with their ID card (cards already drop); health regenerates after a few seconds out of combat | Today a death is a long wait and chip damage is permanent. Both slow the match down | Medium |
+| 2 | **Contextual ping.** One key marks what you are looking at for your crew: enemy, loot, door, "go here" | A team shooter without voice chat needs it, and bots can read it | **Done in code (v0.17), not play-tested.** Middle mouse or T |
+| 3 | **Revive, and health that comes back.** A downed crewmate can be brought back with their ID card (cards already drop); health regenerates after a few seconds out of combat | Today a death is a long wait and chip damage is permanent. Both slow the match down | **Done in code (v0.17), not play-tested.** See below |
 | 4 | **Things to pick up and throw.** Explosive, gas and foam canisters lying around the map | The Finals' answer to "the room is the weapon". Breakables are the first half of this | Medium |
 | 5 | **A house announcer and live money standings.** Called moments ("Lagos are cashing out in the Bank"), and a constant view of who holds what | Money only drives decisions if everyone can see it | Small. The cash-out half arrived with v0.16 (called moments, a ticker, banked and carried on the scoreboard); kills, vaults and events still need calling |
 | 6 | **Passing the loot.** Throw the case or a loot item to a crewmate | Makes the carry a team play and not one player's burden | Small |
@@ -97,6 +97,21 @@ rivals steal the deposit. That difference is the biggest gap. In order of what I
 
 Already here in some form: several ways into every vault, gadgets, map events (their game-show events),
 low gravity, destructible containers, a carried objective, loot dropped on death.
+
+### After your Galleria run (v0.17, code complete, not seen running)
+
+You ran the Galleria, so everything up to v0.15 compiles and plays. Two things you reported, and two you asked for:
+
+| Request | State |
+|---------|-------|
+| Guards, turrets and cameras are hard to see | A bright outline on each: red for what shoots, amber for cameras, a crew's colour on a hijacked turret, nothing on a thing that is switched off. Hidden by walls. Wider with distance. The turret itself is rebuilt at about twice the size, with a beacon, and cameras are half as big again. One setting switches the outlines off |
+| Upper floors cover the stairwells | Fixed. The coloured floor of each zone was one rectangle, which upstairs lay across the atrium, the gaps and the stairs. It is now cut to the real floor, and the generator refuses to write a layout where a tint covers an opening. **Update Galleria Map (keeps the scene)** applies it to your scene |
+| Contextual ping | Middle mouse or T marks what is in your crosshair for your crew only: enemy, loot, something to use, a crewmate to revive, or a place. Bots you lead go to it |
+| Revive and regeneration | Hold Interact at a downed crewmate's ID card for 3.5 s and they stand up there on 40% health. It costs no respawn and works during the getaway. Rivals taking the card denies it. Health comes back at 12 a second after 6 s without damage |
+
+Design choices worth knowing: the outline draws a line round every body part, not one silhouette, because that
+is one draw per part instead of three; pings are placed where the thing was and do not follow it, so an enemy
+ping is not a tracker; a revive happens where the player fell, not at the card.
 
 ### Cash-out stations (v0.16, code complete, not seen running)
 
@@ -454,13 +469,14 @@ Decision 2 affects the local `ViewMode.cs`: if it is a first/third-person toggle
    models) and builds the `Galleria` scene. Expect it to take a while: it places several thousand objects
    and bakes a two-level NavMesh.
 2. With the Galleria scene open, press Play and choose **Solo**.
-3. Work through section 7j of `PHASE0_BRINGUP.md` first, then 7k and 7l, then 7e to 7i, and list what breaks.
+3. Work through sections 7m and 7l of `PHASE0_BRINGUP.md` first (the newest work), then 7j and 7k, then 7e to 7i,
+   and list what breaks. On a Galleria scene you already built, run **Update Galleria Map (keeps the scene)** first.
 4. Tell me the frame rate. If it is low, the first cuts are the ceiling lights and the number of props.
 5. Find native speakers of Nigerian Pidgin, Swahili or Sheng, Twi and isiZulu to rewrite the crew radio lines
    in `Assets/Scripts/UI/CrewCallouts.cs`, and someone who can review the artefact names and stories.
 
-Only the main menu has been seen running. The first full session will find bugs, and some will be in the
-oldest layers. The next milestone should be that session and its fixes.
+You have had the Galleria running, which covers everything up to v0.15. Cash-out stations (v0.16) and all of
+v0.17 have only been through the offline checks.
 
 Notes on the repository as of the M2 work:
 - `main` holds M0, M1 and your Unity project state ("Squashed local work"). M2 is on `claude/awesome-darwin-awl360`.

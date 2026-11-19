@@ -589,8 +589,11 @@ namespace Ouroboros.GameMode
             if (idCardPrefabObject != null)
             {
                 var team = victim.Team;
+                var victimId = victim.Object.Id; // (v0.17) the card knows whose it is, so a crewmate can revive them with it
+                // [v0.16] Runner.Spawn(idCardPrefabObject, victim.transform.position + Vector3.up * 0.3f + Vector3.right * 0.6f, Quaternion.identity, null,
+                // [v0.16]     (runner, obj) => { var card = obj.GetComponent<Interaction.IDCardDrop>(); if (card != null) card.OwnerTeam = team; });
                 Runner.Spawn(idCardPrefabObject, victim.transform.position + Vector3.up * 0.3f + Vector3.right * 0.6f, Quaternion.identity, null,
-                    (runner, obj) => { var card = obj.GetComponent<Interaction.IDCardDrop>(); if (card != null) card.OwnerTeam = team; });
+                    (runner, obj) => { var card = obj.GetComponent<Interaction.IDCardDrop>(); if (card != null) { card.OwnerTeam = team; card.OwnerId = victimId; } });
             }
 
             // (v0.10) named items fall as separate pickups around the body; whatever is left over is loose loot

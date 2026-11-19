@@ -34,6 +34,8 @@ namespace Ouroboros.UI
             Interaction.Breakable.Broken += OnBroken;
             Interaction.LaserGrid.Tripped += OnLaserTripped;
             GameMode.CashOutStation.Moment += OnCashOut; // (v0.16)
+            Network.NetworkPlayer.Pinged += OnPinged;    // (v0.17)
+            Network.NetworkPlayer.Revived += OnRevived;
         }
 
         private void OnDisable()
@@ -49,6 +51,8 @@ namespace Ouroboros.UI
             Interaction.Breakable.Broken -= OnBroken;
             Interaction.LaserGrid.Tripped -= OnLaserTripped;
             GameMode.CashOutStation.Moment -= OnCashOut;
+            Network.NetworkPlayer.Pinged -= OnPinged;
+            Network.NetworkPlayer.Revived -= OnRevived;
         }
 
         private Network.NetworkPlayer Local()
@@ -142,6 +146,19 @@ namespace Ouroboros.UI
             if (b == null) return;
             bool big = b.Kind == Interaction.BreakableKind.WeakWall;
             Core.Juice.ShakeAt(b.Position, big ? 0.09f : 0.03f, big ? 26f : 10f, big ? 0.4f : 0.2f);
+        }
+
+        private void OnPinged(Network.NetworkPlayer by, Core.PingKind kind, Vector3 position, string label)
+        {
+            var me = Local();
+            if (me == null || by == null || by.Team != me.Team) return;
+            Core.Juice.Haptic(kind == Core.PingKind.Enemy ? Core.Juice.Tap.Warning : Core.Juice.Tap.Light);
+        }
+
+        private void OnRevived(Network.NetworkPlayer revived, Network.NetworkPlayer by)
+        {
+            var me = Local();
+            if (me != null && (revived == me || by == me)) Core.Juice.Haptic(Core.Juice.Tap.Success);
         }
 
         private void OnCashOut(GameMode.CashOutStation station, GameMode.CashOutMoment moment, Core.TeamID team, Core.TeamID from, int value)

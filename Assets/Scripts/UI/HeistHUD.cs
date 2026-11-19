@@ -102,6 +102,7 @@ namespace Ouroboros.UI
             if (GetComponent<DeathRecap>() == null) gameObject.AddComponent<DeathRecap>();
             if (GetComponent<MapHUD>() == null) gameObject.AddComponent<MapHUD>(); // zone name, event and scanner markers
             if (GetComponent<CashOutHUD>() == null) gameObject.AddComponent<CashOutHUD>(); // (v0.16) cash-out ticker, markers and prompt
+            if (GetComponent<AssistHUD>() == null) gameObject.AddComponent<AssistHUD>(); // (v0.17) crew pings and revives
 
             var ps = document.panelSettings;
             Debug.Log($"[HeistHUD] Enabled. PanelSettings='{(ps != null ? ps.name : "NONE")}', theme='{(ps != null && ps.themeStyleSheet != null ? ps.themeStyleSheet.name : "NONE")}', " +
@@ -124,6 +125,7 @@ namespace Ouroboros.UI
             GameMode.MapEventDirector.Fired += OnMapEventFired;
             Interaction.LaserGrid.Tripped += OnLaserTripped;
             GameMode.CashOutStation.Moment += OnCashOutMoment; // (v0.16)
+            Network.NetworkPlayer.Revived += OnRevived; // (v0.17)
             Network.NetworkPlayer.Jammed += OnJammed;
         }
 
@@ -137,6 +139,7 @@ namespace Ouroboros.UI
             GameMode.MapEventDirector.Fired -= OnMapEventFired;
             Interaction.LaserGrid.Tripped -= OnLaserTripped;
             GameMode.CashOutStation.Moment -= OnCashOutMoment;
+            Network.NetworkPlayer.Revived -= OnRevived;
             Network.NetworkPlayer.Jammed -= OnJammed;
             GameMode.ExtractionHeistGameMode.GetawayCalled -= OnGetawayCalled;
             GameMode.ExtractionHeistGameMode.CrewWiped -= OnCrewWiped;
@@ -542,7 +545,8 @@ namespace Ouroboros.UI
             nameLabel.text = $"{local.DisplayName}  ·  {Core.ClassUtil.DisplayName(local.ClassType)}  ·  {TeamName(local.Team)}";
             if (local.Team != skinnedTeam) ApplyCrewSkin(local.Team);
             SetBar(healthFill, local.Health, local.MaxHealth);
-            healthText.text = $"{local.Health:0} / {local.MaxHealth:0}";
+            // [v0.16] healthText.text = $"{local.Health:0} / {local.MaxHealth:0}";
+            healthText.text = local.IsRegenerating ? $"{local.Health:0} / {local.MaxHealth:0}  +" : $"{local.Health:0} / {local.MaxHealth:0}"; // (v0.17) "+" while it comes back
             SetBar(staminaFill, local.Stamina, local.MaxStamina);
             staminaText.text = $"{local.Stamina:0}";
 
@@ -860,6 +864,16 @@ namespace Ouroboros.UI
         {
             ShowBanner(EventLine(e).ToUpperInvariant());
             AddFeed(EventLine(e), LootColor);
+        }
+
+        /// <summary>(v0.17) A revive is news for the crew it happened to, and a banner for the two players involved.</summary>
+        private void OnRevived(Network.NetworkPlayer revived, Network.NetworkPlayer by)
+        {
+            if (revived == null || local == null || local.Object == null || revived.Team != local.Team) return;
+            string who = by != null ? by.DisplayName.ToString() : "A crewmate";
+            AddFeed($"{who} revived {revived.DisplayName}", CrewSkin.TextColour(revived.Team));
+            if (revived == local) ShowBanner($"REVIVED BY {who.ToUpperInvariant()}");
+            else if (by == local) ShowBanner($"{revived.DisplayName.ToString().ToUpperInvariant()} IS BACK UP");
         }
 
         /// <summary>

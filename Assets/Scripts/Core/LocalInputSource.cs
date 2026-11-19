@@ -286,6 +286,7 @@ namespace Ouroboros.Core
                 case InputButtons.Grapple:   return "G";
                 case InputButtons.NextWeapon: return "Wheel";
                 case InputButtons.PrevWeapon: return "Wheel";
+                case InputButtons.Ping:      return "MMB"; // (v0.17)
             }
             return "?";
         }
@@ -314,6 +315,7 @@ namespace Ouroboros.Core
                 case InputButtons.Grapple:   return Input.GetKey(KeyCode.G)         || Input.GetKey(KeyCode.JoystickButton9);
                 case InputButtons.NextWeapon: return Input.GetAxis("Mouse ScrollWheel") > 0f || Input.GetKey(KeyCode.X) || Input.GetKey(KeyCode.JoystickButton6);
                 case InputButtons.PrevWeapon: return Input.GetAxis("Mouse ScrollWheel") < 0f;
+                case InputButtons.Ping:      return Input.GetMouseButton(2) || Input.GetKey(KeyCode.T); // (v0.17)
             }
             return false;
         }
@@ -338,6 +340,7 @@ namespace Ouroboros.Core
                 case InputButtons.Grapple:   return Input.GetKeyDown(KeyCode.G)         || Input.GetKeyDown(KeyCode.JoystickButton9);
                 case InputButtons.NextWeapon: return Input.GetAxis("Mouse ScrollWheel") > 0f || Input.GetKeyDown(KeyCode.X) || Input.GetKeyDown(KeyCode.JoystickButton6);
                 case InputButtons.PrevWeapon: return Input.GetAxis("Mouse ScrollWheel") < 0f;
+                case InputButtons.Ping:      return Input.GetMouseButtonDown(2) || Input.GetKeyDown(KeyCode.T); // (v0.17)
             }
             return false;
         }

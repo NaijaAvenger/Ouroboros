@@ -21,6 +21,8 @@ A modular multiplayer extraction heist game built with **Photon Fusion 2**, feat
 ## Overview
 - **4 crews of 3** (Lagos, Nairobi, Accra, Joburg); bots fill every empty seat, so one person can play a full match
 - **The Run**: crack vaults, carry the named loot they spill, and when a crew has the quota (banked plus carried) the getaway is called for everyone. The central getaway banks everything; side exits bank less. Score is what you got out with.
+- **Crew play**: ping what you are looking at for your crew (middle mouse or T); revive a downed crewmate by holding Interact at their ID card; health comes back out of combat.
+- **Readable threats**: guards, turrets and cameras carry a bright outline.
 - **Cash-out stations**: bank in the middle of the match by holding Interact at a station. It takes a minute, every crew is told where, and a rival who holds Interact at it steals the whole pot.
 - **4 specialists**: Cipher, Spider, Smith, Shield (`Hacker`, `Saboteur`, `Demolitions`, `Agent` in code)
 - **Premise**: the Ouroboros Freeport holds what was taken from a continent. Four crews are here to take it back.
@@ -124,6 +126,7 @@ You hold one weapon at a time (v0.13). Left click fires it, right click aims dow
 | Jump | Space | A |
 | Interact: **hold** while aiming at a device to quick-hack it; **press** at a vault to jack in (then 1-4 answer the signs, press again to jack out); hold for cards, notes and doors | F | X |
 | Abilities 1–4 | 1 2 3 4 | D-pad ↑ → ↓ ← |
+| Ping what you are looking at for your crew | MMB or T | none by default |
 | Fire the weapon in hand | LMB | RT |
 | Aim down sights (tighter spread, less kick, slower walk, no sprint) | RMB (hold) | LT (hold) |
 | Swap weapon | Mouse wheel, or X | Select |

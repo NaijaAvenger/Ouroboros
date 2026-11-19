@@ -144,6 +144,20 @@ namespace Ouroboros.Data
         [Tooltip("(v0.2) Drop carried loot as a pickup on death (otherwise it is lost).")]
         public bool dropLootOnDeath = true;
 
+        [Header("Revive and regeneration (v0.17)")]
+        [Tooltip("A crewmate can stand a downed player back up by holding Interact at their ID card.")]
+        public bool allowRevive = true;
+        [Tooltip("Seconds a crewmate must hold Interact at the card.")]
+        public float reviveSeconds = 3.5f;
+        [Tooltip("Share of full health a revived player stands up with.")]
+        [Range(0.05f, 1f)] public float reviveHealthFraction = 0.4f;
+        [Tooltip("Seconds without taking damage before health starts to come back.")]
+        public float healthRegenDelay = 6f;
+        [Tooltip("Health per second once it starts. 0 switches regeneration off.")]
+        public float healthRegenPerSecond = 12f;
+        [Tooltip("Regeneration stops at this share of full health. Below 1 leaves room for a medic.")]
+        [Range(0.1f, 1f)] public float healthRegenCap = 1f;
+
         /// <summary>(v0.10) Crew size actually used, kept inside the structural limit.</summary>
         public int CrewSize => Mathf.Clamp(playersPerTeam, 1, Core.GameConstants.PLAYERS_PER_TEAM);
         /// <summary>(v0.10) Number of crews actually used, kept inside the structural limit.</summary>

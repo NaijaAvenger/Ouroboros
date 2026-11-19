@@ -446,6 +446,7 @@ namespace Ouroboros.UI
             Bound("Utility", Core.InputButtons.Utility);
             Bound("Gadget", Core.InputButtons.Gadget);
             Bound("Grapple (Smith)", Core.InputButtons.Grapple);
+            Bound("Ping for your crew", Core.InputButtons.Ping); // (v0.17)
             Fixed("Answer a sign puzzle", "1 2 3 4", "-");
             Fixed("Menu", "Esc", "Start");
             Fixed("Debug overlay", "F1", "-");
