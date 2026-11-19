@@ -70,3 +70,26 @@ A pass is necessary, not sufficient. The two-client checklist in `PHASE0_BRINGUP
 
 The NuGet packages are unofficial redistributions used as compile-time references only. They are downloaded
 into `typecheck/.cache/` and never committed.
+
+## Map generator (`Tools/mapgen/galleria.py`)
+
+The Galleria map is drawn by a script, not by hand. `galleria.py` lays the building out on a grid of 2 m
+cells, places every prop, door, vault, guard post and event, checks the result and writes
+`Assets/Editor/OuroborosGalleriaLayout.cs`. The Unity builder (`OuroborosGalleriaBuilder.cs`) turns that
+data into a scene.
+
+```
+python3 Tools/mapgen/galleria.py            # check, then write the layout file
+python3 Tools/mapgen/galleria.py --ascii    # also print both floor plans
+```
+
+What it checks before it writes anything:
+
+- every floor cell on both levels can be reached from a crew gate, through doors and up ramps;
+- every ramp starts and ends on a floor;
+- nothing solid sits in a wall, across a doorway, at the foot or head of a ramp, or inside another piece;
+- every gameplay piece (vault, turret, terminal, power junction) found its place.
+
+To change the map, edit the script and run it. CI runs it on every push and fails if the committed layout
+file is not what the script produces.
+

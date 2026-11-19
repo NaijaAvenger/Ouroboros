@@ -471,7 +471,7 @@ namespace Ouroboros.UI
                 case GameMode.ExtractionHeistGameMode.GameState.InProgress:
                     // [v0.9] stateLabel.text = gm.ExtractionOpen ? "Extraction OPEN" : "Heist in progress";
                     stateLabel.text = gm.Config.UseRunRules
-                        ? $"Heist  -  first crew carrying ${gm.Config.lootQuota} calls the getaway"
+                        ? $"Heist  -  first crew carrying ${gm.LootQuota} calls the getaway" // [v0.13] gm.Config.lootQuota
                         : (gm.ExtractionOpen ? "Extraction OPEN" : "Heist in progress");
                     timerLabel.text = Fmt(gm.MatchTimeRemaining);
                     break;
@@ -511,7 +511,7 @@ namespace Ouroboros.UI
                 {
                     // (v0.10) Score is what the crew got out with; this column is what it is carrying toward the quota.
                     int carried = gm.GetTeamCarried(team);
-                    row.Loot.text = gm.IsGetaway ? $"${carried}" : $"${carried} / {gm.Config.lootQuota}";
+                    row.Loot.text = gm.IsGetaway ? $"${carried}" : $"${carried} / {gm.LootQuota}"; // [v0.13] gm.Config.lootQuota
                     row.Loot.style.color = gm.IsGetaway && gm.RichestTeam == team ? HealthColor : LootColor;
                     row.Status.text = gm.CrewEliminated[i] ? "OUT"
                         : (s.Extracted == s.Total && s.Total > 0 ? "away" : $"{s.Alive}/{s.Total} up");

@@ -262,7 +262,7 @@ namespace Ouroboros.AI
             if (gm.ExtractionOpen)
             {
                 int crewCarried = gm.GetTeamCarried(me.Team);
-                bool rich = gm.RichestTeam == me.Team || crewCarried * 2 >= gm.Config.lootQuota;
+                bool rich = gm.RichestTeam == me.Team || crewCarried * 2 >= gm.LootQuota; // [v0.13] gm.Config.lootQuota
                 var exit = PickExit(preferCentral: crewCarried <= 0 || rich);
                 if (exit != null)
                 {

@@ -64,6 +64,39 @@ own, not a replacement for artists, composers, voice actors or cultural consulta
 Still open in M4 and not solvable in code: real character and environment art, composed music, recorded
 voice, the cultural review named in 4.1, and the visual language of the hack signs.
 
+### After your first run (v0.14, code complete, not play-tested beyond the main menu)
+
+You ran the project and the main menu came up, which confirms the code compiles in Unity and through the
+Fusion weaver. Everything below was written after that and has only been through the offline checks.
+
+| Request | State |
+|---------|-------|
+| Menu text fit | Fixed. The title was wider than its column; columns are now sized from the screen |
+| Bigger, indoor, multi-level map | Done in code as a new map, the **Galleria**: a two-level mall around a bank, 220 by 180 m against the Freeport's 140 by 140. A central atrium, four concourses, four anchor wings (Bank, Luxe Wing, Market Hall, Services), four corner blocks of shops with staff corridors, four yards with a crew gate each, and an upper level of walkways and four secure rooms. 83 named zones. The Freeport is still there |
+| Multiple vaults behind locked rooms | Eleven vaults. Main Vault (passcode, laser corridor, breachable wall), Safe Deposit (red keycard), Cash Cage (blue keycard), Auction Strongroom (lockdown override or breachable wall), Cold Store (rival's ID card), Stockroom (maglocked), Server Vault (laser doors), and a safe in each of the four halls |
+| Roaming and stationary security | Two patrols (concourses and upper galleries), thirteen guard posts including elites at the vaults, snipers on the galleries, cameras, turrets, laser grids, shutters |
+| Points of interest, loot drops and events | Zones are named on the HUD. A public schedule runs each match: an armoured delivery in the Truck Bay, a supply drop in the Atrium, a power failure, and the Main Vault's time lock releasing. Each is announced before it happens and marked on the HUD |
+| More modelled pieces | Fifteen mall props, ten breakable kinds, a camera, a laser grid, a maglock door, an armoured truck |
+| Destructibles with loot | About 120 containers: display cases, vending machines, cash machines, tills, lockers, crates, and armoured strongboxes and safes |
+| Gear to solve puzzles | Every specialist carries a gadget chosen in the lobby. Each obstacle has more than one answer, and each answer is a piece of gear, a skill or a route |
+| Damage indicators | Floating numbers on every hit you land, yellow for headshots, red for the final hit |
+| Death summary | A recap naming the final blow and every source of damage that life, with amounts, hits and shares |
+
+How gear opens the building:
+
+| Obstacle | Ways through |
+|----------|--------------|
+| Laser grid | EMP (Cipher ability, Spider sabotage, EMP Emitter gadget), hack its control box, cut the district's power, or power-slide under the lowest beam |
+| Maglocked staff door | Bypass Key gadget, or cut the district's power |
+| Weak wall, strongbox, safe | Breaching Kit gadget, the Smith's breaching charge, any explosive, or a single hit of 40 or more |
+| Shutter | Hack its control box, from either side |
+| Vault doors | Keycard found elsewhere, passcode from a note, a rival's ID card, or a loud lockdown override. Two vaults can also be entered through a weak wall |
+| Upper level without stairs | Atrium lift pads (hack), Grapple Line gadget, the Smith's grapple, the Spider's climb, or killing the Atrium's gravity |
+
+What I could not check without Unity, in the order I would test it: the NavMesh across two levels, the frame
+rate with this many objects and lights, bots finding their way through a building this size, and the
+balance of about 120 loot containers against the getaway quota (set to 6000 on this map).
+
 ### M5 progress (code complete, not yet play-tested)
 
 M5 was started at your request before the first play session. Everything here compiles and the rules are
@@ -367,18 +400,17 @@ Decision 2 affects the local `ViewMode.cs`: if it is a first/third-person toggle
 
 ## 7. What is needed from you next
 
-1. Open the project in Unity 6000.4 and confirm it compiles. Nothing since M0 has been through the Fusion weaver.
-2. Run **Ouroboros > Setup > Recreate Freeport Map** (or **Create Freeport Map (M2)** if the scene does not
-   exist yet). It applies the prefab upgrades, the devices and gravity zones, the art pass, the map build-out
-   and the per-weapon handling values.
-3. Press Play and choose **Solo** on the main menu. That needs no Photon connection.
-4. Work through sections 7e to 7i of `PHASE0_BRINGUP.md` and list what breaks.
+1. Run **Ouroboros > Setup > Create Galleria Map (M6)**. It refreshes the assets (gadgets, weapon handling,
+   models) and builds the `Galleria` scene. Expect it to take a while: it places several thousand objects
+   and bakes a two-level NavMesh.
+2. With the Galleria scene open, press Play and choose **Solo**.
+3. Work through section 7j of `PHASE0_BRINGUP.md` first, then 7e to 7i, and list what breaks.
+4. Tell me the frame rate. If it is low, the first cuts are the ceiling lights and the number of props.
 5. Find native speakers of Nigerian Pidgin, Swahili or Sheng, Twi and isiZulu to rewrite the crew radio lines
    in `Assets/Scripts/UI/CrewCallouts.cs`, and someone who can review the artefact names and stories.
 
-M1 to M5 are code complete as far as code can take them, and none has been play-tested. Five milestones of
-untested work is a real risk: the first play session will find bugs, and some will be in the oldest layers.
-The next milestone should be that session and its fixes, not M6.
+Only the main menu has been seen running. The first full session will find bugs, and some will be in the
+oldest layers. The next milestone should be that session and its fixes.
 
 Notes on the repository as of the M2 work:
 - `main` holds M0, M1 and your Unity project state ("Squashed local work"). M2 is on `claude/awesome-darwin-awl360`.

@@ -97,11 +97,15 @@ namespace Ouroboros.EditorTools
         // ------------------------------------------------------------------
         // Part helpers. A prop is a root at a floor position with a yaw; parts are placed in its local space.
 
+        /// <summary>(v0.14) Height of the floor props are being placed on. 0 for a ground floor.</summary>
+        private static float s_propY = 0f;
+
         private static Transform Prop(Transform parent, string name, float x, float z, float yaw)
         {
             var t = new GameObject(name).transform;
             t.SetParent(parent);
-            t.position = new Vector3(x, 0f, z);
+            // [v0.13] t.position = new Vector3(x, 0f, z);
+            t.position = new Vector3(x, s_propY, z); // (v0.14) props can stand on an upper floor
             t.rotation = Quaternion.Euler(0f, yaw, 0f);
             return t;
         }
@@ -121,6 +125,8 @@ namespace Ouroboros.EditorTools
             {
                 Object.DestroyImmediate(go.GetComponent<Collider>());
                 go.layer = DecorLayer;
+                // (v0.14) Decoration never moves, so it can be batched. The NavMesh bake skips it by layer, not by this flag.
+                GameObjectUtility.SetStaticEditorFlags(go, StaticEditorFlags.BatchingStatic);
                 var renderer = go.GetComponent<Renderer>();
                 if (color.a < 0.99f || glow) renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             }

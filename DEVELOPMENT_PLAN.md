@@ -194,6 +194,16 @@ Awaiting in-engine validation: PHASE0_BRINGUP.md section 7h.
 
 Awaiting in-engine validation: PHASE0_BRINGUP.md section 7i.
 
+### v0.14 — the Galleria, breakables, gadgets, damage numbers and the death recap
+- **Menu**: title and columns sized from the screen (`GameMenu.FitToScreen`).
+- **Damage numbers and death recap**: `Core/DamageLog.cs` (unit-tested), `Combat/DamageContext.cs`, `NetworkPlayer.DamageDealt` / `DeathReported`, `UI/DamageNumbers.cs`, `UI/DeathRecap.cs`. Guards, turrets, traps, explosions, fire and lasers are named sources.
+- **Breakables**: `Interaction/Breakable.cs` (ten kinds, armour, loot, dormant until an event), `Art/BreakableModels.cs`. Explosions damage them.
+- **Gear puzzles**: `Equipment/GadgetTool.cs` and `Data.GadgetType` (Breaching Kit, EMP Emitter, Bypass Key, Loot Scanner, Grapple Line), a gadget row in the lobby picker, `Interaction/LaserGrid.cs`, `Interaction/MagLockDoor.cs`, `LootObjective.alsoOpenedBy`.
+- **Map systems**: `GameMode/MapZone.cs`, `GameMode/MapEventDirector.cs`, `UI/MapHUD.cs` (zone name, event markers, scanner markers), camera model.
+- **The Galleria**: `Tools/mapgen/galleria.py` (generator and checks), `Assets/Editor/OuroborosGalleriaLayout.cs` (generated), `OuroborosGalleriaBuilder.cs`, `OuroborosMallProps.cs` (fifteen interior props). Menu **Create Galleria Map (M6)**.
+
+Awaiting in-engine validation: PHASE0_BRINGUP.md section 7j.
+
 ### Phase 5 — Meta
 - Lobby scene with class picker (`NetworkPlayer.RequestClass` is in place), session browser, late-join handling, host migration.
 - Progression/cosmetics via `ClassData`/`EquipmentData`.
