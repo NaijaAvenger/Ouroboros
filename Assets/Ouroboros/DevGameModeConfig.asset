@@ -14,15 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Ouroboros.Data.GameModeConfig
   modeName: Dev Extraction Heist
   modeDescription: Short solo-friendly rules for Phase 0 testing.
-  matchDuration: 300
+  matchDuration: 480
   preMatchCountdown: 5
   minPlayersToStart: 1
   maxPlayers: 16
   allowLateJoin: 1
   autoStart: 1
   allowClassChangeBeforeMatch: 1
+  allowAbilitiesBeforeMatch: 0
   numberOfTeams: 4
-  playersPerTeam: 4
+  playersPerTeam: 3
   allowTeamSwitching: 0
   allowFriendlyFire: 0
   objectivesToComplete: 3
@@ -32,7 +33,7 @@ MonoBehaviour:
   extractionTime: 6
   requireWholeTeamForExtraction: 0
   extractionPointActivationDelay: 30
-  extractionWindowDuration: 60
+  extractionWindowDuration: 120
   extractionReactivationDelay: 30
   extractionContestable: 1
   requireLootToExtract: 0
@@ -41,8 +42,37 @@ MonoBehaviour:
   pointsPerExtraction: 500
   pointsPerTeamMemberExtracted: 100
   pointsPerLoot: 1
+  alarmDecayPerSecond: 1.5
+  alarmSuspiciousThreshold: 25
+  alarmAlertThreshold: 50
+  alarmLockdownThreshold: 80
+  lockdownHoldSeconds: 45
+  lockdownExtractionTimeMultiplier: 1.5
+  alarmOnObjectiveCompleted: 20
+  alarmOnObjectiveStage: 10
+  alarmOnBreach: 30
+  alarmOnCameraSpotPerSecond: 8
+  alarmOnGuardEngaged: 15
+  alarmOnKill: 10
+  lootWeightMaxSlowdown: 0.25
+  lootWeightReference: 1500
+  caseCarrySpeedMultiplier: 0.7
+  pointsPerCaseLoot: 1.5
+  lootQuota: 2500
+  sideExitPayout: 0.6
+  scoreIsBankedLootOnly: 1
+  maxCarriedItems: 4
+  revealRichestCrew: 1
+  lockdownOnGetaway: 1
+  humanAssignment: 0
+  fillWithBots: 1
+  botSkill: 0.5
+  respawnRequiresLivingCrewmate: 1
+  crewWipeRedeployDelay: 15
+  maxCrewWipes: 1
+  configVersion: 2
   allowRespawning: 1
-  respawnDelay: 5
-  maxRespawns: 10
+  respawnDelay: 8
+  maxRespawns: -1
   respawnDuringExtractionPhase: 0
   dropLootOnDeath: 1

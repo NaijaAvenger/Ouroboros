@@ -15,7 +15,7 @@ MonoBehaviour:
   equipmentName: Service Pistol
   description: Standard sidearm.
   equipmentIcon: {fileID: 0}
-  equipmentPrefab: {fileID: 0}
+  equipmentPrefab: {fileID: 5984703934057503185, guid: 5c1a4f0bb7e902243898ebfbe8e42fe4, type: 3}
   slotType: 1
   rarity: 0
   kind: 0
@@ -33,6 +33,29 @@ MonoBehaviour:
   hitMask:
     serializedVersion: 2
     m_Bits: 4294967295
+  noiseRadius: 25
+  headshotMultiplier: 1.6
+  falloffStart: 15
+  falloffEnd: 40
+  falloffMinFraction: 0.55
+  bloomPerShot: 0.55
+  bloomMax: 2.4
+  bloomRecoveryPerSecond: 7
+  recoilPitch: 1
+  recoilYaw: 0.25
+  recoilRecoveryPerSecond: 10
+  feelVersion: 2
+  adsZoom: 1.15
+  adsSpreadMultiplier: 0.45
+  adsMoveMultiplier: 0.9
+  adsRecoilMultiplier: 0.8
+  adsSeconds: 0.1
+  swapSeconds: 0.25
+  adsPosition: {x: 0, y: -0.135, z: 0.36}
+  viewPosition: {x: 0.2, y: -0.2, z: 0.45}
+  handPosition: {x: 0, y: 0.02, z: 0.12}
+  viewEuler: {x: 0, y: -90, z: 0}
+  viewScale: 1
   projectilePrefab: {fileID: 0}
   projectileSpeed: 25
   projectileGravity: 0

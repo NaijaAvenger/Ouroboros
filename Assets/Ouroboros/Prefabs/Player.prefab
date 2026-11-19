@@ -92,6 +92,72 @@ AudioListener:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 141537292556561556}
   m_Enabled: 1
+--- !u!1 &462283468063058382
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8817370613394552392}
+  - component: {fileID: 1478731719429781677}
+  - component: {fileID: 1207902511036717897}
+  m_Layer: 0
+  m_Name: Hitbox_Head
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8817370613394552392
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 462283468063058382}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 1.752, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 164292424060268750}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1478731719429781677
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 462283468063058382}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 1014831617, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Fusion.Runtime.dll::Fusion.Hitbox
+  Type: 2
+  SphereRadius: 0.24800001
+  CapsuleRadius: 0
+  BoxExtents: {x: 0, y: 0, z: 0}
+  CapsuleExtents: 0
+  Offset: {x: 0, y: 0, z: 0}
+  Root: {fileID: 6081214174875167755}
+  GizmosColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+--- !u!114 &1207902511036717897
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 462283468063058382}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b2d17b14b154ed0bbaa1af7b7e74c01, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Ouroboros.Combat.HitZone
+  zone: 1
 --- !u!1 &1354965132410901328
 GameObject:
   m_ObjectHideFlags: 0
@@ -103,13 +169,14 @@ GameObject:
   - component: {fileID: 164292424060268750}
   - component: {fileID: 3115328401348490824}
   - component: {fileID: 6813887278030201215}
-  - component: {fileID: 5742166751925453876}
   - component: {fileID: 8173831752575094567}
   - component: {fileID: 6863533096427939780}
   - component: {fileID: 2240672581749257764}
   - component: {fileID: 3735426592794357832}
   - component: {fileID: 2072752932934950027}
   - component: {fileID: 1765059726727938004}
+  - component: {fileID: 1535602547625364475}
+  - component: {fileID: 6081214174875167755}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -132,6 +199,8 @@ Transform:
   m_Children:
   - {fileID: 2353521936123333526}
   - {fileID: 1350694285949618663}
+  - {fileID: 3773979607745650049}
+  - {fileID: 8817370613394552392}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!143 &3115328401348490824
@@ -177,52 +246,12 @@ MonoBehaviour:
   Flags: 262402
   NestedObjects: []
   NetworkedBehaviours:
-  - {fileID: 5742166751925453876}
+  - {fileID: 1535602547625364475}
   - {fileID: 8173831752575094567}
   - {fileID: 6863533096427939780}
   - {fileID: 1765059726727938004}
+  - {fileID: 6081214174875167755}
   ForceRemoteRenderTimeframe: 0
---- !u!114 &5742166751925453876
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1354965132410901328}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 158639473, guid: e725a070cec140c4caffb81624c8c787, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Fusion.Runtime.dll::Fusion.NetworkTransform
-  _stateAuthorityChangeErrorCorrectionDelta: 0
-  SyncScale: 0
-  SyncParent: 0
-  _autoAOIOverride: 1
-  ConfigFlags: 0
-  PhysicsSettings:
-    ForecastEnabled: 1
-    DebugPhysics: 0
-    GravityForecast: 2
-    MaxExtrapolationTime: 0.15
-    MinLinearDetectedError: 0.02
-    MinAngularDetectedError: 3
-    DeadzoneVelocityMode: 0
-    MaxLinearError: 0
-    MaxAngularError: 0
-    LowCorrectionProgressThreshold: 0.015
-    HighErrorSimilarityThreshold: 1
-    MaxErrorTotalTime: 0.5
-    MaxRemoteSleepIgnoreTime: 0.5
-    ErrorCorrectionType: 0
-    LinearVelCorrectionMul: 1
-    AngularVelCorrectionMul: 1
-    PositionCorrectionLerp: 0.15
-    RotationCorrectionLerp: 0.15
-    Spring: 75
-    Damper: 2
-    MinImpactfulCollisionAlignment: 0.3
-    ImpactStartCorrectionTime: 0.1
-    ImpactCorrectionTimeComplete: 0.3
 --- !u!114 &8173831752575094567
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -254,6 +283,13 @@ MonoBehaviour:
     _length: 0
     _data:
       Data: 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+  _KeycardMask: 0
+  _EnemyCards: 0
+  _IsBot:
+    RawValue: 0
+  _CarriedItemIds: 
+  _CarriedItemCount: 0
+  _LastDamageOrigin: {x: 0, y: 0, z: 0}
   playerModel: {fileID: 2353521936123333526}
   eyeHeight: 1.6
 --- !u!114 &6863533096427939780
@@ -274,6 +310,23 @@ MonoBehaviour:
   gravity: -9.81
   defaultMovementSpeed: 5
   groundingForce: -2
+  slideDuration: 0.8
+  slideCooldown: 1.2
+  slideSpeedMultiplier: 1.5
+  slideHeight: 1
+  mantleMaxHeight: 2.2
+  mantleDuration: 0.35
+  glideFallSpeed: 1.5
+  glideSpeedBonus: 1.15
+  wallClimbSpeed: 3.5
+  wallClimbStaminaPerSecond: 20
+  grappleSpeed: 22
+  grappleCooldownSeconds: 6
+  worldMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  cameraStandHeight: 1.6
+  cameraSlideHeight: 1
 --- !u!114 &2240672581749257764
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -332,6 +385,51 @@ MonoBehaviour:
   _SlotItemIds: 
   _Magazine: 
   _Reserve: 
+  _FireCount: 0
+  _LastShotSlot: 0
+  _LastShotPoint: {x: 0, y: 0, z: 0}
+  _LastShotHit:
+    RawValue: 0
+  _Bloom: 0
+  _BloomTick: 0
+--- !u!114 &1535602547625364475
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1354965132410901328}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 378411a89480da345945c2f888327a2d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Fusion.Unity::Fusion.NetworkCharacterController
+  _stateAuthorityChangeErrorCorrectionDelta: 0
+  gravity: -20
+  jumpImpulse: 8
+  acceleration: 10
+  braking: 10
+  maxSpeed: 2
+  rotationSpeed: 15
+--- !u!114 &6081214174875167755
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1354965132410901328}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 1039544458, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Fusion.Runtime.dll::Fusion.HitboxRoot
+  Config: 3
+  BroadRadius: 1.5
+  Offset: {x: 0, y: 1, z: 0}
+  GizmosColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+  Hitboxes:
+  - {fileID: 8111501612721243459}
+  - {fileID: 1478731719429781677}
 --- !u!1 &3491491278314470125
 GameObject:
   m_ObjectHideFlags: 0
@@ -422,3 +520,69 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1 &7049408834322395886
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3773979607745650049}
+  - component: {fileID: 8111501612721243459}
+  - component: {fileID: 4009559267290403016}
+  m_Layer: 0
+  m_Name: Hitbox_Body
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3773979607745650049
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7049408834322395886}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.752, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 164292424060268750}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8111501612721243459
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7049408834322395886}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 1014831617, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Fusion.Runtime.dll::Fusion.Hitbox
+  Type: 1
+  SphereRadius: 0
+  CapsuleRadius: 0
+  BoxExtents: {x: 0.38, y: 0.752, z: 0.3}
+  CapsuleExtents: 0
+  Offset: {x: 0, y: 0, z: 0}
+  Root: {fileID: 6081214174875167755}
+  GizmosColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+--- !u!114 &4009559267290403016
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7049408834322395886}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b2d17b14b154ed0bbaa1af7b7e74c01, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Ouroboros.Combat.HitZone
+  zone: 0
