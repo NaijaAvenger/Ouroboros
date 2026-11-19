@@ -64,19 +64,24 @@ namespace Ouroboros.GameMode
         private void ApplyLook()
         {
             var item = Item;
-            if (item == null) return;
+            // [v0.21] if (item == null) return;   // loose cash kept the prefab's sphere
             // [v0.11] tinted the prefab's sphere by tier and scaled it by value
             // (v0.12) named items get a model of the thing itself, on a ring in the tier colour
-            var sphere = GetComponentInChildren<Renderer>();
-            if (sphere != null) sphere.enabled = false;
+            // [v0.21] var sphere = GetComponentInChildren<Renderer>();
+            // [v0.21] if (sphere != null) sphere.enabled = false;
+            // (v0.22) every pickup gets a built model, so the prefab's own shape is never what is seen
+            foreach (var placeholder in GetComponentsInChildren<Renderer>()) placeholder.enabled = false;
 
             // The prefab is scaled down (it was a small sphere); build the model in real metres underneath it.
             var holder = new GameObject("Model").transform;
             holder.SetParent(transform, false);
             Vector3 s = transform.lossyScale;
             holder.localScale = new Vector3(1f / Mathf.Max(0.01f, s.x), 1f / Mathf.Max(0.01f, s.y), 1f / Mathf.Max(0.01f, s.z));
-            float size = item.tier == Data.LootTier.Legendary ? 1.35f : (item.tier == Data.LootTier.Rare ? 1.15f : 1f);
-            var model = Art.ArtefactBuilder.Build(holder, item.shape, item.tier);
+            // [v0.21] float size = item.tier == Data.LootTier.Legendary ? 1.35f : (item.tier == Data.LootTier.Rare ? 1.15f : 1f);
+            // [v0.21] var model = Art.ArtefactBuilder.Build(holder, item.shape, item.tier);
+            float size = item == null ? 1.25f : item.tier == Data.LootTier.Legendary ? 1.35f : (item.tier == Data.LootTier.Rare ? 1.15f : 1f);
+            var model = item != null ? Art.ArtefactBuilder.Build(holder, item.shape, item.tier)
+                                     : Art.ArtefactBuilder.BuildCash(holder, Value); // (v0.22) loose money: notes and coins, by how much
             model.localScale = Vector3.one * size;
             model.gameObject.AddComponent<Art.PickupSpin>();
             Core.Juice.PopIn(model, 0.4f); // (v0.15)

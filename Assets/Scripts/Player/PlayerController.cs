@@ -209,6 +209,16 @@ namespace Ouroboros.Player
                 input.Buttons.Set((int)Core.InputButtons.Interact, interact);
             }
 
+            // (v0.22) Before the match is live nobody moves, shoots or uses anything: that time is for choosing a
+            //         class and reading the briefing. Looking around still works. Gravity still applies, so a
+            //         player who spawned a step above the floor settles onto it. The state is networked, so the
+            //         owning client predicts the same freeze the host enforces, and bots are held by it too.
+            if (IsHeldBeforeMatch)
+            {
+                input.Move = default;
+                input.Buttons = default;
+            }
+
             NetworkButtons pressed = input.Buttons.GetPressed(PreviousButtons);
             PreviousButtons = input.Buttons;
 
@@ -357,6 +367,18 @@ namespace Ouroboros.Player
 
         /// <summary>The local player's controller, or null. Set while its object is spawned on this peer.</summary>
         public static PlayerController Local { get; private set; }
+
+        /// <summary>(v0.22) True while a match exists and has not started: waiting for players, or counting down.</summary>
+        public static bool IsHeldBeforeMatch
+        {
+            get
+            {
+                var gm = GameMode.ExtractionHeistGameMode.Instance;
+                if (gm == null || gm.Object == null) return false; // a scene with no game mode (the test arena): free movement
+                return gm.CurrentState == GameMode.ExtractionHeistGameMode.GameState.WaitingForPlayers
+                    || gm.CurrentState == GameMode.ExtractionHeistGameMode.GameState.PreMatch;
+            }
+        }
 
         /// <summary>0 from the hip, 1 with the sights fully up. Eased, for the view model and the crosshair.</summary>
         public float AimBlend { get; private set; }

@@ -254,7 +254,8 @@ namespace Ouroboros.EditorTools
             cfg.modeName = "Dev Extraction Heist";
             cfg.modeDescription = "Short solo-friendly rules for Phase 0 testing.";
             cfg.matchDuration = 300f;
-            cfg.preMatchCountdown = 5f;
+            // [v0.21] cfg.preMatchCountdown = 5f;
+            cfg.preMatchCountdown = 10f; // (v0.22) ten seconds to choose a class and read the briefing
             cfg.minPlayersToStart = 1;
             cfg.autoStart = false; // show the lobby / class picker until the host presses "Start match now"
             cfg.extractionPointActivationDelay = 30f;
@@ -271,10 +272,25 @@ namespace Ouroboros.EditorTools
         /// <summary>(v0.10, M2) Brings a config asset made by an earlier version onto the quota-race rules, once.</summary>
         private static void MigrateConfig(Data.GameModeConfig cfg)
         {
-            if (cfg.configVersion >= 2) return;
-            ApplyRunRules(cfg);
-            EditorUtility.SetDirty(cfg);
-            Debug.Log("[Ouroboros] DevGameModeConfig migrated to the M2 rules: crews of 3, loot quota, getaway, crew wipes, bots fill empty seats.");
+            // [v0.21] if (cfg.configVersion >= 2) return;
+            // [v0.21] ApplyRunRules(cfg);
+            // [v0.21] EditorUtility.SetDirty(cfg);
+            // [v0.21] Debug.Log("[Ouroboros] DevGameModeConfig migrated to the M2 rules: ...");
+            if (cfg.configVersion < 2)
+            {
+                ApplyRunRules(cfg);
+                EditorUtility.SetDirty(cfg);
+                Debug.Log("[Ouroboros] DevGameModeConfig migrated to the M2 rules: crews of 3, loot quota, getaway, crew wipes, bots fill empty seats.");
+            }
+            if (cfg.configVersion < 3)
+            {
+                // (v0.22) the countdown is now the class-select and briefing phase: ten seconds, starting by itself
+                cfg.preMatchCountdown = Mathf.Max(cfg.preMatchCountdown, 10f);
+                cfg.autoStart = true;
+                cfg.configVersion = 3;
+                EditorUtility.SetDirty(cfg);
+                Debug.Log("[Ouroboros] DevGameModeConfig: pre-match countdown set to 10 s, starting as soon as the player has joined.");
+            }
         }
 
         /// <summary>Dev values for "The Run": short enough to iterate on, long enough to reach the getaway.</summary>

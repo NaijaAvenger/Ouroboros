@@ -98,6 +98,23 @@ rivals steal the deposit. That difference is the biggest gap. In order of what I
 Already here in some form: several ways into every vault, gadgets, map events (their game-show events),
 low gravity, destructible containers, a carried objective, loot dropped on death.
 
+### Class select, loot models and cameras (v0.22, code complete, not seen running)
+
+| Request | State |
+|---------|-------|
+| Players can move during class select | Fixed. Nobody moves, shoots or uses anything until the match is live. It is enforced on the host and predicted on the client, and it holds bots too |
+| Load, 10 seconds to choose with the helper on screen, then play | The countdown is 10 seconds and starts by itself. The briefing is on the class-select screen, under the cards, with the countdown in large type. It no longer appears after the start |
+| Pink balls and boxes | Loose cash, ID cards and the loot case were still the prefab's own shape. Each now builds a model: notes and coins by value, a card on a lanyard in crew colour, a brass-cornered case. The one named item that shared a model has its own. The player's capsule is never shown either |
+| Cameras announce and mark | A feed line for every crew names the player and the zone. A marker sits over them for every crew while the camera has them. This puts back, for cameras only, what v0.18 took away |
+| Cameras send guards | The five nearest guards are sent to the spot and keep coming after the player leaves view. Snipers and a vault's own guards stay put |
+
+Why things were pink, as far as I can tell without the project open: Unity draws a missing material pink, and
+a prefab can only keep a material that was saved as an asset. Before v0.13 the builder gave prefab placeholders
+materials that existed only in memory, so prefabs made then lost them, while scene objects kept theirs because a
+scene saves its own. That fits what you saw (only spawned things were pink) but I have not confirmed it.
+Either way the fix does not depend on the cause: anything spawned from a prefab now hides the prefab's shape
+and builds its own model.
+
 ### Grand Vaults (v0.21, code complete, not seen running)
 
 The vault was a box you hacked. It is now what you described from Hyenas: a room behind a locked door, the
@@ -161,7 +178,7 @@ and spectating were on this list and arrived in v0.20.)
 | Request | State |
 |---------|-------|
 | No icon over enemy players | The icon was the "revealed" diamond, and almost anything set it: a camera, a laser grid, a sniper taking aim. Those no longer mark anyone. Crewmates keep their markers |
-| Enemy indicators only in certain scenarios | Two: your own crew tagged them with a reveal ability (only your crew sees it), or they carry loot for the richest crew during the getaway (everyone sees it). A crewmate's ping is a third, but it marks a place, not the player |
+| Enemy indicators only in certain scenarios | Two: your own crew tagged them with a reveal ability (only your crew sees it), or they carry loot for the richest crew during the getaway (everyone sees it). A crewmate's ping is a third, but it marks a place, not the player. Since v0.22 there is a fourth: a security camera has them in view (everyone sees it, while it lasts) |
 | Cash-out spots easier to find | A coin-and-arrow marker turning and bobbing over every station, and a gold outline that is always on |
 | Exits as lift doors | Every exit is a lift car. Doors shut and red until the getaway is called, then they slide open and everything goes green. They shut again while an exit resets |
 | Nearest exit on the HUD | A line with the nearest open exit's name, distance and payout, and a marker on it through walls |
@@ -543,7 +560,7 @@ Decision 2 affects the local `ViewMode.cs`: if it is a first/third-person toggle
    models) and builds the `Galleria` scene. Expect it to take a while: it places several thousand objects
    and bakes a two-level NavMesh.
 2. With the Galleria scene open, press Play and choose **Solo**.
-3. Work through sections 7q, 7p, 7o, 7n, 7m and 7l of `PHASE0_BRINGUP.md` first (the newest work), then 7j and 7k, then 7e to 7i,
+3. Work through sections 7r, 7q, 7p, 7o, 7n, 7m and 7l of `PHASE0_BRINGUP.md` first (the newest work), then 7j and 7k, then 7e to 7i,
    and list what breaks. The Grand Vaults (v0.21) need **Recreate Galleria Map**; "Update Galleria Map" does not add them.
 4. Tell me the frame rate. If it is low, the first cuts are the ceiling lights and the number of props.
 5. Find native speakers of Nigerian Pidgin, Swahili or Sheng, Twi and isiZulu to rewrite the crew radio lines

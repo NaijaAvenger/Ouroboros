@@ -8,11 +8,12 @@ namespace Ouroboros.UI
     /// drawn over each teammate's head and visible through walls. When a teammate is off screen the marker
     /// slides to the screen edge in their direction. A teammate who is down shows a red marker where they fell.
     ///
-    /// Rule of thumb for the player: a marker means friend. Rivals never get one, with two exceptions, both
+    /// Rule of thumb for the player: a marker means friend. Rivals never get one, with three exceptions, all
     /// shown as a bare magenta diamond (v0.18):
     ///  - your own crew tagged them with a reveal ability (Recon Drone, Net Sight, Data Mine);
     ///  - they are carrying loot for the richest crew during the getaway.
-    /// Being seen by a camera, a laser grid or a sniper no longer marks anyone.
+    ///  - (v0.22) a security camera has them in view: every crew sees the marker, for as long as it does.
+    /// A laser grid or a sniper's aim does not mark anyone.
     ///
     /// Built in code with UI Toolkit and added automatically by <see cref="HeistHUD"/>. Can be switched off in
     /// the settings (<c>Core.GameSettings.TeammateMarkers</c>).

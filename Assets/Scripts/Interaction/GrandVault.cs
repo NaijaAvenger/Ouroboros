@@ -179,6 +179,13 @@ namespace Ouroboros.Interaction
             return best;
         }
 
+        /// <summary>(v0.22) True if <paramref name="agent"/> is one of a vault's own guards. State authority only: that is where the lists are.</summary>
+        public static bool IsVaultGuard(AI.BaseAIAgent agent)
+        {
+            for (int i = 0; i < All.Count; i++) if (All[i] != null && All[i].detail.Contains(agent)) return true;
+            return false;
+        }
+
         /// <summary>The vault whose key <paramref name="player"/> carries, or null.</summary>
         public static GrandVault KeyCarriedBy(Network.NetworkPlayer player)
         {

@@ -90,8 +90,12 @@ namespace Ouroboros.Player
             // [v0.11] if (!visible) return;
             if (model == null)
             {
-                modelRenderer.enabled = visible; // no class yet: fall back to the capsule
-                if (!visible) return;
+                // [v0.21] modelRenderer.enabled = visible; // no class yet: fall back to the capsule
+                // [v0.21] if (!visible) return;
+                // (v0.22) No class yet: show nothing for those few frames. The capsule is the prefab's own shape,
+                //         and in a project whose prefab materials were never saved it draws pink.
+                modelRenderer.enabled = false;
+                return;
             }
             else
             {

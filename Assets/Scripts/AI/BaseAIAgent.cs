@@ -119,6 +119,20 @@ namespace Ouroboros.AI
         public Vector3 EyePosition => transform.position + Vector3.up * eyeHeight;
         public Vector3 LastKnownTargetPosition => lastKnownTargetPosition;
         public bool HasLastKnownPosition => hasLastKnownPosition;
+
+        /// <summary>
+        /// (v0.22) Sends this guard to look at <paramref name="position"/>: it becomes the place they last knew
+        /// a target to be, so they walk there and search, exactly as if they had seen someone there themselves.
+        /// A guard already fighting someone it can see is left to it. State authority only.
+        /// </summary>
+        public virtual bool Dispatch(Vector3 position)
+        {
+            if (Object == null || !Object.HasStateAuthority || !IsAlive) return false;
+            if (currentTargetPlayer != null && currentTargetPlayer.Object != null && currentTargetPlayer.IsActiveInMatch) return false;
+            lastKnownTargetPosition = position;
+            hasLastKnownPosition = true;
+            return true;
+        }
         public float AttackRange => attackRange;
         public float DetectionRange => detectionRange;
 

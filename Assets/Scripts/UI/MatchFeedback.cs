@@ -44,6 +44,13 @@ namespace Ouroboros.UI
             Network.NetworkPlayer.Pinged += OnPinged;
             Network.NetworkPlayer.Revived += OnRevived;
             Interaction.GrandVault.Moment += OnVaultMoment; // (v0.21)
+            Interaction.SecurityCamera.Spotted += OnCameraSpotted; // (v0.22)
+        }
+
+        /// <summary>(v0.22) Being picked up by a camera has a sound of its own for the one who was seen.</summary>
+        private void OnCameraSpotted(Interaction.SecurityCamera camera, Network.NetworkPlayer who)
+        {
+            if (who != null && who == Network.NetworkPlayer.FindLocal()) Play(Core.ProceduralSfx.CashAlarm, 0.5f);
         }
 
         /// <summary>(v0.21) A vault door opening is heard by every crew wherever they are; the rest is heard at the vault.</summary>
@@ -168,6 +175,7 @@ namespace Ouroboros.UI
             Network.NetworkPlayer.Pinged -= OnPinged;
             Network.NetworkPlayer.Revived -= OnRevived;
             Interaction.GrandVault.Moment -= OnVaultMoment;
+            Interaction.SecurityCamera.Spotted -= OnCameraSpotted;
             Equipment.Projectile.Exploded -= OnExploded;
             GameMode.ExtractionHeistGameMode.StateChanged -= OnStateChanged;
             GameMode.ExtractionHeistGameMode.ExtractionOpened -= OnExtractionOpened;

@@ -143,6 +143,7 @@ namespace Ouroboros.UI
             GameMode.CashOutStation.Moment += OnCashOutMoment; // (v0.16)
             Network.NetworkPlayer.Revived += OnRevived; // (v0.17)
             Interaction.GrandVault.Moment += OnVaultMoment; // (v0.21)
+            Interaction.SecurityCamera.Spotted += OnCameraSpotted; // (v0.22)
             Network.NetworkPlayer.Jammed += OnJammed;
         }
 
@@ -158,6 +159,7 @@ namespace Ouroboros.UI
             GameMode.CashOutStation.Moment -= OnCashOutMoment;
             Network.NetworkPlayer.Revived -= OnRevived;
             Interaction.GrandVault.Moment -= OnVaultMoment;
+            Interaction.SecurityCamera.Spotted -= OnCameraSpotted;
             Network.NetworkPlayer.Jammed -= OnJammed;
             GameMode.ExtractionHeistGameMode.GetawayCalled -= OnGetawayCalled;
             GameMode.ExtractionHeistGameMode.CrewWiped -= OnCrewWiped;
@@ -1066,6 +1068,15 @@ namespace Ouroboros.UI
         {
             ShowBanner(EventLine(e).ToUpperInvariant());
             AddFeed(EventLine(e), LootColor);
+        }
+
+        /// <summary>(v0.22) A camera has someone: every crew is told who and where, and the one seen is told what is coming.</summary>
+        private void OnCameraSpotted(Interaction.SecurityCamera camera, Network.NetworkPlayer who)
+        {
+            if (who == null || who.Object == null) return;
+            string zone = GameMode.MapZone.NameAt(who.Position + Vector3.up);
+            AddFeed(zone.Length > 0 ? $"{who.DisplayName} spotted on camera in the {zone}" : $"{who.DisplayName} spotted on camera", CrewSkin.TextColour(who.Team));
+            if (who == local) ShowBanner("SPOTTED ON CAMERA - GUARDS ARE COMING, AND EVERY CREW CAN SEE YOU");
         }
 
         /// <summary>

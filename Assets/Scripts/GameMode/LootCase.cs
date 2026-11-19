@@ -37,6 +37,27 @@ namespace Ouroboros.GameMode
         public override void Spawned()
         {
             if (!All.Contains(this)) All.Add(this);
+            BuildModel(); // (v0.22)
+        }
+
+        private GameObject caseModel;
+
+        /// <summary>(v0.22) A hard case in place of the prefab's box. Hidden while carried: the carrier wears it on their back.</summary>
+        private void BuildModel()
+        {
+            foreach (var placeholder in GetComponentsInChildren<Renderer>()) placeholder.enabled = false;
+            var holder = new GameObject("Model").transform;
+            holder.SetParent(transform, false);
+            Vector3 s = transform.lossyScale;
+            holder.localScale = new Vector3(1f / Mathf.Max(0.01f, s.x), 1f / Mathf.Max(0.01f, s.y), 1f / Mathf.Max(0.01f, s.z));
+            var model = Art.ArtefactBuilder.BuildCase(holder);
+            model.gameObject.AddComponent<Art.PickupSpin>();
+            caseModel = holder.gameObject;
+        }
+
+        public override void Render()
+        {
+            if (caseModel != null && caseModel.activeSelf == IsCarried) caseModel.SetActive(!IsCarried);
         }
 
         public override void Despawned(NetworkRunner runner, bool hasState)

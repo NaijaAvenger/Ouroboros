@@ -55,6 +55,33 @@ namespace Ouroboros.AI
             sightings.Add(new Sighting { Position = position, Player = player, Time = Time.time, Priority = priority });
         }
 
+        private static readonly List<BaseAIAgent> dispatchScratch = new List<BaseAIAgent>();
+
+        /// <summary>
+        /// (v0.22) Sends the <paramref name="count"/> nearest guards to <paramref name="position"/>. Unlike a
+        /// sighting, which idle guards may or may not pick up, this is an order: they go, and they keep going
+        /// after whatever raised it has stopped. Snipers stay at their posts, and a Grand Vault's own guards
+        /// stay on their door. Returns how many went. State authority only.
+        /// </summary>
+        public static int DispatchNearest(Vector3 position, int count, float maxDistance = 150f)
+        {
+            dispatchScratch.Clear();
+            var agents = BaseAIAgent.All;
+            for (int i = 0; i < agents.Count; i++)
+            {
+                var a = agents[i];
+                if (a == null || a.Object == null || !a.IsAlive || a is SniperGuard) continue;
+                if (Interaction.GrandVault.IsVaultGuard(a)) continue;
+                if ((a.transform.position - position).sqrMagnitude > maxDistance * maxDistance) continue;
+                dispatchScratch.Add(a);
+            }
+            dispatchScratch.Sort((x, y) => (x.transform.position - position).sqrMagnitude.CompareTo((y.transform.position - position).sqrMagnitude));
+            int sent = 0;
+            for (int i = 0; i < dispatchScratch.Count && sent < count; i++) if (dispatchScratch[i].Dispatch(position)) sent++;
+            dispatchScratch.Clear();
+            return sent;
+        }
+
         public static void ReportNoise(Vector3 position, float radius)
         {
             Prune();

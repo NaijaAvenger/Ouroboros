@@ -30,6 +30,21 @@ namespace Ouroboros.Interaction
         [Tooltip("Players in stealth are not detected.")]
         [SerializeField] private bool respectStealth = true;
 
+        [Header("Being seen (v0.22)")]
+        [Tooltip("How many of the nearest guards are sent to where a player was seen.")]
+        [SerializeField] private int guardsSent = 5;
+        [Tooltip("While a player stays in view, guards are sent to their new position this often, in seconds.")]
+        [SerializeField] private float resendSeconds = 3f;
+        [Tooltip("A player seen again within this many seconds is not announced again, by any camera.")]
+        [SerializeField] private float announceCooldown = 10f;
+
+        /// <summary>(v0.22) Raised on every peer when a camera picks a player up: the camera, and who.</summary>
+        public static event System.Action<SecurityCamera, Network.NetworkPlayer> Spotted;
+
+        // State authority only: when each player was last announced (shared by all cameras) and last had guards sent by this one.
+        private static readonly System.Collections.Generic.Dictionary<Network.NetworkPlayer, float> lastAnnounced = new System.Collections.Generic.Dictionary<Network.NetworkPlayer, float>();
+        private readonly System.Collections.Generic.Dictionary<Network.NetworkPlayer, float> lastSent = new System.Collections.Generic.Dictionary<Network.NetworkPlayer, float>();
+
         [Networked] private TickTimer DisabledTimer { get; set; }
         [Networked] private NetworkBool Spotting { get; set; }
 
@@ -117,6 +132,7 @@ namespace Ouroboros.Interaction
                 p.ApplyTimedStatus(Core.StatusFlags.Revealed, revealDuration);
                 AI.AIBlackboard.ReportSighting(p.transform.position, p, priority: 0.9f); // v0.6: guards converge on camera spots
                 spotted++;
+                OnPlayerSeen(p); // (v0.22)
             }
             Spotting = spotted > 0;
             if (spotted > 0)
@@ -125,6 +141,39 @@ namespace Ouroboros.Interaction
                 float perSecond = gm != null ? gm.Config.alarmOnCameraSpotPerSecond : 8f;
                 GameMode.AlarmSystem.Raise(perSecond * Runner.DeltaTime * Core.GameConstants.ZONE_SCAN_INTERVAL_TICKS, name);
             }
+        }
+
+        /// <summary>
+        /// (v0.22) What being on camera costs, beyond the alarm:
+        ///  - every crew can see a marker over the player for as long as the camera has them, and a moment after;
+        ///  - every crew is told who was seen and where, once per player every few seconds;
+        ///  - the nearest guards are sent to the spot, and keep coming after the player has left the picture.
+        /// </summary>
+        private void OnPlayerSeen(Network.NetworkPlayer p)
+        {
+            // Renewed on every scan, so the marker lasts exactly as long as the camera's view of them.
+            float scanSeconds = Core.GameConstants.ZONE_SCAN_INTERVAL_TICKS * Runner.DeltaTime;
+            p.MarkFor(Core.TeamID.None, Mathf.Max(0.6f, scanSeconds * 2.5f));
+
+            float now = Time.time;
+            if (!lastSent.TryGetValue(p, out float sent) || now - sent >= resendSeconds || now < sent)
+            {
+                lastSent[p] = now;
+                AI.AIBlackboard.DispatchNearest(p.Position, guardsSent);
+            }
+            if (!lastAnnounced.TryGetValue(p, out float told) || now - told >= announceCooldown || now < told)
+            {
+                lastAnnounced[p] = now;
+                RPC_Spotted(p.Object.Id);
+            }
+        }
+
+        [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+        private void RPC_Spotted(NetworkId who)
+        {
+            Network.NetworkPlayer player = null;
+            if (Runner.TryFindObject(who, out NetworkObject obj) && obj != null) player = obj.GetComponent<Network.NetworkPlayer>();
+            if (player != null) Spotted?.Invoke(this, player);
         }
 
         [Rpc(RpcSources.StateAuthority, RpcTargets.All)]

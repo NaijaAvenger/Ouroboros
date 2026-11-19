@@ -277,6 +277,14 @@ Awaiting in-engine validation: PHASE0_BRINGUP.md section 7p.
 
 Awaiting in-engine validation: PHASE0_BRINGUP.md section 7q.
 
+### v0.22 — class select and briefing, loot models, cameras
+- **Before the match**: `PlayerController.IsHeldBeforeMatch` zeroes movement and buttons while the game mode is waiting or counting down (host and predicting client alike; bots too). `preMatchCountdown` is 10 s (asset, builder, config migration to version 3).
+- **Briefing**: on the class-select screen (`ClassPickerUI`), with a large countdown. `ObjectiveHUD` keeps its card only as the fallback for a match with no class selection, and no longer shows it after the start.
+- **Loot models**: `ArtefactBuilder.BuildCash`, `BuildCase`, `BuildIdCard`, and `LootShape.SeedArchive`. `LootDrop`, `IDCardDrop` and `LootCase` hide their prefab shapes and build these. `PlayerPresentation` no longer falls back to the prefab capsule.
+- **Cameras**: `SecurityCamera.OnPlayerSeen` marks the player for every crew while in view, announces them (`Spotted` event, once per player per 10 s) and sends the five nearest guards (`AIBlackboard.DispatchNearest`, `BaseAIAgent.Dispatch`), repeating every 3 s while they stay in view.
+
+Awaiting in-engine validation: PHASE0_BRINGUP.md section 7r.
+
 ### Phase 5 — Meta
 - Lobby scene with class picker (`NetworkPlayer.RequestClass` is in place), session browser, late-join handling, host migration.
 - Progression/cosmetics via `ClassData`/`EquipmentData`.

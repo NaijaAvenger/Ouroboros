@@ -75,14 +75,23 @@ namespace Ouroboros.Interaction
         {
             if (!All.Contains(this)) All.Add(this);
             if (Object.HasStateAuthority) LifeTimer = TickTimer.CreateFromSeconds(Runner, lifetime);
-            var r = GetComponentInChildren<Renderer>();
-            if (r != null)
-            {
-                var block = new MaterialPropertyBlock();
-                var c = Player.TeamSpawnPoint.TeamColor(OwnerTeam);
-                block.SetColor("_Color", c); block.SetColor("_BaseColor", c);
-                r.SetPropertyBlock(block);
-            }
+            // [v0.21] var r = GetComponentInChildren<Renderer>();
+            // [v0.21] if (r != null)
+            // [v0.21] {
+            // [v0.21]     var block = new MaterialPropertyBlock();
+            // [v0.21]     var c = Player.TeamSpawnPoint.TeamColor(OwnerTeam);
+            // [v0.21]     block.SetColor("_Color", c); block.SetColor("_BaseColor", c);
+            // [v0.21]     r.SetPropertyBlock(block);
+            // [v0.21] }
+            // (v0.22) a card on a lanyard in the crew's colour, in place of the prefab's tinted box
+            foreach (var placeholder in GetComponentsInChildren<Renderer>()) placeholder.enabled = false;
+            var holder = new GameObject("Model").transform;
+            holder.SetParent(transform, false);
+            Vector3 s = transform.lossyScale;
+            holder.localScale = new Vector3(1f / Mathf.Max(0.01f, s.x), 1f / Mathf.Max(0.01f, s.y), 1f / Mathf.Max(0.01f, s.z));
+            var card = Art.ArtefactBuilder.BuildIdCard(holder, Player.TeamSpawnPoint.TeamColor(OwnerTeam));
+            card.localScale = Vector3.one * 1.3f;
+            card.gameObject.AddComponent<Art.PickupSpin>();
         }
 
         public override void FixedUpdateNetwork()

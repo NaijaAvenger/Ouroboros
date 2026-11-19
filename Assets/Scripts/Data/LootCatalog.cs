@@ -15,7 +15,10 @@ namespace Ouroboros.Data
     public enum LootShape
     {
         Purse, Weights, Cloth, Headrest, Beads, Fragment, Blade, Reels, Ledger,
-        Plaque, Pendant, Collar, Manuscript, Harp, DataCore, Leopard, Chest, Sword, Astrolabe
+        // [v0.21] Plaque, Pendant, Collar, Manuscript, Harp, DataCore, Leopard, Chest, Sword, Astrolabe
+        Plaque, Pendant, Collar, Manuscript, Harp, DataCore, Leopard, Chest, Sword, Astrolabe,
+        /// <summary>(v0.22) Appended, so saved values keep their meaning. The Seed Archive Core had been sharing DataCore.</summary>
+        SeedArchive
     }
 
     [Serializable]
@@ -145,7 +148,7 @@ namespace Ouroboros.Data
             Add(LootTier.Legendary, 1200, "Library Chest",
                 "Forty manuscripts on law, medicine and the stars, carried out of a burning city in one iron-bound box.").shape = LootShape.Chest;
             Add(LootTier.Legendary, 1300, "Seed Archive Core",
-                "Genomes of ten thousand food crops, bred over centuries by farmers and patented by someone else.").shape = LootShape.DataCore;
+                "Genomes of ten thousand food crops, bred over centuries by farmers and patented by someone else.").shape = LootShape.SeedArchive; // [v0.21] LootShape.DataCore, the same model as the Land Registry Core
             Add(LootTier.Legendary, 1000, "Court Sword",
                 "A blade of state with a gold-covered grip, carried before a ruler and never drawn in anger.").shape = LootShape.Sword;
 

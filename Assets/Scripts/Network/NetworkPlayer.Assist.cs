@@ -52,7 +52,8 @@ namespace Ouroboros.Network
         // a camera seeing them, a laser grid, a sniper taking aim. Those still set Revealed, which is a
         // gameplay state (it breaks stealth), but they no longer show anything. A marker now needs a mark:
         //   - a crew's own reveal ability (Recon Drone, Net Sight, Data Mine) marks for that crew only;
-        //   - carrying loot for the richest crew during the getaway marks for everyone.
+        //   - carrying loot for the richest crew during the getaway marks for everyone;
+        //   - (v0.22) standing in a security camera's view marks for everyone, for as long as it lasts.
         // A crewmate's ping on a rival is a separate, static marker at the place they were seen.
 
         /// <summary>Tick until which this player is marked: slot 0 for everyone, slots 1-4 for each crew.</summary>

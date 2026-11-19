@@ -436,7 +436,7 @@ Setup: none. Everything here is built when the match starts, on any map.
 
 Markers over players:
 - [ ] Crewmates have their marker (diamond, name, health, distance) as before.
-- [ ] Rival players and rival bots have **nothing** over their heads in normal play: not when a camera sees them, not when they trip a laser grid, not when a sniper aims at them. Those still break stealth and raise the alarm; they just no longer mark anyone.
+- [ ] Rival players and rival bots have **nothing** over their heads in normal play: not when they trip a laser grid, not when a sniper aims at them. Those still break stealth and raise the alarm; they just no longer mark anyone. (A camera does mark again since v0.22: see 7r.)
 - [ ] A rival shows a magenta diamond only in these cases:
   - your crew tagged them with Recon Drone, Net Sight or Data Mine. Only your crew sees it (needs two crews of people to confirm the other crew does not);
   - they are carrying loot for the richest crew during the getaway. Every crew sees that one.
@@ -589,6 +589,32 @@ Safes (what the old vaults became):
 Bots:
 - [ ] A bot crew goes to a vault, sets a drill where it can and stands by it; fights a keyed vault's guards and carries the key to the door; cracks a lock console; pulls the plug on a rival's drill; takes the perk; picks up the loot.
 - [ ] Bots following you do not start a drill. They do stand by yours, carry a key they hold to the door, and take a perk.
+
+## 7r. Class select and briefing, loot models, cameras (v0.22)
+Setup: none. The countdown is in `Assets/Ouroboros/DevGameModeConfig.asset`, which this update changes to 10 seconds; if you have edited that asset yourself, set **Pre Match Countdown** to 10 by hand.
+
+Loading in:
+- [ ] The game loads straight onto the class-select screen. The match starts by itself 10 seconds later; the countdown is the large gold line under "CHOOSE YOUR SPECIALIST".
+- [ ] Under the class cards and loadout rows, the same screen carries **HOW A HEIST GOES**: 1 TAKE IT, 2 BANK IT, 3 GET OUT, and the Interact and Ping keys.
+- [ ] You cannot move, jump, shoot or use anything until the match starts. Keys 1 to 4 still pick a class. Bots stand still too.
+- [ ] The moment the countdown ends the screen closes, the cursor locks and you can move.
+- [ ] The briefing does **not** appear again after the match has started.
+- [ ] On a small window, check the whole panel still fits; it is taller than before.
+- [ ] A hosted match behaves the same: it starts 10 seconds after the host loads in, because the dev config starts with one player. To hold everyone on this screen until a party has joined, raise **Min Players To Start** on the config; the host's "Start match now" button then starts the 10 seconds.
+
+Loot:
+- [ ] Loose money (from containers, safes, vault piles, a dead player) is a pile of banded notes in three colours with a few coins, bigger the more it is worth. No ball.
+- [ ] A dead player's ID card is a card on a lanyard in their crew's colour. No box.
+- [ ] The loot case is a dark hard case with brass corners and a lit lock; it disappears from the floor while someone carries it (they wear it on their back).
+- [ ] The Seed Archive Core is a steel canister with green windows, no longer the same model as the Land Registry Core. All twenty named items now look different from each other.
+- [ ] Nothing dropped anywhere is pink. If something still is, tell me what it was: each kind of pickup I know of now builds its own model, so a pink one is a kind I missed.
+
+Cameras:
+- [ ] Walk into a camera's view: every player gets a feed line "NAME spotted on camera in the ZONE", you get a banner and an alarm sound, and a magenta diamond sits over your head for **every** crew for as long as the camera has you, and about half a second after.
+- [ ] Step out of view: the diamond goes. Step back in within 10 seconds: marked again, but not announced again.
+- [ ] The five nearest guards walk to where you were seen and search it, and they keep coming after you have left the camera's view. Stay in view and they are sent to your new position every 3 seconds.
+- [ ] Snipers do not leave their posts for this, a guard already shooting at someone finishes that first, and the guards holding a Grand Vault's key stay on their door.
+- [ ] Stealth still hides you from cameras. A blinded, EMP'd or blacked-out camera sees nothing.
 
 ## 7d. Expected flow and troubleshooting
 **Expected flow on Play (dev config):** spectator camera orbits the arena → session starts → your player spawns → the

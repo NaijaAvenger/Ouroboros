@@ -150,6 +150,43 @@ namespace Ouroboros.UI
             startButton.style.paddingLeft = 18; startButton.style.paddingRight = 18; startButton.style.paddingTop = 8; startButton.style.paddingBottom = 8;
             startButton.style.display = DisplayStyle.None;
             panel.Add(startButton);
+
+            // (v0.22) The briefing lives here now: the ten seconds before the match are for choosing a class and
+            //         reading this, with nobody able to move. It used to appear after the match had started.
+            var briefing = new VisualElement();
+            briefing.style.marginTop = 14; briefing.style.paddingTop = 10; briefing.style.alignSelf = Align.Stretch;
+            briefing.style.borderTopWidth = 1; briefing.style.borderTopColor = new Color(1f, 1f, 1f, 0.2f);
+            panel.Add(briefing);
+            var heading = new Label("HOW A HEIST GOES");
+            heading.style.fontSize = 16; heading.style.color = new Color(1f, 0.82f, 0.25f); heading.style.unityFontStyleAndWeight = FontStyle.Bold;
+            heading.style.letterSpacing = 3; heading.style.unityTextAlign = TextAnchor.MiddleCenter;
+            briefing.Add(heading);
+            briefing.Add(BriefingStep("1", "TAKE IT", "Crack one of the four vaults. Its door opens to its guards' key, to a drill you set and defend, or to a lock you crack."));
+            briefing.Add(BriefingStep("2", "BANK IT", "Carry the loot to a cash-out station and hold it for a minute. Every crew is told. A rival who reaches it steals the lot, and so can you."));
+            briefingRule = new Label("");
+            briefing.Add(BriefingStep("3", "GET OUT", briefingRule));
+            var keys = new Label($"[{Core.LocalInputSource.Hint(Core.InputButtons.Interact)}] hack, drill, cash out, revive        [{Core.LocalInputSource.Hint(Core.InputButtons.Ping)}] mark what you are looking at for your crew");
+            keys.style.fontSize = 12; keys.style.color = new Color(1f, 1f, 1f, 0.7f); keys.style.unityFontStyleAndWeight = FontStyle.Bold;
+            keys.style.marginTop = 8; keys.style.unityTextAlign = TextAnchor.MiddleCenter;
+            briefing.Add(keys);
+        }
+
+        private Label briefingRule;
+
+        private static VisualElement BriefingStep(string number, string name, string body) => BriefingStep(number, name, new Label(body));
+
+        private static VisualElement BriefingStep(string number, string name, Label body)
+        {
+            var row = new VisualElement();
+            row.style.flexDirection = FlexDirection.Row; row.style.marginTop = 5; row.style.alignItems = Align.FlexStart;
+            var n = new Label(number);
+            n.style.fontSize = 20; n.style.color = new Color(1f, 0.82f, 0.25f); n.style.unityFontStyleAndWeight = FontStyle.Bold; n.style.width = 24;
+            var title = new Label(name);
+            title.style.fontSize = 14; title.style.color = new Color(1f, 0.82f, 0.25f); title.style.unityFontStyleAndWeight = FontStyle.Bold; title.style.width = 84; title.style.marginTop = 3;
+            body.style.fontSize = 13; body.style.color = new Color(1f, 1f, 1f, 0.9f); body.style.whiteSpace = WhiteSpace.Normal;
+            body.style.flexShrink = 1; body.style.flexGrow = 1; body.style.maxWidth = 740; body.style.marginTop = 3;
+            row.Add(n); row.Add(title); row.Add(body);
+            return row;
         }
 
         private string CardText(Core.PlayerClassType type, int index)
@@ -234,9 +271,23 @@ namespace Ouroboros.UI
             }
             if (!shown) return;
 
-            subtitle.text = gm.CurrentState == GameMode.ExtractionHeistGameMode.GameState.PreMatch
-                ? $"Match starts in {Mathf.CeilToInt(gm.PhaseTimeRemaining ?? 0f)}s"
-                : "Waiting for players...";
+            // [v0.21] subtitle.text = gm.CurrentState == GameMode.ExtractionHeistGameMode.GameState.PreMatch
+            // [v0.21]     ? $"Match starts in {Mathf.CeilToInt(gm.PhaseTimeRemaining ?? 0f)}s"
+            // [v0.21]     : "Waiting for players...";
+            // (v0.22) the countdown is the thing to watch on this screen, so it is large and says what it means
+            bool counting = gm.CurrentState == GameMode.ExtractionHeistGameMode.GameState.PreMatch;
+            subtitle.text = counting
+                ? $"MATCH STARTS IN {Mathf.CeilToInt(gm.PhaseTimeRemaining ?? 0f)}   -   you are held at your gate until then"
+                : "Waiting for players. Nobody can move until the match starts.";
+            subtitle.style.fontSize = counting ? 20 : 14;
+            subtitle.style.color = counting ? new Color(1f, 0.82f, 0.25f) : new Color(1f, 1f, 1f, 0.7f);
+            subtitle.style.unityFontStyleAndWeight = counting ? FontStyle.Bold : FontStyle.Normal;
+            if (briefingRule != null)
+            {
+                briefingRule.text = gm.Config.UseRunRules
+                    ? $"The first crew with ${gm.LootQuota:N0}, banked or carried, calls the getaway. Then the lifts open: ride one out with what you still carry."
+                    : "When the lifts open, ride one out. What you carry only counts if you leave with it.";
+            }
 
             for (int i = 0; i < cards.Length; i++)
             {

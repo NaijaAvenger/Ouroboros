@@ -181,7 +181,11 @@ namespace Ouroboros.UI
 
             // ---- the briefing: before the match, and while a new player is still finding their feet
             if (gm.IsMatchLive) { if (liveSince < 0f) liveSince = Time.time; } else liveSince = -1f;
-            bool brief = !gm.IsMatchLive || Time.time - liveSince < BriefingSecondsIntoMatch;
+            // [v0.21] bool brief = !gm.IsMatchLive || Time.time - liveSince < BriefingSecondsIntoMatch;
+            // (v0.22) The briefing belongs to the ten seconds before the match, on the class-select screen
+            //         (ClassPickerUI carries it there). This card is only the fallback for a match that has no
+            //         class selection, and it no longer lingers once the match is live.
+            bool brief = !gm.IsMatchLive;
             if (brief && briefing.resolvedStyle.display == DisplayStyle.None)
             {
                 briefingQuota.text = gm.Config.UseRunRules
