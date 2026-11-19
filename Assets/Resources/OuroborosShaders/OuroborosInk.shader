@@ -19,10 +19,13 @@ Shader "Hidden/Ouroboros/Ink"
         _NormalEdge ("Normal sensitivity", Range(0.1,2)) = 0.55
         _FadeStart ("Lines start to thin at (m)", Float) = 35
         _FadeEnd ("Lines gone by (m)", Float) = 110
-        _Saturation ("Saturation", Range(0,2)) = 1.14
-        _ShadowTone ("Shadow tone", Color) = (0.93,0.92,1.06,1)
-        _HighTone ("Highlight tone", Color) = (1.05,1.01,0.93,1)
-        _Vignette ("Vignette", Range(0,1)) = 0.28
+        // (v0.23) The grade and the vignette are off: over toon shading they read as a film laid on the screen.
+        // The defaults below leave the picture exactly as the toon shaders drew it; only the ink lines are added.
+        // [v0.22] _Saturation = 1.14, _ShadowTone = (0.93,0.92,1.06,1), _HighTone = (1.05,1.01,0.93,1), _Vignette = 0.28
+        _Saturation ("Saturation", Range(0,2)) = 1
+        _ShadowTone ("Shadow tone", Color) = (1,1,1,1)
+        _HighTone ("Highlight tone", Color) = (1,1,1,1)
+        _Vignette ("Vignette", Range(0,1)) = 0
     }
     SubShader
     {

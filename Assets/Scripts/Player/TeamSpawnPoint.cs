@@ -13,6 +13,30 @@ namespace Ouroboros.Player
 
         public Core.TeamID Team => team;
 
+        /// <summary>(v0.23) Every spawn point in the loaded scene.</summary>
+        public static readonly System.Collections.Generic.List<TeamSpawnPoint> All = new System.Collections.Generic.List<TeamSpawnPoint>();
+
+        private void OnEnable() { if (!All.Contains(this)) All.Add(this); }
+        private void OnDisable() { All.Remove(this); }
+
+        /// <summary>
+        /// (v0.23) True if <paramref name="position"/> is at one of <paramref name="crew"/>'s own spawn points:
+        /// within <paramref name="zoneRadius"/> metres on the flat, and on the same floor. This is the crew's
+        /// gate, where class and gear can be changed during a match.
+        /// </summary>
+        public static bool InZone(Core.TeamID crew, Vector3 position, float zoneRadius)
+        {
+            if (!Core.TeamUtil.IsValid(crew)) return false;
+            for (int i = 0; i < All.Count; i++)
+            {
+                var point = All[i];
+                if (point == null || point.team != crew) continue;
+                Vector3 d = position - point.transform.position;
+                if (Mathf.Abs(d.y) < 4f && d.x * d.x + d.z * d.z <= zoneRadius * zoneRadius) return true;
+            }
+            return false;
+        }
+
         /// <summary>A random position on the spawn disc so stacked spawns don't overlap.</summary>
         public Vector3 GetSpawnPosition()
         {

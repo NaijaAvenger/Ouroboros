@@ -15,7 +15,7 @@ MonoBehaviour:
   modeName: Dev Extraction Heist
   modeDescription: Short solo-friendly rules for Phase 0 testing.
   matchDuration: 480
-  preMatchCountdown: 10
+  preMatchCountdown: 30
   minPlayersToStart: 1
   maxPlayers: 16
   allowLateJoin: 1
@@ -70,7 +70,7 @@ MonoBehaviour:
   respawnRequiresLivingCrewmate: 1
   crewWipeRedeployDelay: 15
   maxCrewWipes: 1
-  configVersion: 3
+  configVersion: 4
   allowRespawning: 1
   respawnDelay: 8
   maxRespawns: -1

@@ -570,7 +570,7 @@ Lock:
 
 Open:
 - [ ] The door sinks into the floor with a deep roll and a bell that every crew hears, and a banner: "THE MAIN VAULT IS OPEN".
-- [ ] Inside, laid out on the floor: three legendary pieces, two rare ones and four piles of cash, about $6,000 in all. Check none of it is inside a shelf or a strongbox.
+- [ ] Inside, laid out on the floor: legendary and rare pieces and piles of cash (about $6,000 when this was written; $4,800 since v0.23, see 7s). Check none of it is inside a shelf or a strongbox.
 - [ ] On the pedestal a gem turns in the perk's colour. Hold Interact for 1.5 s: your whole crew has the perk until the match ends, with a banner saying what it does and a tag in everyone's status line. The gem goes and the pedestal lamp takes your crew's colour.
 - [ ] A second crew gets the loot that is left but not the perk.
 - [ ] Emptying one vault brings a crew to the quota, or close: the getaway is called. Tell me if it should take one vault or a vault and a bit.
@@ -594,7 +594,7 @@ Bots:
 Setup: none. The countdown is in `Assets/Ouroboros/DevGameModeConfig.asset`, which this update changes to 10 seconds; if you have edited that asset yourself, set **Pre Match Countdown** to 10 by hand.
 
 Loading in:
-- [ ] The game loads straight onto the class-select screen. The match starts by itself 10 seconds later; the countdown is the large gold line under "CHOOSE YOUR SPECIALIST".
+- [ ] The game loads straight onto the class-select screen. The match starts by itself when the countdown ends (10 seconds when this was written, 30 since v0.23); the countdown is the large gold line under "CHOOSE YOUR SPECIALIST".
 - [ ] Under the class cards and loadout rows, the same screen carries **HOW A HEIST GOES**: 1 TAKE IT, 2 BANK IT, 3 GET OUT, and the Interact and Ping keys.
 - [ ] You cannot move, jump, shoot or use anything until the match starts. Keys 1 to 4 still pick a class. Bots stand still too.
 - [ ] The moment the countdown ends the screen closes, the cursor locks and you can move.
@@ -615,6 +615,39 @@ Cameras:
 - [ ] The five nearest guards walk to where you were seen and search it, and they keep coming after you have left the camera's view. Stay in view and they are sent to your new position every 3 seconds.
 - [ ] Snipers do not leave their posts for this, a guard already shooting at someone finishes that first, and the guards holding a Grand Vault's key stay on their door.
 - [ ] Stealth still hides you from cameras. A blinded, EMP'd or blacked-out camera sees nothing.
+
+## 7s. Clean picture, vault worth, sound reach, prep phase and gear changes (v0.23)
+Setup: none. The prep time is in `Assets/Ouroboros/DevGameModeConfig.asset`, which this update changes to 30 seconds; if you have edited that asset yourself, set **Pre Match Countdown** to 30 by hand.
+
+The picture:
+- [ ] The colour cast and the darkened, purple-tinted corners are gone. The picture is what the toon shaders draw, plus the ink outlines, and nothing laid over it.
+- [ ] If an overlay is still there, tell me what it looks like and when: the ones left are deliberate and tied to something (red when hit or at low health, a wash while flashed, jammed or burning, red when dead) and should not be there otherwise.
+
+Vault worth:
+- [ ] An opened Grand Vault holds about $4,800 against the $6,000 quota: usually three legendary pieces, one or two rare ones, and a few cash piles to make up the difference. The total is the same from vault to vault even though the pieces differ.
+- [ ] Emptying one vault does **not** call the getaway. One vault and a safe or two does.
+- [ ] `haulShareOfQuota` on each vault (0.8) is the number to change.
+
+Sound reach:
+- [ ] Standing still far from everyone, the building is quiet: no distant gunfire, crates or coins.
+- [ ] Gunfire (players, guards, turrets) is heard within about 48 m and not beyond; it gets louder as you close.
+- [ ] Explosions, a wall coming down and a vault door carry about 75 m.
+- [ ] Cash-out sounds, a lift bell and a drill carry about 32 m; being hurt, a revive, a countdown tick about 22 m; reloads and pickups about 14 m.
+- [ ] Footsteps: other players within 20 m, guards within 16 m.
+- [ ] A vault door opening is no longer played in everyone's ear, only the crew that opened it; a rival's drill starting no longer blips. The banners still tell you.
+- [ ] Tell me which of these feels too short or too long. They are five numbers at the top of `Audio/Sfx.cs`.
+
+Prep phase:
+- [ ] The class-select screen now counts down from 30.
+
+Changing class and gear during a match:
+- [ ] Walk back to your own crew's gate (within 12 m of where you spawned): a line at the left reads **AT YOUR GATE  [B] change class or gear**.
+- [ ] Press B: the class and gear screen opens without the briefing or the countdown. Pick a class or cycle gear; press B again to close. You stand still while it is open.
+- [ ] Changing class keeps the share of health you had: it is not a heal.
+- [ ] After a redeploy the line reads **REDEPLOYED  [B] ...  15 s** and counts down, and works even if you run out of the gate in that time.
+- [ ] Away from the gate, and not just redeployed, there is no line and B does nothing. If the redeploy window runs out with the screen open, it closes itself.
+- [ ] Another crew's gate does nothing for you.
+- [ ] A revive in the field does not open the window; only a redeploy does.
 
 ## 7d. Expected flow and troubleshooting
 **Expected flow on Play (dev config):** spectator camera orbits the arena → session starts → your player spawns → the

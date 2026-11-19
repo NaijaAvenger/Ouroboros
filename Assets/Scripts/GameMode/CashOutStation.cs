@@ -355,7 +355,7 @@ namespace Ouroboros.GameMode
             if (second != tickedSecond)
             {
                 if (second > 0)
-                    AudioSource.PlayClipAtPoint(Core.ProceduralSfx.CashTick, transform.position + Vector3.up * 1.5f, 0.9f);
+                    Audio.Sfx.PlayAt(Core.ProceduralSfx.CashTick, transform.position + Vector3.up * 1.5f, 0.9f, Audio.Sfx.Close); // [v0.22] AudioSource.PlayClipAtPoint
                 tickedSecond = second;
             }
 

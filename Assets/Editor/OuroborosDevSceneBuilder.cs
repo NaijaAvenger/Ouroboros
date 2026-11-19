@@ -255,7 +255,8 @@ namespace Ouroboros.EditorTools
             cfg.modeDescription = "Short solo-friendly rules for Phase 0 testing.";
             cfg.matchDuration = 300f;
             // [v0.21] cfg.preMatchCountdown = 5f;
-            cfg.preMatchCountdown = 10f; // (v0.22) ten seconds to choose a class and read the briefing
+            // [v0.22] cfg.preMatchCountdown = 10f; // (v0.22) ten seconds to choose a class and read the briefing
+            cfg.preMatchCountdown = 30f; // (v0.23) thirty: ten was not enough to choose gear as well
             cfg.minPlayersToStart = 1;
             cfg.autoStart = false; // show the lobby / class picker until the host presses "Start match now"
             cfg.extractionPointActivationDelay = 30f;
@@ -290,6 +291,14 @@ namespace Ouroboros.EditorTools
                 cfg.configVersion = 3;
                 EditorUtility.SetDirty(cfg);
                 Debug.Log("[Ouroboros] DevGameModeConfig: pre-match countdown set to 10 s, starting as soon as the player has joined.");
+            }
+            if (cfg.configVersion < 4)
+            {
+                // (v0.23) a longer prep phase
+                cfg.preMatchCountdown = Mathf.Max(cfg.preMatchCountdown, 30f);
+                cfg.configVersion = 4;
+                EditorUtility.SetDirty(cfg);
+                Debug.Log("[Ouroboros] DevGameModeConfig: prep phase set to 30 s.");
             }
         }
 

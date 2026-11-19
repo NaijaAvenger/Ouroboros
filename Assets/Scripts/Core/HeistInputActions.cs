@@ -28,6 +28,8 @@ namespace Ouroboros.Core
         public InputAction LookMouse { get; }
         public InputAction LookStick { get; }
         public InputAction CursorToggle { get; }
+        /// <summary>(v0.23) Opens the class and gear screen during a match, where that is allowed.</summary>
+        public InputAction Loadout { get; private set; }
         public InputAction DebugHudToggle { get; }
 
         private readonly InputAction[] buttons = new InputAction[GameConstants.INPUT_BUTTON_COUNT];
@@ -86,6 +88,10 @@ namespace Ouroboros.Core
             CursorToggle = Map.AddAction("CursorToggle", InputActionType.Button);
             CursorToggle.AddBinding("<Keyboard>/escape", groups: KeyboardGroup);
             CursorToggle.AddBinding("<Gamepad>/start", groups: GamepadGroup);
+
+            // (v0.23) B: the class and gear screen at the crew's gate. Every pad button is taken, so a pad has none yet.
+            Loadout = Map.AddAction("Loadout", InputActionType.Button);
+            Loadout.AddBinding("<Keyboard>/b", groups: KeyboardGroup);
 
             DebugHudToggle = Map.AddAction("DebugHudToggle", InputActionType.Button);
             DebugHudToggle.AddBinding("<Keyboard>/f1", groups: KeyboardGroup);

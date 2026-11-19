@@ -69,8 +69,14 @@ namespace Ouroboros.Interaction
         [Header("Inside")]
         [SerializeField] private int legendaryItems = 3;
         [SerializeField] private int rareItems = 2;
+        // [v0.22] [SerializeField] private int cashPiles = 4;      // a fixed four piles of 400 made one vault a whole quota
+        // [v0.22] [SerializeField] private int cashPerPile = 400;
+        [Tooltip("(v0.23) The most cash piles laid out to make up the rest of the vault's worth.")]
         [SerializeField] private int cashPiles = 4;
-        [SerializeField] private int cashPerPile = 400;
+        [Tooltip("(v0.23) The most any one cash pile is worth.")]
+        [SerializeField] private int cashPerPile = 250;
+        [Tooltip("(v0.23) What the whole vault is worth, as a share of the getaway quota. Below 1, so that one vault and a little extra calls the getaway and one vault alone does not.")]
+        [Range(0.3f, 1.2f)] [SerializeField] private float haulShareOfQuota = 0.8f;
         [SerializeField] private float lootLifetime = 900f;
         [Tooltip("Seconds of holding Interact at the pedestal to take the perk for the crew.")]
         [SerializeField] private float perkClaimSeconds = 1.5f;
@@ -478,6 +484,10 @@ namespace Ouroboros.Interaction
             }
 
             int seed = unchecked((int)Runner.Tick * 397 ^ VaultName.GetHashCode());
+            // (v0.23) The vault is worth a share of the quota. Items are laid until the next would go over it,
+            //         and cash makes up the rest, so the total holds whatever the map's quota is.
+            int target = Core.VaultRules.HaulTarget(gm.LootQuota, haulShareOfQuota);
+            int laid = 0;
             void Lay(Data.LootTier tier, int count, int tierSeed)
             {
                 catalog.GetIdsOfTier(tier, tierIds);
@@ -485,12 +495,17 @@ namespace Ouroboros.Interaction
                 for (int i = 0; i < n; i++)
                 {
                     int id = tierIds[picks[i]];
-                    gm.SpawnLoot(Next(), catalog.ValueOf(id), id, lootLifetime);
+                    int value = catalog.ValueOf(id);
+                    // [v0.22] gm.SpawnLoot(Next(), catalog.ValueOf(id), id, lootLifetime);
+                    if (target > 0 && !Core.VaultRules.FitsHaul(laid, value, target)) continue;
+                    if (gm.SpawnLoot(Next(), value, id, lootLifetime)) laid += value;
                 }
             }
             Lay(Data.LootTier.Legendary, legendaryItems, seed);
             Lay(Data.LootTier.Rare, rareItems, seed + 1);
-            for (int i = 0; i < cashPiles; i++) gm.SpawnLoot(Next(), cashPerPile, 0, lootLifetime);
+            // [v0.22] for (int i = 0; i < cashPiles; i++) gm.SpawnLoot(Next(), cashPerPile, 0, lootLifetime);
+            int piles = Core.VaultRules.CashPiles(target > 0 ? target - laid : cashPiles * cashPerPile, cashPerPile, cashPiles, out int perPile);
+            for (int i = 0; i < piles; i++) gm.SpawnLoot(Next(), perPile, 0, lootLifetime);
         }
 
         // ---- the perk
@@ -684,7 +699,7 @@ namespace Ouroboros.Interaction
                 if (Time.time >= nextBuzz)
                 {
                     nextBuzz = Time.time + 0.5f;
-                    AudioSource.PlayClipAtPoint(Core.ProceduralSfx.DrillBuzz, bite, 0.9f);
+                    Audio.Sfx.PlayAt(Core.ProceduralSfx.DrillBuzz, bite, 0.9f, Audio.Sfx.Room); // [v0.22] AudioSource.PlayClipAtPoint
                 }
             }
 

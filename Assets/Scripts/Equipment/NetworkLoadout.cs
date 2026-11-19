@@ -339,7 +339,9 @@ namespace Ouroboros.Equipment
         private void TryLobbyEquip(int id)
         {
             var gm = GameMode.ExtractionHeistGameMode.Instance;
-            if (gm != null && gm.Object != null && !gm.AllowClassChange) return;
+            // [v0.22] if (gm != null && gm.Object != null && !gm.AllowClassChange) return;
+            // (v0.23) also during a match, at the crew's gate or just after a redeploy
+            if (gm != null && gm.Object != null && !gm.CanChangeLoadout(Owner)) return;
             var data = Registry?.Get(id);
             if (data != null) Equip(data);
         }

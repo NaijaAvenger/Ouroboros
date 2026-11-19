@@ -285,6 +285,15 @@ Awaiting in-engine validation: PHASE0_BRINGUP.md section 7q.
 
 Awaiting in-engine validation: PHASE0_BRINGUP.md section 7r.
 
+### v0.23 — clean picture, vault worth, sound reach, prep phase and gear changes
+- **Picture**: the ink pass no longer grades the colour or vignettes (shader defaults and `InkOutline.vignette`); the outlines are unchanged.
+- **Vault worth**: `VaultRules.HaulTarget`, `FitsHaul`, `CashPiles` (unit-tested). `GrandVault.haulShareOfQuota` (0.8): items are laid until the next would pass the target and cash makes up the rest.
+- **Sound**: `Audio/Sfx.cs` plays a clip at a place with a linear falloff to a stated reach (`Whisper`, `Close`, `Room`, `Shot`, `Blast`). Every `AudioSource.PlayClipAtPoint` is replaced. `PlayerFeedback` plays other players' sounds through it, each with its own reach. Footsteps carry 20 m (guards 16 m).
+- **Prep**: `preMatchCountdown` 30 s (asset, builder, config migration to version 4).
+- **Loadout during a match**: `ExtractionHeistGameMode.CanChangeLoadout`, `TeamSpawnPoint.InZone`, `NetworkPlayer.LastRedeployTick`, config `allowLoadoutChangeAtGate`, `gateRadius`, `loadoutSecondsAfterRedeploy`. `ClassPickerUI` opens with B where allowed; input is held while it is up.
+
+Awaiting in-engine validation: PHASE0_BRINGUP.md section 7s.
+
 ### Phase 5 — Meta
 - Lobby scene with class picker (`NetworkPlayer.RequestClass` is in place), session browser, late-join handling, host migration.
 - Progression/cosmetics via `ClassData`/`EquipmentData`.

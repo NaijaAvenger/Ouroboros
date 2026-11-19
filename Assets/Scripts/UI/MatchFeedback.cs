@@ -62,11 +62,13 @@ namespace Ouroboros.UI
             Vector3 at = vault.DoorPoint + Vector3.up * 1.5f;
             switch (moment)
             {
-                case Interaction.VaultMoment.KeyDropped:   At(Core.ProceduralSfx.KeyJingle, vault.KeyPosition, 1f); break;
-                case Interaction.VaultMoment.KeyTaken:     if (who != null && who == me) Play(Core.ProceduralSfx.KeyJingle, 0.8f); else At(Core.ProceduralSfx.KeyJingle, vault.KeyPosition, 1f); break;
-                case Interaction.VaultMoment.DrillStarted: At(Core.ProceduralSfx.CashStart, at, 1f); if (!mine) Play(Core.ProceduralSfx.PingEnemy, 0.5f); break;
+                case Interaction.VaultMoment.KeyDropped:   At(Core.ProceduralSfx.KeyJingle, vault.KeyPosition, 1f, Audio.Sfx.Close); break;
+                case Interaction.VaultMoment.KeyTaken:     if (who != null && who == me) Play(Core.ProceduralSfx.KeyJingle, 0.8f); else At(Core.ProceduralSfx.KeyJingle, vault.KeyPosition, 1f, Audio.Sfx.Close); break;
+                // [v0.22] rival crews also got a blip in the ear; the banner and the ticker already tell them
+                case Interaction.VaultMoment.DrillStarted: At(Core.ProceduralSfx.CashStart, at, 1f); break;
                 case Interaction.VaultMoment.DrillStopped: At(Core.ProceduralSfx.CashAlarm, at, 1f); break;
-                case Interaction.VaultMoment.Opened:       At(Core.ProceduralSfx.VaultOpen, at, 1f); Play(Core.ProceduralSfx.VaultOpen, mine ? 0.8f : 0.45f); break;
+                // [v0.22] every crew heard the door in their ear at 0.45; now only the crew that opened it does, and the rest hear it if they are near
+                case Interaction.VaultMoment.Opened:       At(Core.ProceduralSfx.VaultOpen, at, 1f, Audio.Sfx.Blast); if (mine) Play(Core.ProceduralSfx.VaultOpen, 0.7f); break;
                 case Interaction.VaultMoment.PerkClaimed:  At(Core.ProceduralSfx.PerkChord, vault.PerkPoint, 1f); if (mine) Play(Core.ProceduralSfx.PerkChord, 0.9f); break;
             }
         }
@@ -113,13 +115,19 @@ namespace Ouroboros.UI
             if (revived == null) return;
             var me = Network.NetworkPlayer.FindLocal();
             if (me != null && (revived == me || by == me)) Play(Core.ProceduralSfx.ReviveChime, 0.8f);
-            else At(Core.ProceduralSfx.ReviveChime, revived.transform.position, 0.9f);
+            else At(Core.ProceduralSfx.ReviveChime, revived.transform.position, 0.9f, Audio.Sfx.Close);
         }
 
-        private void At(AudioClip clip, Vector3 position, float volume)
+        // [v0.22] private void At(AudioClip clip, Vector3 position, float volume)
+        // [v0.22] {
+        // [v0.22]     var lib = Library;
+        // [v0.22]     if (clip != null) AudioSource.PlayClipAtPoint(clip, position, volume * (lib != null ? lib.matchVolume : 1f));
+        // [v0.22] }
+        /// <summary>(v0.23) At a place, and no further than <paramref name="reach"/> metres from it.</summary>
+        private void At(AudioClip clip, Vector3 position, float volume, float reach = Audio.Sfx.Room)
         {
             var lib = Library;
-            if (clip != null) AudioSource.PlayClipAtPoint(clip, position, volume * (lib != null ? lib.matchVolume : 1f));
+            Audio.Sfx.PlayAt(clip, position, volume * (lib != null ? lib.matchVolume : 1f), reach);
         }
 
         private void Play(AudioClip clip, float volume)
@@ -136,7 +144,8 @@ namespace Ouroboros.UI
             c.a = 0.9f;
             Combat.ShotTracer.Spawn(from, to, c, 0.03f, 0.08f);
             var lib = Library;
-            AudioSource.PlayClipAtPoint(Core.ProceduralSfx.GuardShot, from, (lib != null ? lib.matchVolume : 1f) * 0.7f);
+            // [v0.22] AudioSource.PlayClipAtPoint(Core.ProceduralSfx.GuardShot, from, (lib != null ? lib.matchVolume : 1f) * 0.7f);
+            Audio.Sfx.PlayAt(Core.ProceduralSfx.GuardShot, from, (lib != null ? lib.matchVolume : 1f) * 0.7f, Audio.Sfx.Shot);
         }
 
         private static readonly Color GuardTracerColor = new Color(1f, 0.35f, 0.25f, 0.9f);
@@ -146,7 +155,8 @@ namespace Ouroboros.UI
         {
             Combat.ShotTracer.Spawn(from, to, GuardTracerColor, 0.035f, 0.1f);
             var lib = Library;
-            AudioSource.PlayClipAtPoint(Core.ProceduralSfx.GuardShot, from, lib != null ? lib.matchVolume : 1f);
+            // [v0.22] AudioSource.PlayClipAtPoint(Core.ProceduralSfx.GuardShot, from, lib != null ? lib.matchVolume : 1f);
+            Audio.Sfx.PlayAt(Core.ProceduralSfx.GuardShot, from, lib != null ? lib.matchVolume : 1f, Audio.Sfx.Shot);
         }
 
         private void OnExploded(Vector3 point, float radius)
@@ -155,7 +165,8 @@ namespace Ouroboros.UI
             // [v0.8] if (lib == null) return;
             // [v0.8] if (lib.explosion != null) AudioSource.PlayClipAtPoint(lib.explosion, point, lib.matchVolume);
             // (v0.9) placeholder fallback so explosions are never silent
-            AudioSource.PlayClipAtPoint(lib != null && lib.explosion != null ? lib.explosion : Core.ProceduralSfx.Explosion, point, lib != null ? lib.matchVolume : 1f);
+            // [v0.22] AudioSource.PlayClipAtPoint(lib != null && lib.explosion != null ? lib.explosion : Core.ProceduralSfx.Explosion, point, lib != null ? lib.matchVolume : 1f);
+            Audio.Sfx.PlayAt(lib != null && lib.explosion != null ? lib.explosion : Core.ProceduralSfx.Explosion, point, lib != null ? lib.matchVolume : 1f, Audio.Sfx.Blast);
             // [v0.12] if (lib == null) return;
             // [v0.12] lib.SpawnVfx(lib.explosionVfx, point, Quaternion.identity);
             // (v0.13) an explosion is never invisible: the assigned effect if there is one, a code-built blast otherwise

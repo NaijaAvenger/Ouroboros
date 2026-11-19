@@ -137,6 +137,20 @@ namespace Ouroboros.Core
         }
 #endif
 
+        /// <summary>(v0.23) B: open or close the class and gear screen during a match.</summary>
+        public static bool LoadoutPressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            return Actions.Loadout != null && Actions.Loadout.WasPressedThisFrame();
+#elif ENABLE_LEGACY_INPUT_MANAGER
+            return Input.GetKeyDown(KeyCode.B);
+#else
+            return false;
+#endif
+        }
+
+        public const string LoadoutKeyLabel = "B";
+
         /// <summary>Esc / Start: toggle cursor lock.</summary>
         public static bool CursorTogglePressed()
         {

@@ -49,7 +49,8 @@ namespace Ouroboros.Audio
             source.spatialBlend = 1f;
             source.rolloffMode = AudioRolloffMode.Linear;
             source.minDistance = 2f;
-            source.maxDistance = 26f;
+            // [v0.22] source.maxDistance = 26f;
+            source.maxDistance = 20f; // (v0.23) the next room, not the one after: twenty guards' boots were a constant patter
             source.dopplerLevel = 0f;
         }
 
@@ -70,6 +71,7 @@ namespace Ouroboros.Audio
             bool crew = player != null && listener != null && listener.Team == player.Team;
             if (player != null && !crew && player.HasStatus(Core.StatusFlags.Stealthed) && !player.HasStatus(Core.StatusFlags.Revealed)) { travelled = 0f; return; }
             source.spatialBlend = mine ? 0f : 1f;
+            source.maxDistance = kind == Kind.Guard ? 16f : 20f; // (v0.23)
 
             bool grounded = controller == null || controller.IsGrounded;
             if (!grounded) fallSpeed = Mathf.Max(fallSpeed, -delta.y / dt);

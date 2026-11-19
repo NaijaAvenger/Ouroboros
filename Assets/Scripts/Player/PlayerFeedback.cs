@@ -58,7 +58,7 @@ namespace Ouroboros.Player
             // [v0.8] if (lib == null) return;
             // [v0.8] Play(lib.weaponFire);
             // (v0.9) placeholder sound and a tracer when no assets are assigned, so shots are never silent or invisible
-            Play(lib != null && lib.weaponFire != null ? lib.weaponFire : Core.ProceduralSfx.Gunshot);
+            Play(lib != null && lib.weaponFire != null ? lib.weaponFire : Core.ProceduralSfx.Gunshot, Audio.Sfx.Shot);
 
             Vector3 aim = player.AimDirection;
             Vector3 muzzle = player.EyePosition + aim * 0.6f;
@@ -98,7 +98,7 @@ namespace Ouroboros.Player
             if (loadout == null || loadout.Owner != player) return;
             // [v0.8] Play(Library?.reload);
             var lib = Library;
-            Play(lib != null && lib.reload != null ? lib.reload : Core.ProceduralSfx.Reload);
+            Play(lib != null && lib.reload != null ? lib.reload : Core.ProceduralSfx.Reload, Audio.Sfx.Whisper);
         }
 
         private void Update()
@@ -108,7 +108,7 @@ namespace Ouroboros.Player
             if (player.CarriedLoot > lastLoot)
             {
                 var lib = Library;
-                Play(lib != null && lib.lootGained != null ? lib.lootGained : Core.ProceduralSfx.Pickup); // (v0.20)
+                Play(lib != null && lib.lootGained != null ? lib.lootGained : Core.ProceduralSfx.Pickup, Audio.Sfx.Whisper); // (v0.20)
             }
             lastLoot = player.CarriedLoot;
         }
@@ -118,7 +118,7 @@ namespace Ouroboros.Player
             if (who != player) return;
             var lib = Library;
             if (lib == null) return;
-            Play(lib.abilityUsed);
+            Play(lib.abilityUsed, Audio.Sfx.Room);
             lib.SpawnVfx(lib.abilityVfx, player.EyePosition, Quaternion.LookRotation(player.AimDirection));
         }
 
@@ -137,7 +137,7 @@ namespace Ouroboros.Player
             var lib = Library;
             // [v0.8] if (lib == null) return;
             // [v0.8] Play(lib.death);
-            Play(lib != null && lib.death != null ? lib.death : Core.ProceduralSfx.Death); // (v0.9) placeholder fallback
+            Play(lib != null && lib.death != null ? lib.death : Core.ProceduralSfx.Death, Audio.Sfx.Room); // (v0.9) placeholder fallback
             if (lib == null) return;
             lib.SpawnVfx(lib.deathVfx, player.transform.position, Quaternion.identity);
         }
@@ -172,12 +172,33 @@ namespace Ouroboros.Player
 
         private bool wasShielded, wasStealthed;
 
-        private void Play(AudioClip clip)
+        // [v0.22] private void Play(AudioClip clip)
+        // [v0.22] {
+        // [v0.22]     if (clip == null || audioSource == null) return;
+        // [v0.22]     var lib = Library;
+        // [v0.22]     audioSource.spatialBlend = player.IsLocalPlayer ? 0f : spatialBlendRemote;
+        // [v0.22]     audioSource.PlayOneShot(clip, lib != null ? lib.playerVolume : 1f);
+        // [v0.22] }
+        /// <summary>
+        /// (v0.23) Your own sounds are flat in your ears. Anyone else's come from where they are standing and
+        /// carry only as far as that kind of sound should: a rifle a couple of rooms, a reload a few steps.
+        /// One shared source with Unity's default falloff used to let every remote sound be heard map-wide.
+        /// </summary>
+        private void Play(AudioClip clip, float reach = Audio.Sfx.Close)
         {
-            if (clip == null || audioSource == null) return;
+            if (clip == null) return;
             var lib = Library;
-            audioSource.spatialBlend = player.IsLocalPlayer ? 0f : spatialBlendRemote;
-            audioSource.PlayOneShot(clip, lib != null ? lib.playerVolume : 1f);
+            float volume = lib != null ? lib.playerVolume : 1f;
+            if (player.IsLocalPlayer)
+            {
+                if (audioSource == null) return;
+                audioSource.spatialBlend = 0f;
+                audioSource.PlayOneShot(clip, volume);
+            }
+            else if (spatialBlendRemote > 0f)
+            {
+                Audio.Sfx.PlayAt(clip, transform.position + Vector3.up * 0.4f, volume, reach);
+            }
         }
     }
 }

@@ -218,7 +218,8 @@ namespace Ouroboros.Art
 
         private static void PlayBlastSound(Vector3 position, float volume)
         {
-            AudioSource.PlayClipAtPoint(Core.ProceduralSfx.Explosion, position, volume);
+            // [v0.22] AudioSource.PlayClipAtPoint(Core.ProceduralSfx.Explosion, position, volume);
+            Audio.Sfx.PlayAt(Core.ProceduralSfx.Explosion, position, volume, Audio.Sfx.Blast);
         }
 
         /// <summary>The floor under <paramref name="point"/>, or the point itself when there is none close below.</summary>

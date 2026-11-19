@@ -269,6 +269,16 @@ namespace Ouroboros.Network
         }
 
         // ------------------------------------------------------------------
+        // Changing class and gear during a match (v0.23)
+
+        /// <summary>Tick of this player's last redeploy, or 0 if they have not redeployed this match.</summary>
+        [Networked] public int LastRedeployTick { get; set; }
+
+        /// <summary>Seconds since this player last redeployed. Very large if they never have.</summary>
+        public float SecondsSinceRedeploy => Object != null && Runner != null && LastRedeployTick > 0
+            ? ((int)Runner.Tick - LastRedeployTick) * Runner.DeltaTime : float.MaxValue;
+
+        // ------------------------------------------------------------------
         // Regeneration
 
         /// <summary>Seconds since this player last took damage.</summary>

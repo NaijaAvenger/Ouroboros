@@ -20,7 +20,7 @@ A modular multiplayer extraction heist game built with **Photon Fusion 2**, feat
 
 ## Overview
 - **4 crews of 3** (Lagos, Nairobi, Accra, Joburg); bots fill every empty seat, so one person can play a full match
-- **Grand Vaults**: four strongrooms hold the real money and a crew perk each. A vault door opens to its guards' key, to a drill you set and defend, or to a lock you crack. One vault is about a whole quota.
+- **Grand Vaults**: four strongrooms hold the real money and a crew perk each. A vault door opens to its guards' key, to a drill you set and defend, or to a lock you crack. One vault is most of a quota: one and a little extra calls the getaway.
 - **The Run**: crack a vault, carry the named loot out of it, and when a crew has the quota (banked plus carried) the getaway is called for everyone. The central getaway banks everything; side exits bank less. Score is what you got out with.
 - **Crew play**: ping what you are looking at for your crew (middle mouse or T); revive a downed crewmate by holding Interact at their ID card; health comes back out of combat.
 - **Hear and find your way**: footsteps for players and guards, a sound for every money event, and a compass strip with a pip for everything worth walking to. Down or away, you watch a crewmate (Fire and Aim change who).

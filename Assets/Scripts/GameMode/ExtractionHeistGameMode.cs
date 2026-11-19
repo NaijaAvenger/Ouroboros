@@ -112,6 +112,20 @@ namespace Ouroboros.GameMode
 
         public bool CanSpawnLoot => lootDropPrefab.IsValid || lootDropPrefabObject != null;
         public bool AllowClassChange => Config.allowClassChangeBeforeMatch && (CurrentState == GameState.WaitingForPlayers || CurrentState == GameState.PreMatch);
+        /// <summary>
+        /// (v0.23) Whether <paramref name="player"/> may change class and gear right now: always before the
+        /// match, and during it while they stand at their own crew's gate or have just redeployed. Works on
+        /// any peer; the state authority is the one that enforces it.
+        /// </summary>
+        public bool CanChangeLoadout(Network.NetworkPlayer player)
+        {
+            if (player == null || player.Object == null) return false;
+            if (AllowClassChange) return true;
+            if (!Config.allowLoadoutChangeAtGate || !IsMatchLive || !player.IsActiveInMatch) return false;
+            if (player.SecondsSinceRedeploy < Config.loadoutSecondsAfterRedeploy) return true;
+            return Player.TeamSpawnPoint.InZone(player.Team, player.Position, Config.gateRadius);
+        }
+
         public float? MatchTimeRemaining => MatchTimer.RemainingTime(Runner);
         public float? PhaseTimeRemaining => PhaseTimer.RemainingTime(Runner);
         public float MatchElapsedSeconds => Runner != null && MatchStartTick > 0 ? ((int)Runner.Tick - MatchStartTick) * Runner.DeltaTime : 0f;

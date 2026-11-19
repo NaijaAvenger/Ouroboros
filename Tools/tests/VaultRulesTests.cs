@@ -104,11 +104,48 @@ namespace Ouroboros.Rules.Tests
         }
 
         [Test]
-        public void TheDefaultHaul_IsAboutOneGalleriaQuota()
+        public void HaulValue_AddsUpWhatIsLaidOut()
         {
-            int haul = VaultRules.HaulValue(3, 1150, 2, 500, 4, 400);
-            Assert.That(haul, Is.InRange(5500, 6500), "cracking one vault should all but call the getaway at a 6000 quota");
+            // [v0.22] this test asserted a vault was worth a whole quota (5500 to 6500 of 6000). It is now a share of it.
+            Assert.That(VaultRules.HaulValue(3, 1150, 2, 500, 4, 400), Is.EqualTo(6050));
             Assert.That(VaultRules.HaulValue(-1, 1150, 0, 500, 0, 400), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void OneVault_IsMostOfAQuota_AndNeverAllOfIt()
+        {
+            int target = VaultRules.HaulTarget(6000, 0.8f);
+            Assert.That(target, Is.EqualTo(4800));
+            Assert.That(target, Is.LessThan(6000), "one vault alone must not call the getaway");
+            Assert.That(6000 - target, Is.InRange(600, 1800), "the rest should be a safe or two, not another vault");
+            Assert.That(VaultRules.HaulTarget(0, 0.8f), Is.EqualTo(0));
+            Assert.That(VaultRules.HaulTarget(6000, 5f), Is.EqualTo(6000));
+        }
+
+        [Test]
+        public void ItemsAreLaid_UntilTheNextOneWouldGoOverTheTarget()
+        {
+            int target = 4800, laid = 0, count = 0;
+            foreach (int value in new[] { 1300, 1200, 1100, 600, 550, 520 })
+            {
+                if (!VaultRules.FitsHaul(laid, value, target)) continue;
+                laid += value; count++;
+            }
+            Assert.That(laid, Is.LessThanOrEqualTo(target));
+            Assert.That(count, Is.GreaterThanOrEqualTo(4));
+            Assert.That(VaultRules.FitsHaul(0, 9999, 100), Is.True, "a vault is never empty");
+        }
+
+        [Test]
+        public void TheRemainder_IsMadeUpInCash()
+        {
+            int piles = VaultRules.CashPiles(600, 250, 4, out int each);
+            Assert.That(piles, Is.EqualTo(3));
+            Assert.That(each, Is.EqualTo(200));
+            Assert.That(VaultRules.CashPiles(2000, 250, 4, out each), Is.EqualTo(4), "never more piles than there is floor for");
+            Assert.That(each, Is.EqualTo(250));
+            Assert.That(VaultRules.CashPiles(30, 250, 4, out each), Is.EqualTo(0), "small change is not worth a pile");
+            Assert.That(VaultRules.CashPiles(600, 0, 4, out each), Is.EqualTo(0));
         }
     }
 }

@@ -17,7 +17,8 @@ namespace Ouroboros.Art
         [Range(0f, 2f)] public float wobble = 0.8f;
         [Range(0f, 1f)] public float strength = 0.9f;
         public Color ink = new Color(0.1f, 0.07f, 0.2f);
-        [Range(0f, 1f)] public float vignette = 0.28f;
+        // [v0.22] [Range(0f, 1f)] public float vignette = 0.28f;
+        [Range(0f, 1f)] public float vignette = 0f; // (v0.23) off: it sat on the picture like a film
 
         private Material material;
         private Camera view;

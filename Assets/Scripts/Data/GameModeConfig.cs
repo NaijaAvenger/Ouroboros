@@ -20,7 +20,8 @@ namespace Ouroboros.Data
         [Header("Match Configuration")]
         public float matchDuration = 900f; // seconds
         [Tooltip("(v0.2) Countdown between StartMatch and gameplay.")]
-        public float preMatchCountdown = 10f;
+        // [v0.22] public float preMatchCountdown = 10f;
+        public float preMatchCountdown = 30f; // (v0.23) the prep phase: choose a class and gear, read the briefing
         public int minPlayersToStart = 8;
         public int maxPlayers = 16;
         public bool allowLateJoin = true;
@@ -143,6 +144,14 @@ namespace Ouroboros.Data
         public bool respawnDuringExtractionPhase = false;
         [Tooltip("(v0.2) Drop carried loot as a pickup on death (otherwise it is lost).")]
         public bool dropLootOnDeath = true;
+
+        [Header("Changing class and gear during a match (v0.23)")]
+        [Tooltip("A player may change class and gear during the match while standing at their own crew's gate, and for a moment after a redeploy.")]
+        public bool allowLoadoutChangeAtGate = true;
+        [Tooltip("How close to one of the crew's spawn points counts as being at the gate, in metres.")]
+        public float gateRadius = 12f;
+        [Tooltip("Seconds after a redeploy during which class and gear can still be changed, wherever the player has got to.")]
+        public float loadoutSecondsAfterRedeploy = 15f;
 
         [Header("Revive and regeneration (v0.17)")]
         [Tooltip("A crewmate can stand a downed player back up by holding Interact at their ID card.")]

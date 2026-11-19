@@ -283,16 +283,35 @@ namespace Ouroboros.Network
         /// <summary>Requests a class from the input-authority client (e.g. a lobby class picker).</summary>
         public void RequestClass(Core.PlayerClassType classType)
         {
-            if (Object.HasStateAuthority) AssignClass(classType);
+            // [v0.22] if (Object.HasStateAuthority) AssignClass(classType);   // the host's own player skipped the check
+            if (Object.HasStateAuthority) ChangeClassIfAllowed(classType);
             else if (Object.HasInputAuthority) RPC_RequestClass(classType);
         }
 
         [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
         private void RPC_RequestClass(Core.PlayerClassType classType)
         {
+            // [v0.22] var gm = GameMode.ExtractionHeistGameMode.Instance;
+            // [v0.22] if (gm != null && !gm.AllowClassChange) return;
+            // [v0.22] AssignClass(classType);
+            ChangeClassIfAllowed(classType);
+        }
+
+        /// <summary>
+        /// (v0.23) A class change asked for by the player. Allowed before the match, and during it at the crew's
+        /// gate or just after a redeploy. During a match the player keeps the share of health they had: a
+        /// change of class is not a heal. State authority only.
+        /// </summary>
+        private void ChangeClassIfAllowed(Core.PlayerClassType classType)
+        {
+            if (!Object.HasStateAuthority || classType == ClassType) return;
             var gm = GameMode.ExtractionHeistGameMode.Instance;
-            if (gm != null && !gm.AllowClassChange) return;
+            if (gm != null && gm.Object != null && !gm.CanChangeLoadout(this)) return;
+            bool live = gm != null && gm.Object != null && gm.IsMatchLive;
+            float share = live && MaxHealth > 0f ? Mathf.Clamp01(Health / MaxHealth) : 1f;
+            ClearHackState();
             AssignClass(classType);
+            if (live) Health = Mathf.Max(1f, MaxHealth * share);
         }
 
         private void EnsureClassComponent()
@@ -726,6 +745,7 @@ namespace Ouroboros.Network
         {
             if (!Object.HasStateAuthority) return;
             RespawnsUsed++;
+            LastRedeployTick = (int)Runner.Tick; // (v0.23) opens a short window to change class and gear
             Health = MaxHealth;
             Stamina = MaxStamina;
             Status = Core.StatusFlags.None;

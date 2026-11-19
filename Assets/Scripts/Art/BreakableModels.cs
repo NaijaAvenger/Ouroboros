@@ -175,7 +175,10 @@ namespace Ouroboros.Art
                     Fx.Smoke(floor + Vector3.up * 0.3f, reach * 0.5f, 1.2f, new Color(0.55f, 0.48f, 0.4f));
                     break;
             }
-            AudioSource.PlayClipAtPoint(Core.ProceduralSfx.Explosion, centre, kind == Interaction.BreakableKind.WeakWall ? 0.9f : 0.35f);
+            // [v0.22] AudioSource.PlayClipAtPoint(Core.ProceduralSfx.Explosion, centre, kind == Interaction.BreakableKind.WeakWall ? 0.9f : 0.35f);
+            // (v0.23) a wall coming down carries; a crate breaking is heard in the room it is in
+            bool wall = kind == Interaction.BreakableKind.WeakWall;
+            Audio.Sfx.PlayAt(Core.ProceduralSfx.Explosion, centre, wall ? 0.9f : 0.35f, wall ? Audio.Sfx.Blast : Audio.Sfx.Room);
         }
 
         /// <summary>A round bouncing off armour: grey sparks, so the shooter knows this needs something heavier.</summary>

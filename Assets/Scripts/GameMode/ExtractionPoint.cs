@@ -250,7 +250,8 @@ namespace Ouroboros.GameMode
                 {
                     Art.Fx.Ring(transform.position + Vector3.up * 0.1f, extractionRadius, Art.ThreatOutline.WayOut, 0.9f, 0.18f);
                     Art.Fx.Flash(transform.position + Vector3.up * 2f, Art.ThreatOutline.WayOut, 14f, 4f, 0.6f);
-                    AudioSource.PlayClipAtPoint(Core.ProceduralSfx.LiftDing, transform.position + Vector3.up * 2f, 1f); // (v0.20)
+                    // [v0.22] AudioSource.PlayClipAtPoint(Core.ProceduralSfx.LiftDing, transform.position + Vector3.up * 2f, 1f); // (v0.20)
+                    Audio.Sfx.PlayAt(Core.ProceduralSfx.LiftDing, transform.position + Vector3.up * 2f, 1f, Audio.Sfx.Room); // (v0.23) heard in the room, not across the map
                 }
             }
 

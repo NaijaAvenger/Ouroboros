@@ -148,6 +148,38 @@ namespace Ouroboros.Core
                  + Math.Max(0, cashPiles) * Math.Max(0, cashPerPile);
         }
 
+        /// <summary>
+        /// (v0.23) What a vault should be worth: a share of the quota, so that one vault and a little extra
+        /// calls the getaway, and one vault alone does not.
+        /// </summary>
+        public static int HaulTarget(int quota, float shareOfQuota)
+        {
+            if (quota <= 0) return 0;
+            return (int)Math.Round(quota * (double)Clamp01(shareOfQuota), MidpointRounding.AwayFromZero);
+        }
+
+        /// <summary>
+        /// Whether one more item fits the vault's target. The first item always does: a vault is never empty.
+        /// </summary>
+        public static bool FitsHaul(int laidSoFar, int itemValue, int target)
+        {
+            return laidSoFar <= 0 || laidSoFar + itemValue <= target;
+        }
+
+        /// <summary>
+        /// How the rest of a vault's target is made up in cash: the number of piles, and what each is worth.
+        /// Piles are kept under <paramref name="largestPile"/> and never more than <paramref name="mostPiles"/>.
+        /// </summary>
+        public static int CashPiles(int remaining, int largestPile, int mostPiles, out int perPile)
+        {
+            perPile = 0;
+            if (remaining < 50 || mostPiles <= 0 || largestPile <= 0) return 0;
+            int piles = Math.Min(mostPiles, (remaining + largestPile - 1) / largestPile);
+            perPile = Math.Min(largestPile, remaining / piles);
+            perPile -= perPile % 10;
+            return perPile > 0 ? piles : 0;
+        }
+
         private static float Clamp01(float v) => v < 0f ? 0f : (v > 1f ? 1f : v);
     }
 }

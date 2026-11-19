@@ -98,6 +98,20 @@ rivals steal the deposit. That difference is the biggest gap. In order of what I
 Already here in some form: several ways into every vault, gadgets, map events (their game-show events),
 low gravity, destructible containers, a carried objective, loot dropped on death.
 
+### Clean picture, vault worth, sound reach, prep and gear changes (v0.23, code complete, not seen running)
+
+| Request | State |
+|---------|-------|
+| Remove the overlay on the screen | The outline pass was also grading the colour (more saturation, indigo shadows, ochre highlights) and darkening the corners toward purple. Both are off; the outlines stay. I am assuming this is the overlay you meant: it is the only thing laid over the whole picture all the time |
+| One vault and a little extra hits the quota | A vault is now worth 80% of the quota ($4,800 of $6,000), made up to the same total whatever pieces it rolls |
+| Sounds heard from too far | Unity's default falloff never reaches silence inside 500 m, so every shot and crate on the map was faintly audible. Every world sound now has a reach and is silent beyond it: gunfire 48 m, explosions 75 m, most things 32 m or less. Two cues that played in every player's ear are now local |
+| A longer prep phase | 30 seconds |
+| Change class and gear at the spawn or after respawning | At your own crew's gate, or for 15 seconds after a redeploy, B opens the class and gear screen. A class change keeps your share of health |
+
+Design choices worth knowing: sound does not yet pass less easily through walls or floors, only over
+distance; a revive in the field does not open the gear window, only a redeploy at the gate; a gamepad has no
+button for the gear screen, for the same reason it has none for the ping.
+
 ### Class select, loot models and cameras (v0.22, code complete, not seen running)
 
 | Request | State |
@@ -125,7 +139,7 @@ main thing a crew is in the building for, with the small boxes kept as safes on 
 | A room, not a box | Four Grand Vaults in the Galleria, one per wing, using the four largest strongrooms. Each has a real vault door (a steel slab with a hatch and wheel that sinks into the floor) and a lamp bar that shows shut, drilling or open |
 | Three ways in | **Key**: the vault's own guards hold it; the last one down drops it; carry it to the door. **Drill**: set it at the door, then hold the doorway for 50 seconds while every crew knows and guards come; it runs back if you leave, and a rival can pull the plug. **Lock**: crack a console beside the door with the sign and pulse puzzles; quiet |
 | Which vault takes which | Main Vault: key. Cash Cage: drill. Auction Strongroom: lock. Cold Store: any of the three. One field per vault (`methods`) changes it, so every vault can take all three if you prefer |
-| The best loot | Three legendary pieces, two rare and four piles of cash per vault, laid out in the room when it opens: about $6,000, against a $6,000 quota. One vault all but calls the getaway |
+| The best loot | Legendary and rare pieces and cash, laid out in the room when it opens. Since v0.23 a vault is worth 80% of the quota ($4,800 of $6,000): one vault and a little extra calls the getaway |
 | Crew perks | One per vault, for the first crew to reach the pedestal, held by the whole crew to the end of the match: Iron Skin, Hot Shots, Second Wind, Quick Hands |
 | Small vaults stay | Safe Deposit, Stockroom, Server Vault and the four hall safes are unchanged, and are what the objective points at once the Grand Vaults are open |
 | It never stalls | The Main Vault's time lock still opens it for everyone at eight minutes, and two vaults have a weak wall for a Breaching Kit |
@@ -560,7 +574,7 @@ Decision 2 affects the local `ViewMode.cs`: if it is a first/third-person toggle
    models) and builds the `Galleria` scene. Expect it to take a while: it places several thousand objects
    and bakes a two-level NavMesh.
 2. With the Galleria scene open, press Play and choose **Solo**.
-3. Work through sections 7r, 7q, 7p, 7o, 7n, 7m and 7l of `PHASE0_BRINGUP.md` first (the newest work), then 7j and 7k, then 7e to 7i,
+3. Work through sections 7s, 7r, 7q, 7p, 7o, 7n, 7m and 7l of `PHASE0_BRINGUP.md` first (the newest work), then 7j and 7k, then 7e to 7i,
    and list what breaks. The Grand Vaults (v0.21) need **Recreate Galleria Map**; "Update Galleria Map" does not add them.
 4. Tell me the frame rate. If it is low, the first cuts are the ceiling lights and the number of props.
 5. Find native speakers of Nigerian Pidgin, Swahili or Sheng, Twi and isiZulu to rewrite the crew radio lines

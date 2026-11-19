@@ -586,7 +586,9 @@ namespace Ouroboros.Network
             }
 
             // (v0.13) with the menu up the character stands still and does nothing
-            if (UI.GameMenu.IsOpen)
+            // [v0.22] if (UI.GameMenu.IsOpen)
+            // (v0.23) and the same while the class and gear screen is up, which has the cursor too
+            if (UI.GameMenu.IsOpen || UI.ClassPickerUI.IsShown)
             {
                 data.Buttons = default;
                 data.Move = Vector2.zero;

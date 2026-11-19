@@ -8,6 +8,11 @@ namespace Ouroboros.UI
     /// down and the game mode allows class changes. Click a card, or press the ability keys 1-4 /
     /// D-pad, to request that class from the server (<c>NetworkPlayer.RequestClass</c>). The state
     /// authority also gets a "Start match" button. Unlocks the cursor while shown.
+    ///
+    /// (v0.23) It can also be opened during a match, with B, while the player stands at their own crew's gate
+    /// or has just redeployed (<c>ExtractionHeistGameMode.CanChangeLoadout</c>). A line at the left of the
+    /// screen says when that is possible. Opened that way it shows only the class and gear choices, the
+    /// character stands still while it is up, and it closes itself when the player may no longer change.
     /// </summary>
     [RequireComponent(typeof(UIDocument))]
     public class ClassPickerUI : MonoBehaviour
@@ -36,6 +41,10 @@ namespace Ouroboros.UI
         };
 
         private float nextRefresh;
+        // (v0.23) opened by the player during a match
+        private bool midMatchOpen, midMatchAllowed;
+        private VisualElement briefingBox;
+        private Label gateHint;
         private bool shown;
         private float nextReasonLog;
 
@@ -68,10 +77,24 @@ namespace Ouroboros.UI
             panelRoot.Add(root);
 
             Build();
+
+            // (v0.23) the line that says the loadout can be changed here, shown while the screen itself is closed
+            panelRoot.Q("class-picker-hint")?.RemoveFromHierarchy();
+            gateHint = new Label("") { name = "class-picker-hint", pickingMode = PickingMode.Ignore };
+            gateHint.style.position = Position.Absolute;
+            gateHint.style.left = 12; gateHint.style.bottom = 150;
+            gateHint.style.fontSize = 14; gateHint.style.color = new Color(1f, 0.82f, 0.25f);
+            gateHint.style.unityFontStyleAndWeight = FontStyle.Bold;
+            gateHint.style.backgroundColor = new Color(0.04f, 0.04f, 0.06f, 0.78f);
+            gateHint.style.paddingLeft = 10; gateHint.style.paddingRight = 10; gateHint.style.paddingTop = 4; gateHint.style.paddingBottom = 4;
+            gateHint.style.borderLeftWidth = 3; gateHint.style.borderLeftColor = new Color(1f, 0.82f, 0.25f);
+            gateHint.style.display = DisplayStyle.None;
+            panelRoot.Add(gateHint);
         }
 
         private void OnDisable()
         {
+            gateHint?.RemoveFromHierarchy();
             root?.RemoveFromHierarchy();
             if (shown) SetCursorLocked(true);
             shown = false;
@@ -154,6 +177,7 @@ namespace Ouroboros.UI
             // (v0.22) The briefing lives here now: the ten seconds before the match are for choosing a class and
             //         reading this, with nobody able to move. It used to appear after the match had started.
             var briefing = new VisualElement();
+            briefingBox = briefing;
             briefing.style.marginTop = 14; briefing.style.paddingTop = 10; briefing.style.alignSelf = Align.Stretch;
             briefing.style.borderTopWidth = 1; briefing.style.borderTopColor = new Color(1f, 1f, 1f, 0.2f);
             panel.Add(briefing);
@@ -228,6 +252,13 @@ namespace Ouroboros.UI
                 Refresh();
             }
 
+            // (v0.23) B opens and closes it during a match, where that is allowed
+            if (midMatchAllowed && !GameMenu.IsOpen && Core.LocalInputSource.LoadoutPressed())
+            {
+                midMatchOpen = !midMatchOpen;
+                Refresh();
+            }
+
             if (!shown) return;
 
             // Keyboard / gamepad selection mirrors the ability keys
@@ -245,7 +276,26 @@ namespace Ouroboros.UI
             if (local == null || local.Object == null) local = FindLocal();
 
             var gm = GameMode.ExtractionHeistGameMode.Instance;
-            bool shouldShow = local != null && local.Object != null && gm != null && gm.Object != null && gm.AllowClassChange;
+            // [v0.22] bool shouldShow = local != null && local.Object != null && gm != null && gm.Object != null && gm.AllowClassChange;
+            // (v0.23) before the match it is always up; during it, only when the player opened it and may still change
+            bool ready = local != null && local.Object != null && gm != null && gm.Object != null;
+            bool before = ready && gm.AllowClassChange;
+            midMatchAllowed = ready && !before && gm.CanChangeLoadout(local);
+            if (!midMatchAllowed || GameMenu.IsOpen) midMatchOpen = false;
+            bool shouldShow = before || (midMatchAllowed && midMatchOpen);
+
+            if (gateHint != null)
+            {
+                bool hint = midMatchAllowed && !midMatchOpen && !GameMenu.IsOpen;
+                if ((gateHint.resolvedStyle.display != DisplayStyle.None) != hint) gateHint.style.display = hint ? DisplayStyle.Flex : DisplayStyle.None;
+                if (hint)
+                {
+                    float window = gm.Config.loadoutSecondsAfterRedeploy - local.SecondsSinceRedeploy;
+                    bool atGate = Player.TeamSpawnPoint.InZone(local.Team, local.Position, gm.Config.gateRadius);
+                    gateHint.text = atGate ? $"AT YOUR GATE   [{Core.LocalInputSource.LoadoutKeyLabel}] change class or gear"
+                                           : $"REDEPLOYED   [{Core.LocalInputSource.LoadoutKeyLabel}] change class or gear   {Mathf.CeilToInt(Mathf.Max(0f, window))} s";
+                }
+            }
 
             if (!shouldShow && Time.unscaledTime >= nextReasonLog)
             {
@@ -276,6 +326,18 @@ namespace Ouroboros.UI
             // [v0.21]     : "Waiting for players...";
             // (v0.22) the countdown is the thing to watch on this screen, so it is large and says what it means
             bool counting = gm.CurrentState == GameMode.ExtractionHeistGameMode.GameState.PreMatch;
+            // (v0.23) opened during a match: just the choices, and how to close it
+            bool midMatch = !gm.AllowClassChange;
+            if (briefingBox != null && (briefingBox.resolvedStyle.display == DisplayStyle.None) != midMatch) briefingBox.style.display = midMatch ? DisplayStyle.None : DisplayStyle.Flex;
+            title.text = midMatch ? "CHANGE CLASS OR GEAR" : "CHOOSE YOUR SPECIALIST";
+            if (midMatch)
+            {
+                subtitle.text = $"[{Core.LocalInputSource.LoadoutKeyLabel}] to close. You stand still while this is open. Available at your gate, and for {gm.Config.loadoutSecondsAfterRedeploy:0} s after a redeploy.";
+                subtitle.style.fontSize = 14;
+                subtitle.style.color = new Color(1f, 1f, 1f, 0.8f);
+                subtitle.style.unityFontStyleAndWeight = FontStyle.Normal;
+            }
+            else
             subtitle.text = counting
                 ? $"MATCH STARTS IN {Mathf.CeilToInt(gm.PhaseTimeRemaining ?? 0f)}   -   you are held at your gate until then"
                 : "Waiting for players. Nobody can move until the match starts.";
