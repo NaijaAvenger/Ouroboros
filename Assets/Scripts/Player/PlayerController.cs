@@ -174,6 +174,7 @@ namespace Ouroboros.Player
 
             if (Object.HasInputAuthority) Network.GameSessionManager.NotifyLocalPlayer(true);
             if (Object.HasInputAuthority) Local = this; // (v0.13)
+            if (Object.HasInputAuthority && cameraTransform != null) Core.Juice.AttachShaker(cameraTransform); // (v0.15) Feel camera shake
         }
 
         public override void Despawned(NetworkRunner runner, bool hasState)
@@ -240,11 +241,18 @@ namespace Ouroboros.Player
         public override void Render()
         {
             if (!Object.HasInputAuthority || cameraTransform == null) return;
-            cameraTransform.localRotation = Quaternion.Euler(localPitch, 0f, 0f);
+            // [v0.14] cameraTransform.localRotation = Quaternion.Euler(localPitch, 0f, 0f);
             float targetY = IsSliding ? cameraSlideHeight : cameraStandHeight;
-            var lp = cameraTransform.localPosition;
-            lp.y = Mathf.Lerp(lp.y, targetY, Time.deltaTime * 12f);
-            cameraTransform.localPosition = lp;
+            // [v0.14] var lp = cameraTransform.localPosition;
+            // [v0.14] lp.y = Mathf.Lerp(lp.y, targetY, Time.deltaTime * 12f);
+            // [v0.14] cameraTransform.localPosition = lp;
+            // (v0.15) The eye height is tracked on its own, and the shake from Core.Juice is added on top of it,
+            //         so a shake can never drift the camera or fight the slide.
+            if (cameraBaseY <= 0f) cameraBaseY = cameraTransform.localPosition.y;
+            cameraBaseY = Mathf.Lerp(cameraBaseY, targetY, Time.deltaTime * 12f);
+            Vector3 shake = Core.Juice.ShakeOffset;
+            cameraTransform.localPosition = new Vector3(shake.x, cameraBaseY + shake.y, shake.z);
+            cameraTransform.localRotation = Quaternion.Euler(localPitch - shake.y * 45f, shake.x * 35f, shake.x * -50f);
             UpdateAimView(); // (v0.13)
         }
 
@@ -261,6 +269,7 @@ namespace Ouroboros.Player
         public float LookSensitivityScale { get; private set; } = 1f;
 
         private Camera viewCamera;
+        private float cameraBaseY; // (v0.15) eye height without the shake
 
         private void UpdateAimView()
         {

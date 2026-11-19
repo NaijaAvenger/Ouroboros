@@ -180,6 +180,7 @@ namespace Ouroboros.UI
             saidLabel.text = $"{speaker}:  {line.Said}";
             glossLabel.text = line.Gloss;
             panel.style.display = DisplayStyle.Flex;
+            Core.Juice.SlideIn(panel, new Vector2(0f, 10f), 0.2f); // (v0.15)
             hideAt = Time.unscaledTime + showSeconds;
             nextAllowed = Time.unscaledTime + minimumGap + showSeconds * 0.5f;
         }

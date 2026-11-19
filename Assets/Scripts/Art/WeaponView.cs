@@ -183,6 +183,7 @@ namespace Ouroboros.Art
                 foreach (var body in go.GetComponentsInChildren<Rigidbody>(true)) Destroy(body);
                 rest = Quaternion.Euler(data.viewEuler);
                 go.transform.localScale = Vector3.one * Mathf.Max(0.01f, data.viewScale);
+                Stylizer.Apply(go, Core.GameSettings.StylisedLook); // (v0.15) imported models take the look at once
             }
             else
             {

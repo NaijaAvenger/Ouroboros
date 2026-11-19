@@ -21,6 +21,9 @@
     <Reference Include="$(BuildRoot)Fusion.Unity/default/bin/Fusion.Unity.dll" />
     <Reference Include="$(BuildRoot)Unity.InputSystem/default/bin/Unity.InputSystem.dll" Condition="'$(Variant)' != 'legacy'" />
     <Reference Include="$(CacheRoot)unity3d.sdk/lib/UnityEditor.dll" Condition="'$(Variant)' == 'editor'" />
+    <!-- Imported packs: DOTween is referenced as the DLL it ships as; Feel is stood in for by VendorStubs.cs. -->
+    <Reference Include="$(RepoRoot)Assets/Plugins/Demigiant/DOTween/DOTween.dll" />
+    <Compile Include="$(MSBuildThisFileDirectory)VendorStubs.cs" />
     <Compile Include="$(RepoRoot)Assets/**/*.cs"
              Exclude="$(VendorExcludes);$(RepoRoot)Assets/**/Editor/**" />
   </ItemGroup>

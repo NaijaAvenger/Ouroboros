@@ -178,6 +178,7 @@ namespace Ouroboros.Art
             Particles("Fx Blast", position, null, hot, ash, 0f, 46, 0.9f, false, 0.4f, 0.95f, r * 1.2f, r * 3.2f, 0.25f, 0.8f, 0.3f, 0.5f, 1.6f, true);
             Smoke(position, r * 0.5f, 1.6f, new Color(0.3f, 0.28f, 0.27f));
             Flash(position + Vector3.up * 0.5f, FireColour, r * 4f, 6f, 0.3f);
+            Core.Juice.ShakeAt(position, 0.11f, r * 4f + 12f, 0.4f); // (v0.15) felt, not just seen
         }
 
         public static void MuzzleFlash(Vector3 position, Vector3 direction, float scale = 1f)

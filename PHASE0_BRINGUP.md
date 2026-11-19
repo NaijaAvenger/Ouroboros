@@ -340,6 +340,34 @@ Security:
 - [ ] Six guards walk a loop of the concourses and three walk the upper galleries. Thirteen stand at posts and stay there until they see something. Two snipers hold gallery corners over the Atrium.
 - [ ] Cameras look like cameras now, with a lens that is cyan when watching, red when it has seen someone and grey when off.
 
+## 7k. Feel, DOTween and the stylised look (v0.15)
+Setup: nothing to run for the look or the feel, they switch themselves on in Play. To see the look in the editor's Scene view as well, run **Ouroboros > Setup > Apply Stylised Look (materials)**; creating a map does that for you.
+
+First, the two things I could not see:
+- [ ] **The console is clean of shader errors.** Select each file in `Assets/Resources/OuroborosShaders` and check the Inspector shows no errors. They pass an offline syntax check, which is not Unity's compiler. If one fails, the game falls back to how it looked before and logs a warning; send me the error text.
+- [ ] **No compile errors in `Assets/Scripts/Core/Juice.cs`.** It is the only file that calls Feel and DOTween. If your Feel version differs from the one I read, the errors will be there.
+
+The look. Settings > **Stylised look** switches all of it, so you can compare:
+- [ ] Surfaces are flat-shaded in two tones. Where light meets shade there is a band of small marks (strokes on the world, diamonds on patterned cloth) instead of a clean line. Cast shadows have the same woven edge.
+- [ ] Shade leans indigo and light leans warm. Lamps make stepped pools of light, not soft gradients.
+- [ ] Highlights are small rings. Upright surfaces carry a thin warm rim on their lit side; floors do not glow.
+- [ ] Everything has a dark indigo outline that varies in weight and wanders slightly, like a brushed line. Lines thin with distance. Particles, glass, shield bubbles and the HUD are not outlined.
+- [ ] The sky is a dusk in flat bands with a ringed sun.
+- [ ] Characters, weapons from the gun pack, loot, props and walls all take the look. Nothing is pink.
+- [ ] Frame rate with the look on and off. The outline pass redraws the scene's depth and normals once more per camera; if that costs too much on the Galleria, tell me the numbers.
+- [ ] Turning the setting off puts everything back, sky included.
+
+Feel (needs nothing but playing; use a gamepad to check rumble):
+- [ ] Firing nudges the view, more for heavy weapons, less when aiming. Being hit shakes it in proportion. Explosions shake it by distance. Dying is a long shake.
+- [ ] Sliding during a shake does not make the camera jump.
+- [ ] Settings > **Screen shake** scales all of it and 0% removes it.
+- [ ] With a gamepad: a tap per shot (every third on automatics), a thump when hit, a pattern on a kill and on dying. Settings > **Controller vibration** turns it off.
+
+Motion (DOTween):
+- [ ] Shutters roll up and drop; vault doors sink into the floor; maglocked doors slide aside. You can walk through the moment a door starts to open.
+- [ ] Loot bounces as it lands. Breakables flinch when hit. Delivery crates pop in.
+- [ ] HUD banners land with a bounce, feed lines slide in, the menu panels slide in, the death recap rises.
+
 ## 7d. Expected flow and troubleshooting
 **Expected flow on Play (dev config):** spectator camera orbits the arena → session starts → your player spawns → the
 **class picker** appears with the cursor free (state *Waiting for players*) → host presses **Start match now** (or the

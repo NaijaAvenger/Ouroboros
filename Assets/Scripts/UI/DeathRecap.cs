@@ -93,6 +93,7 @@ namespace Ouroboros.UI
                 bool final = e.Source == report.Killer && e.Means == report.KillerMeans;
                 rows.Add(Row(e, e.Total / total, final));
             }
+            Core.Juice.SlideIn(root, new Vector2(0f, 24f), 0.3f, 0.15f); // (v0.15)
             totalLabel.text = $"{report.Total:0} damage from {report.Entries.Count} source{(report.Entries.Count == 1 ? "" : "s")}";
         }
 

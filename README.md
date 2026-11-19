@@ -3,7 +3,7 @@
 
 A modular multiplayer extraction heist game built with **Photon Fusion 2**, featuring 4 teams of 4 players competing to crack objectives, hold onto the loot, and extract before the window closes.
 
-> **Status: v0.14 — networked prototype with a code-generated look, a game shell and an indoor mall map.** The systems below exist in code and pass an
+> **Status: v0.15 — networked prototype with a cel-shaded look of its own, a game shell and an indoor mall map.** The systems below exist in code and pass an
 > offline C# type-check and unit tests (`Tools/`). They have not been validated in play mode. Characters, loot,
 > patterns, music and sound are generated in code as stand-ins; there is no authored art, audio or voice yet.
 > A ✅ in the feature list means "implemented in code", not "tested and fun".
@@ -106,6 +106,10 @@ Assets/Scripts/
 5. **Results** — highest score wins (ties: banked loot, then extracted members)
 
 Scoring: objectives, kills, first extraction per team, each member extracted, and banked loot (`GameModeConfig`).
+
+## Look and feel
+- **Look**: a toon shader whose light ends in a woven band of marks, indigo shade and warm light, ring highlights, brushed ink outlines and a banded dusk sky (`Assets/Resources/OuroborosShaders`, `Art/Stylizer.cs`, `Art/StyleDirector.cs`). It is applied to everything at run time and can be switched off in the settings.
+- **Feel**: camera shake and controller rumble through [Feel](https://feel.moremountains.com/), motion through [DOTween](https://dotween.demigiant.com/). Both are imported asset packs you must own; game code reaches them only through `Core/Juice.cs`.
 
 ## Controls
 Input goes through the **Input System** package (keyboard, mouse, gamepad) when it is enabled; the legacy Input Manager is only a fallback. The pause menu (Esc) has a **Controls** page listing every binding; it is a read-only reference. Rebinding exists in code (`HeistInputActions.StartRebind`, saved in PlayerPrefs) but has no screen yet.

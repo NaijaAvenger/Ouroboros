@@ -153,6 +153,9 @@ namespace Ouroboros.UI
             BuildNav();
             BuildContent();
             FitToScreen();
+            // (v0.15) the panels arrive: the list from the left, the page a beat later
+            Core.Juice.SlideIn(nav, new Vector2(-36f, 0f), 0.24f);
+            Core.Juice.SlideIn(content, new Vector2(0f, 14f), 0.24f, 0.06f);
         }
 
         private void Close()
@@ -251,6 +254,8 @@ namespace Ouroboros.UI
         {
             page = next;
             BuildContent();
+            Core.Juice.SlideIn(content, new Vector2(0f, 12f), 0.2f);
+            Core.Juice.Haptic(Core.Juice.Tap.Select);
         }
 
         private void HostPrivate()
@@ -389,6 +394,12 @@ namespace Ouroboros.UI
             content.Add(ToggleRow("Markers over crewmates", Core.GameSettings.TeammateMarkers, v => Core.GameSettings.TeammateMarkers = v));
             content.Add(ToggleRow("Crew radio lines", Core.GameSettings.CrewRadio, v => Core.GameSettings.CrewRadio = v));
             content.Add(ToggleRow("Full screen", Screen.fullScreen, v => Screen.fullScreen = v));
+
+            // (v0.15)
+            content.Add(Caption("FEEL AND LOOK"));
+            content.Add(SliderRow("Screen shake", 0f, 1.5f, Core.GameSettings.ScreenShake, "P0", v => Core.GameSettings.ScreenShake = v));
+            content.Add(ToggleRow("Controller vibration", Core.GameSettings.Vibration, v => Core.GameSettings.Vibration = v));
+            content.Add(ToggleRow("Stylised look (cel shading and outlines)", Core.GameSettings.StylisedLook, v => Core.GameSettings.StylisedLook = v));
 
             var reset = new Button(() => { Core.GameSettings.ResetToDefaults(); BuildContent(); }) { text = "RESET TO DEFAULTS" };
             StyleButton(reset, false);

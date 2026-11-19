@@ -204,6 +204,17 @@ Awaiting in-engine validation: PHASE0_BRINGUP.md section 7i.
 
 Awaiting in-engine validation: PHASE0_BRINGUP.md section 7j.
 
+### v0.15 — Feel, DOTween and the stylised look
+- **Adapter**: `Core/Juice.cs` is the only file that calls Feel (`MMCameraShaker`, `MMWiggle`, Nice Vibrations) and DOTween. `JuiceDoor` animates door leaves. `UI/JuiceEvents.cs` maps match events to shake and rumble.
+- **Camera**: `PlayerController` tracks eye height on its own and adds `Juice.ShakeOffset`, so shake never fights the slide.
+- **Motion**: shutters, vault doors and maglocks move; loot pops in; breakables flinch; banners, feed, menu and recap animate.
+- **Look**: `Assets/Resources/OuroborosShaders/OuroborosToon.shader`, `OuroborosInk.shader`, `OuroborosSky.shader`; `Art/Stylizer.cs` (toon twins of lit materials), `Art/InkOutline.cs` (camera pass), `Art/StyleDirector.cs` (cameras, new meshes, sky, ambient); `ArtMaterials.SetToon`.
+- **Editor**: menus **Apply Stylised Look (materials)** and **Remove Stylised Look (materials)**; the builders make new materials in the toon shader.
+- **Settings**: screen shake, controller vibration, stylised look.
+- **Tools**: `Tools/shadercheck` compiles the shaders' code with glslang; `Tools/typecheck/VendorStubs.cs` stands in for Feel; DOTween is referenced as its DLL. Both checks run in CI.
+
+Awaiting in-engine validation: PHASE0_BRINGUP.md section 7k.
+
 ### Phase 5 — Meta
 - Lobby scene with class picker (`NetworkPlayer.RequestClass` is in place), session browser, late-join handling, host migration.
 - Progression/cosmetics via `ClassData`/`EquipmentData`.

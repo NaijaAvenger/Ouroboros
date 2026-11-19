@@ -127,8 +127,19 @@ namespace Ouroboros.Interaction
             All.Remove(this);
         }
 
+        private float shownHealth = -1f;
+
         public override void Render()
         {
+            // (v0.15) it flinches when it takes a hit, and arrives with a bounce when an event delivers it
+            if (shownHealth >= 0f && Health < shownHealth - 0.01f && !IsBroken && modelRoot != null) Core.Juice.Punch(modelRoot, 0.08f, 0.18f);
+            shownHealth = Health;
+            if (shownOnce && shownDormant && !IsDormant && !IsBroken && modelRoot != null)
+            {
+                modelRoot.gameObject.SetActive(true);
+                Core.Juice.PopIn(modelRoot, 0.5f);
+            }
+
             if (shownOnce && shownBroken == IsBroken && shownDormant == IsDormant) return;
             bool justBroke = shownOnce && IsBroken && !shownBroken;
             shownOnce = true;

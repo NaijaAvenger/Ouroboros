@@ -209,9 +209,25 @@ namespace Ouroboros.Art
             }
         }
 
+        // ---- v0.15: the stylised look. Code-built materials are made toon when the look is on, and all of
+        //      them change together when the player switches it.
+        private static bool toonOn;
+
+        /// <summary>Switches every code-built lit material between the toon shader and the plain one.</summary>
+        public static void SetToon(bool on)
+        {
+            toonOn = on && Stylizer.Available;
+            var shader = toonOn ? Stylizer.Toon : Lit;
+            if (shader == null) return;
+            foreach (var m in Solid.Values) if (m != null) m.shader = shader;
+            foreach (var m in Glow.Values) if (m != null) m.shader = shader;
+            foreach (var m in Cloth.Values) if (m != null) { m.shader = shader; if (toonOn) m.SetFloat("_Weave", 1f); }
+        }
+
         private static Material New(Color color)
         {
-            var m = new Material(Lit) { color = color, hideFlags = HideFlags.DontSave };
+            // [v0.14] var m = new Material(Lit) { color = color, hideFlags = HideFlags.DontSave };
+            var m = new Material(toonOn && Stylizer.Toon != null ? Stylizer.Toon : Lit) { color = color, hideFlags = HideFlags.DontSave };
             if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", color);
             if (m.HasProperty("_Glossiness")) m.SetFloat("_Glossiness", 0.15f);
             if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.15f);

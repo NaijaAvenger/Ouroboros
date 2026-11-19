@@ -80,7 +80,8 @@ namespace Ouroboros.Interaction
             shownOnce = true;
             shownOpen = open;
 
-            if (modelRoot != null) modelRoot.gameObject.SetActive(!open);
+            // [v0.14] if (modelRoot != null) modelRoot.gameObject.SetActive(!open);
+            if (modelRoot != null) Core.JuiceDoor.For(modelRoot.gameObject, Core.DoorMotion.SlideSide, width).Set(open, animate: changed); // (v0.15) slides aside
             if (colliders != null) foreach (var c in colliders) if (c != null) c.enabled = !open;
             if (navObstacle != null) navObstacle.enabled = !open;
             if (statusLight != null) statusLight.sharedMaterial = Art.ArtMaterials.Emissive(open ? new Color(0.3f, 1f, 0.5f) : new Color(1f, 0.6f, 0.1f));

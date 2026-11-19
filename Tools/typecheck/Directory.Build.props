@@ -23,7 +23,7 @@
          project targets Unity 6 and the guarded APIs (FindObjectsByType etc.) also exist in 2021.3.18+. -->
     <!-- Third-party folders under Assets/ that are not game code. Asset-store packs go here; folders that carry
          their own .asmdef are compiled by Unity as separate assemblies and must not be checked as game code. -->
-    <VendorExcludes>$(RepoRoot)Assets/Photon/**;$(RepoRoot)Assets/TextMesh Pro/**;$(RepoRoot)Assets/JMO Assets/**;$(RepoRoot)Assets/SciFi Gun Pack/**;$(RepoRoot)Assets/LaserGunPack_01/**</VendorExcludes>
+    <VendorExcludes>$(RepoRoot)Assets/Photon/**;$(RepoRoot)Assets/TextMesh Pro/**;$(RepoRoot)Assets/JMO Assets/**;$(RepoRoot)Assets/SciFi Gun Pack/**;$(RepoRoot)Assets/LaserGunPack_01/**;$(RepoRoot)Assets/Feel/**;$(RepoRoot)Assets/Plugins/**</VendorExcludes>
 
     <UnityDefines>UNITY_5_3_OR_NEWER;UNITY_2019_4_OR_NEWER;UNITY_2020_1_OR_NEWER;UNITY_2021_3_OR_NEWER;UNITY_2022_3_OR_NEWER;UNITY_2023_1_OR_NEWER;UNITY_6000_0_OR_NEWER;UNITY_STANDALONE</UnityDefines>
   </PropertyGroup>

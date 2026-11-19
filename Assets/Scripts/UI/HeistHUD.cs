@@ -958,6 +958,7 @@ namespace Ouroboros.UI
             bannerLabel.text = text;
             bannerLabel.style.display = DisplayStyle.Flex;
             bannerUntil = Time.unscaledTime + bannerDuration;
+            Core.Juice.Pop(bannerLabel, 1.35f, 0.32f); // (v0.15) banners land, they do not just appear
         }
 
         private void AddFeed(string text, Color color)
@@ -967,6 +968,7 @@ namespace Ouroboros.UI
             var label = Text(text, 13, color, bold: true);
             entry.Add(label);
             feed.Add(entry);
+            Core.Juice.SlideIn(entry, new Vector2(-28f, 0f), 0.22f); // (v0.15)
             feedEntries.Add(new FeedEntry { Element = entry, Expires = Time.unscaledTime + feedLifetime });
 
             while (feedEntries.Count > feedMaxEntries)

@@ -73,9 +73,13 @@ namespace Ouroboros.EditorTools
             if (material == null)
             {
                 bool clear = color.a < 0.99f;
+                // [v0.14] var shader = clear
+                // [v0.14]     ? (Shader.Find("Sprites/Default") ?? Shader.Find("Standard"))
+                // [v0.14]     : (Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
+                // (v0.15) solid surfaces are made in the game's toon shader when it is there and compiles
                 var shader = clear
                     ? (Shader.Find("Sprites/Default") ?? Shader.Find("Standard"))
-                    : (Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
+                    : (UsableToonShader() ?? Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
                 if (shader == null) return null;
                 material = new Material(shader) { color = color };
                 if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", color);
@@ -92,6 +96,75 @@ namespace Ouroboros.EditorTools
             }
             s_materials[key] = material;
             return material;
+        }
+
+        // ------------------------------------------------------------------
+        // The stylised look, baked into the project's materials (v0.15)
+
+        private static Shader UsableToonShader()
+        {
+            var shader = Shader.Find(Art.Stylizer.ToonShaderName);
+            return shader != null && !ShaderUtil.ShaderHasError(shader) ? shader : null;
+        }
+
+        [MenuItem("Ouroboros/Setup/Apply Stylised Look (materials)")]
+        public static void ApplyStylisedLookMenu()
+        {
+            if (UsableToonShader() == null)
+            {
+                EditorUtility.DisplayDialog("Stylised look", "The shader '" + Art.Stylizer.ToonShaderName + "' is missing or has errors.\n\n" +
+                    "Select Assets/Resources/OuroborosShaders/OuroborosToon.shader, read the errors in the Inspector and send them over.", "OK");
+                return;
+            }
+            int changed = BakeStylisedLook(true);
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[Ouroboros] Stylised look: {changed} materials under {Root} now use '{Art.Stylizer.ToonShaderName}'. " +
+                      "The game also applies the look at run time, so this only changes what the editor shows.");
+        }
+
+        [MenuItem("Ouroboros/Setup/Remove Stylised Look (materials)")]
+        public static void RemoveStylisedLookMenu()
+        {
+            int changed = BakeStylisedLook(false);
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[Ouroboros] Stylised look removed from {changed} materials under {Root}. Switch it off in the game's settings as well to play without it.");
+        }
+
+        /// <summary>
+        /// Switches the opaque lit materials this project generated (everything under Assets/Ouroboros) between
+        /// the toon shader and the Standard one. Imported packs are never touched: the game dresses those at
+        /// run time with copies. Returns how many materials changed.
+        /// </summary>
+        private static int BakeStylisedLook(bool on)
+        {
+            var toon = UsableToonShader();
+            var plain = Shader.Find("Standard");
+            if ((on && toon == null) || plain == null) return 0;
+
+            int changed = 0;
+            foreach (string guid in AssetDatabase.FindAssets("t:Material", new[] { Root }))
+            {
+                var material = AssetDatabase.LoadAssetAtPath<Material>(AssetDatabase.GUIDToAssetPath(guid));
+                if (material == null || material.shader == null) continue;
+                string shaderName = material.shader.name;
+                if (on)
+                {
+                    if (shaderName != "Standard" && shaderName != "Universal Render Pipeline/Lit") continue;
+                    if (material.renderQueue >= 2450) continue; // see-through: leave it
+                    bool patterned = material.mainTexture != null;
+                    material.shader = toon;
+                    material.SetFloat("_Weave", patterned ? 1f : 0f);
+                }
+                else
+                {
+                    if (shaderName != Art.Stylizer.ToonShaderName) continue;
+                    material.shader = plain;
+                }
+                EditorUtility.SetDirty(material);
+                changed++;
+            }
+            s_materials.Clear();
+            return changed;
         }
 
         // ------------------------------------------------------------------

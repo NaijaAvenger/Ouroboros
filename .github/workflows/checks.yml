@@ -24,6 +24,11 @@ jobs:
           python3 Tools/mapgen/galleria.py
           git diff --exit-code -- Assets/Editor/OuroborosGalleriaLayout.cs
 
+      - name: Shaders parse and type-check
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq glslang-tools
+          Tools/shadercheck/run.sh
+
       - name: Cache type-check references
         uses: actions/cache@v4
         with:

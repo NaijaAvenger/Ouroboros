@@ -79,6 +79,7 @@ namespace Ouroboros.GameMode
             var model = Art.ArtefactBuilder.Build(holder, item.shape, item.tier);
             model.localScale = Vector3.one * size;
             model.gameObject.AddComponent<Art.PickupSpin>();
+            Core.Juice.PopIn(model, 0.4f); // (v0.15)
         }
 
         public override void FixedUpdateNetwork()

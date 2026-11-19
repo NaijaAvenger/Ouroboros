@@ -91,6 +91,8 @@ namespace Ouroboros.EditorTools
             {
                 CrewMaterialAsset(team, "Cloth", new Vector2(1.5f, 1.5f));
             }
+            // (v0.15) the materials the builders made before the look existed take it now
+            if (UsableToonShader() != null) BakeStylisedLook(true);
         }
 
         private static void AssignWeaponModels()
@@ -177,9 +179,11 @@ namespace Ouroboros.EditorTools
             var material = AssetDatabase.LoadAssetAtPath<Material>(path);
             if (material != null) return material;
 
-            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            // [v0.14] var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            var shader = UsableToonShader() ?? Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"); // (v0.15)
             if (shader == null) return null;
             material = new Material(shader) { color = Color.white };
+            if (material.HasProperty("_Weave")) material.SetFloat("_Weave", 1f); // patterned cloth takes the diamond weave
             var texture = CrewPatternAsset(team);
             material.mainTexture = texture;
             material.mainTextureScale = tiling;

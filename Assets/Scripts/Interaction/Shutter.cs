@@ -53,10 +53,19 @@ namespace Ouroboros.Interaction
             ApplyVisual();
         }
 
+        private bool visualShown, shownClosed;
+
         private void ApplyVisual()
         {
             bool closed = Object != null && IsClosed;
-            if (barrier != null && barrier.activeSelf != closed) barrier.SetActive(closed);
+            // [v0.14] if (barrier != null && barrier.activeSelf != closed) barrier.SetActive(closed);
+            // (v0.15) the shutter rolls up and drops; it stops blocking the moment it is opened
+            if (barrier != null && (!visualShown || closed != shownClosed))
+            {
+                Core.JuiceDoor.For(barrier, Core.DoorMotion.RollUp).Set(open: !closed, animate: visualShown);
+                visualShown = true;
+                shownClosed = closed;
+            }
             if (navObstacle == null && barrier != null) navObstacle = barrier.GetComponent<UnityEngine.AI.NavMeshObstacle>();
             if (navObstacle != null && navObstacle.enabled != closed) navObstacle.enabled = closed;
         }

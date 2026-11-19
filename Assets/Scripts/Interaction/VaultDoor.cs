@@ -87,9 +87,19 @@ namespace Ouroboros.Interaction
             ApplyVisual();
         }
 
+        private bool visualShown, shownOpen;
+
         private void ApplyVisual()
         {
-            if (doorVisual != null && doorVisual.activeSelf == IsOpen) doorVisual.SetActive(!IsOpen);
+            // [v0.14] if (doorVisual != null && doorVisual.activeSelf == IsOpen) doorVisual.SetActive(!IsOpen);
+            // (v0.15) the vault door sinks into the floor
+            bool open = IsOpen;
+            if (doorVisual != null && (!visualShown || open != shownOpen))
+            {
+                Core.JuiceDoor.For(doorVisual, Core.DoorMotion.Sink).Set(open, animate: visualShown);
+                visualShown = true;
+                shownOpen = open;
+            }
             if (navObstacle == null && doorVisual != null) navObstacle = doorVisual.GetComponent<UnityEngine.AI.NavMeshObstacle>();
             if (navObstacle != null && navObstacle.enabled == IsOpen) navObstacle.enabled = !IsOpen;
         }

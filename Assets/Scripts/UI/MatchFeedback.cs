@@ -19,6 +19,9 @@ namespace Ouroboros.UI
             if (GetComponent<Audio.MusicDirector>() == null) gameObject.AddComponent<Audio.MusicDirector>();
             // (v0.13) abilities, charges, traps and the drone all show something
             if (GetComponent<Art.AbilityEffects>() == null) gameObject.AddComponent<Art.AbilityEffects>();
+            // (v0.15) shake, rumble and the stylised look
+            if (GetComponent<JuiceEvents>() == null) gameObject.AddComponent<JuiceEvents>();
+            if (GetComponent<Art.StyleDirector>() == null) gameObject.AddComponent<Art.StyleDirector>();
             if (audioSource == null)
             {
                 audioSource = gameObject.AddComponent<AudioSource>();
@@ -69,7 +72,11 @@ namespace Ouroboros.UI
             // [v0.12] if (lib == null) return;
             // [v0.12] lib.SpawnVfx(lib.explosionVfx, point, Quaternion.identity);
             // (v0.13) an explosion is never invisible: the assigned effect if there is one, a code-built blast otherwise
-            if (lib != null && lib.explosionVfx != null) lib.SpawnVfx(lib.explosionVfx, point, Quaternion.identity);
+            if (lib != null && lib.explosionVfx != null)
+            {
+                lib.SpawnVfx(lib.explosionVfx, point, Quaternion.identity);
+                Core.Juice.ShakeAt(point, 0.11f, Mathf.Max(1.5f, radius) * 4f + 12f, 0.4f); // (v0.15)
+            }
             else Art.Fx.Explosion(point, radius > 0f ? radius : 1.5f);
         }
 

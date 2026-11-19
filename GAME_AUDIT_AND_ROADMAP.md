@@ -64,6 +64,40 @@ own, not a replacement for artists, composers, voice actors or cultural consulta
 Still open in M4 and not solvable in code: real character and environment art, composed music, recorded
 voice, the cultural review named in 4.1, and the visual language of the hack signs.
 
+### Feel, DOTween and the look (v0.15, code complete, not seen running)
+
+| Request | State |
+|---------|-------|
+| Use Feel | Camera shake through Feel's `MMCameraShaker` and controller rumble through Nice Vibrations, both behind one adapter (`Core/Juice.cs`). No time-scale effects: freezing local time would desynchronise this peer from the network |
+| Use DOTween | Doors that move (shutters roll, vault doors sink, maglocks slide), loot that bounces, breakables that flinch, and HUD and menu motion |
+| A cel-shaded look of its own | Three shaders. A toon surface whose light ends in a woven band of marks, with indigo shade, warm light, ring highlights and a warm rim. A camera ink pass with brushed, wandering outlines and a colour grade. A dusk sky in flat bands with a ringed sun |
+| Applied to assets and world | At run time every opaque lit material is drawn with a toon copy, including the imported gun pack; code-built models are made in the toon shader. The editor menu and the map builders bake it into the project's own materials. One setting switches it all off |
+
+The marks in the woven edge are plain geometric shapes drawn by the shader. Like the crew patterns, they
+should be looked at by someone who knows the textile traditions they nod to before this is shown publicly.
+
+### What is missing next to The Finals
+
+Both games are about money: you take it, you carry it, and nothing counts until it is banked. Ouroboros
+banks at an exit at the end. The Finals banks in the middle of the match, in public, slowly, and lets
+rivals steal the deposit. That difference is the biggest gap. In order of what I would build:
+
+| # | Missing | Why it matters | Size |
+|---|---------|----------------|------|
+| 1 | **Cash-out stations.** Deposit carried loot at a terminal; it banks over about a minute; everyone is told where; a rival can hijack the deposit by hacking the terminal | Turns banking from an exit into a fight. Gives every vault a second act and uses the counter-hack the game already has | Large |
+| 2 | **Contextual ping.** One key marks what you are looking at for your crew: enemy, loot, door, "go here" | A team shooter without voice chat needs it, and bots can read it | Small |
+| 3 | **Revive, and health that comes back.** A downed crewmate can be brought back with their ID card (cards already drop); health regenerates after a few seconds out of combat | Today a death is a long wait and chip damage is permanent. Both slow the match down | Medium |
+| 4 | **Things to pick up and throw.** Explosive, gas and foam canisters lying around the map | The Finals' answer to "the room is the weapon". Breakables are the first half of this | Medium |
+| 5 | **A house announcer and live money standings.** Called moments ("Lagos are cashing out in the Bank"), and a constant view of who holds what | Money only drives decisions if everyone can see it | Small |
+| 6 | **Passing the loot.** Throw the case or a loot item to a crewmate | Makes the carry a team play and not one player's burden | Small |
+| 7 | **A cost for a crew wipe.** A wiped crew loses a share of what it has banked | Makes a wipe matter beyond the respawn timer | Small |
+| 8 | **Movement gadgets.** Deployable jump pad and zipline | The Galleria has two levels and long halls; these would open it up | Medium |
+| 9 | **Spectating crewmates while down** | Dead time is watch time | Small |
+| 10 | **Structural destruction** | The Finals' signature, and a very large engineering job. More weak walls and breakable floors get most of the feel for a fraction of the cost | Very large |
+
+Already here in some form: several ways into every vault, gadgets, map events (their game-show events),
+low gravity, destructible containers, a carried objective, loot dropped on death.
+
 ### After your first run (v0.14, code complete, not play-tested beyond the main menu)
 
 You ran the project and the main menu came up, which confirms the code compiles in Unity and through the

@@ -18,6 +18,9 @@ namespace Ouroboros.Core
         private static float sensitivity = 1f, aimSensitivity = 1f, fieldOfView = DefaultFov;
         private static float masterVolume = 1f, musicVolume = 0.7f;
         private static bool invertY, teammateMarkers = true, crewRadio = true;
+        // (v0.15) feel and look
+        private static float screenShake = 1f;
+        private static bool vibration = true, stylisedLook = true;
 
         /// <summary>Raised after any setting changes.</summary>
         public static event Action Changed;
@@ -34,6 +37,13 @@ namespace Ouroboros.Core
         public static bool TeammateMarkers { get { Load(); return teammateMarkers; } set { Set(ref teammateMarkers, value, "teammateMarkers"); } }
         public static bool CrewRadio { get { Load(); return crewRadio; } set { Set(ref crewRadio, value, "crewRadio"); } }
 
+        /// <summary>(v0.15) Multiplier on camera shake. 0 switches it off.</summary>
+        public static float ScreenShake { get { Load(); return screenShake; } set { Set(ref screenShake, Mathf.Clamp(value, 0f, 1.5f), "screenShake"); } }
+        /// <summary>(v0.15) Controller rumble and phone haptics.</summary>
+        public static bool Vibration { get { Load(); return vibration; } set { Set(ref vibration, value, "vibration"); } }
+        /// <summary>(v0.15) The cel-shaded look: toon materials, ink outlines and the colour grade.</summary>
+        public static bool StylisedLook { get { Load(); return stylisedLook; } set { Set(ref stylisedLook, value, "stylisedLook"); } }
+
         /// <summary>Reads stored values once and applies the ones that live in engine state (volume).</summary>
         public static void Load()
         {
@@ -47,6 +57,9 @@ namespace Ouroboros.Core
             invertY = PlayerPrefs.GetInt(Prefix + "invertY", 0) != 0;
             teammateMarkers = PlayerPrefs.GetInt(Prefix + "teammateMarkers", 1) != 0;
             crewRadio = PlayerPrefs.GetInt(Prefix + "crewRadio", 1) != 0;
+            screenShake = Mathf.Clamp(PlayerPrefs.GetFloat(Prefix + "screenShake", 1f), 0f, 1.5f);
+            vibration = PlayerPrefs.GetInt(Prefix + "vibration", 1) != 0;
+            stylisedLook = PlayerPrefs.GetInt(Prefix + "stylisedLook", 1) != 0;
             AudioListener.volume = masterVolume;
         }
 
@@ -56,6 +69,7 @@ namespace Ouroboros.Core
             Sensitivity = 1f; AimSensitivity = 1f; FieldOfView = DefaultFov;
             MasterVolume = 1f; MusicVolume = 0.7f;
             InvertY = false; TeammateMarkers = true; CrewRadio = true;
+            ScreenShake = 1f; Vibration = true; StylisedLook = true;
         }
 
         private static void Set(ref float field, float value, string key)

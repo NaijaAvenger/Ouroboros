@@ -93,3 +93,21 @@ What it checks before it writes anything:
 To change the map, edit the script and run it. CI runs it on every push and fails if the committed layout
 file is not what the script produces.
 
+## Shader check (`Tools/shadercheck/run.sh`)
+
+The project's hand-written shaders are compiled outside Unity with `glslangValidator` (package
+`glslang-tools`). The script joins each shader's shared `CGINCLUDE` block with each pass, swaps Unity's
+includes for `UnityStubs.hlsl`, and compiles the vertex and fragment functions as HLSL.
+
+It catches syntax errors, undeclared names and type mismatches. It does not prove Unity compiles the shader:
+Unity's own macros, keyword variants and per-platform compilers are not exercised, and code inside
+`#ifdef` blocks the stubs do not define is not checked. Treat a pass as "no typos", not "works".
+
+## Imported asset packs and the type-check
+
+`Assets/Feel` and `Assets/Plugins` are excluded from the type-check as vendor code. DOTween is referenced as
+the DLL it ships as. Feel is too large to compile here, so the few Feel types the game calls are declared in
+`Tools/typecheck/VendorStubs.cs`, copied from the real sources. Game code touches both packs only in
+`Assets/Scripts/Core/Juice.cs`; if that file starts using more of Feel, add the matching declaration to the
+stubs.
+
