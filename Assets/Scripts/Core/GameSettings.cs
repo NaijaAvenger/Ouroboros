@@ -21,6 +21,7 @@ namespace Ouroboros.Core
         // (v0.15) feel and look
         private static float screenShake = 1f;
         private static bool vibration = true, stylisedLook = true;
+        private static bool threatOutlines = true;
 
         /// <summary>Raised after any setting changes.</summary>
         public static event Action Changed;
@@ -44,6 +45,9 @@ namespace Ouroboros.Core
         /// <summary>(v0.15) The cel-shaded look: toon materials, ink outlines and the colour grade.</summary>
         public static bool StylisedLook { get { Load(); return stylisedLook; } set { Set(ref stylisedLook, value, "stylisedLook"); } }
 
+        /// <summary>(v0.17) Bright outlines on guards, turrets and cameras.</summary>
+        public static bool ThreatOutlines { get { Load(); return threatOutlines; } set { Set(ref threatOutlines, value, "threatOutlines"); } }
+
         /// <summary>Reads stored values once and applies the ones that live in engine state (volume).</summary>
         public static void Load()
         {
@@ -60,6 +64,7 @@ namespace Ouroboros.Core
             screenShake = Mathf.Clamp(PlayerPrefs.GetFloat(Prefix + "screenShake", 1f), 0f, 1.5f);
             vibration = PlayerPrefs.GetInt(Prefix + "vibration", 1) != 0;
             stylisedLook = PlayerPrefs.GetInt(Prefix + "stylisedLook", 1) != 0;
+            threatOutlines = PlayerPrefs.GetInt(Prefix + "threatOutlines", 1) != 0;
             AudioListener.volume = masterVolume;
         }
 
@@ -70,6 +75,7 @@ namespace Ouroboros.Core
             MasterVolume = 1f; MusicVolume = 0.7f;
             InvertY = false; TeammateMarkers = true; CrewRadio = true;
             ScreenShake = 1f; Vibration = true; StylisedLook = true;
+            ThreatOutlines = true;
         }
 
         private static void Set(ref float field, float value, string key)

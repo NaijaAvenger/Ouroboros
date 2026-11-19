@@ -45,6 +45,11 @@ namespace Ouroboros.EditorTools
             public string Name; public float X0, Z0, X1, Z1, Width;
             public GRamp(string name, float x0, float z0, float x1, float z1, float width) { Name = name; X0 = x0; Z0 = z0; X1 = x1; Z1 = z1; Width = width; }
         }
+        private struct GTile
+        {
+            public string Zone; public int Level; public float X0, Z0, X1, Z1;
+            public GTile(string zone, int level, float x0, float z0, float x1, float z1) { Zone = zone; Level = level; X0 = x0; Z0 = z0; X1 = x1; Z1 = z1; }
+        }
         private struct GItem
         {
             public string Kind, Arg; public int Level; public float X, Z, Yaw;
@@ -227,7 +232,9 @@ namespace Ouroboros.EditorTools
                 zone.pointOfInterest = z.Poi;
 
                 ZoneLook(z.Name, out Color floor, out Color light);
-                Soft(zones, "Floor: " + z.Name, new Vector3(z.X, y + 0.02f, z.Z), new Vector3(z.W, 0.03f, z.D), floor);
+                // [v0.16] one rectangle per zone. On the upper level that painted a floor across the atrium, the
+                //         voids and the stairwells; BuildGalleriaZoneFloors cuts the tint to the real floor.
+                // Soft(zones, "Floor: " + z.Name, new Vector3(z.X, y + 0.02f, z.Z), new Vector3(z.W, 0.03f, z.D), floor);
                 if (z.W * z.D >= 150f)
                 {
                     float range = Mathf.Clamp(Mathf.Max(z.W, z.D) * 0.75f, 10f, 30f);
@@ -235,8 +242,68 @@ namespace Ouroboros.EditorTools
                 }
             }
 
+            BuildGalleriaZoneFloors(zones);
             BuildGalleriaMarks(level);
             BuildGalleriaSkylight(level);
+        }
+
+        private const string ZoneFloorPrefix = "Floor: ";
+
+        /// <summary>(v0.17) The tinted floor of every zone, cut to the cells that are floor so no opening is covered.</summary>
+        private static int BuildGalleriaZoneFloors(Transform zones)
+        {
+            foreach (var t in GalleriaZoneFloors)
+            {
+                ZoneLook(t.Zone, out Color floor, out _);
+                Soft(zones, ZoneFloorPrefix + t.Zone, new Vector3((t.X0 + t.X1) * 0.5f, LevelY(t.Level) + 0.02f, (t.Z0 + t.Z1) * 0.5f),
+                    new Vector3(t.X1 - t.X0, 0.03f, t.Z1 - t.Z0), floor);
+            }
+            return GalleriaZoneFloors.Length;
+        }
+
+        /// <summary>
+        /// Brings a Galleria scene built by an earlier version up to date without rebuilding it, so hand edits
+        /// survive: redraws the zone floors (v0.17: they covered the stairwells and the atrium) and adds the
+        /// cash-out stations (v0.16) if the scene has none.
+        /// </summary>
+        [MenuItem("Ouroboros/Setup/Update Galleria Map (keeps the scene)")]
+        public static void UpdateGalleriaMap()
+        {
+            var level = GameObject.Find("Level");
+            var zones = level != null ? level.transform.Find("Zones") : null;
+            if (zones == null || Object.FindFirstObjectByType<GameMode.MapZone>() == null)
+            {
+                EditorUtility.DisplayDialog("Update Galleria", "Open the Galleria scene first (Ouroboros > Setup > Create Galleria Map).", "OK");
+                return;
+            }
+            EnsureFolders();
+            s_propY = 0f;
+
+            int removed = 0;
+            for (int i = zones.childCount - 1; i >= 0; i--)
+            {
+                var child = zones.GetChild(i);
+                if (!child.name.StartsWith(ZoneFloorPrefix)) continue;
+                Object.DestroyImmediate(child.gameObject);
+                removed++;
+            }
+            int added = BuildGalleriaZoneFloors(zones);
+
+            int stations = 0;
+            if (Object.FindFirstObjectByType<GameMode.CashOutStation>() == null)
+            {
+                var parent = new GameObject("Cash-Out Stations").transform;
+                foreach (var item in GalleriaItems)
+                {
+                    if (item.Kind != "CashOut") continue;
+                    CashOut(parent, GalleriaZoneName(item.X, item.Z, item.Level) + " Cash-Out", new Vector3(item.X, LevelY(item.Level), item.Z), item.Yaw);
+                    stations++;
+                }
+            }
+
+            EditorSceneManager.MarkSceneDirty(level.scene);
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[Ouroboros] Galleria updated: {removed} old floor tints replaced by {added} cut to the real floor; {stations} cash-out stations added. Save the scene to keep it.");
         }
 
         /// <summary>A box from a floor-plan rectangle (x0, z0)-(x1, z1), between two heights. Solid and static.</summary>

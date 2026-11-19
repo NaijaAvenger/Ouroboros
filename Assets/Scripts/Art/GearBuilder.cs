@@ -208,6 +208,50 @@ namespace Ouroboros.Art
             return root;
         }
 
+        /// <summary>
+        /// (v0.17) A sentry turret big enough to notice: a tripod foot with a hazard ring, a pedestal, and a
+        /// twin-barrelled head with a sensor eye and a status beacon on a mast, about 2.4 m to the top.
+        /// The foot is built under <paramref name="owner"/> at <paramref name="floorY"/>; the gun is built
+        /// under <paramref name="head"/>, which the turret turns to face its target.
+        /// </summary>
+        public static void BuildTurret(Transform owner, Transform head, float floorY, out Renderer beacon, out Renderer eye)
+        {
+            var metal = ArtMaterials.Colour(Gunmetal);
+            var dark = ArtMaterials.Colour(Polymer);
+            var hazard = ArtMaterials.Colour(new Color(0.95f, 0.75f, 0.1f));
+
+            var root = Prim.Group(owner, "Turret Model");
+            Vector3 s = owner.lossyScale;
+            root.localScale = new Vector3(1f / Mathf.Max(0.01f, s.x), 1f / Mathf.Max(0.01f, s.y), 1f / Mathf.Max(0.01f, s.z));
+            root.position = new Vector3(owner.position.x, floorY, owner.position.z);
+
+            Prim.Rod(root, "Foot", new Vector3(0f, 0.06f, 0f), new Vector3(1.5f, 0.06f, 1.5f), metal);
+            Prim.Rod(root, "Hazard Ring", new Vector3(0f, 0.14f, 0f), new Vector3(1.56f, 0.02f, 1.56f), hazard);
+            for (int leg = 0; leg < 3; leg++)
+            {
+                var turn = Quaternion.Euler(0f, leg * 120f, 0f);
+                Prim.Box(root, "Leg", turn * new Vector3(0f, 0.22f, 0.45f), new Vector3(0.24f, 0.16f, 0.95f), dark, new Vector3(0f, leg * 120f, 0f));
+            }
+            Prim.Rod(root, "Pedestal", new Vector3(0f, 0.6f, 0f), new Vector3(0.5f, 0.42f, 0.5f), metal);
+            Prim.Rod(root, "Collar", new Vector3(0f, 1.04f, 0f), new Vector3(0.74f, 0.05f, 0.74f), hazard);
+
+            var gun = Prim.Group(head, "Turret Head");
+            Vector3 hs = head.lossyScale;
+            gun.localScale = new Vector3(1f / Mathf.Max(0.01f, hs.x), 1f / Mathf.Max(0.01f, hs.y), 1f / Mathf.Max(0.01f, hs.z));
+            Prim.Box(gun, "Body", Vector3.zero, new Vector3(0.78f, 0.5f, 0.95f), metal);
+            Prim.Rod(gun, "Drum", new Vector3(0f, -0.04f, -0.56f), new Vector3(0.5f, 0.22f, 0.5f), dark, new Vector3(0f, 0f, 90f));
+            foreach (float side in new[] { -1f, 1f })
+            {
+                Prim.Box(gun, "Cheek", new Vector3(side * 0.42f, 0f, 0.05f), new Vector3(0.08f, 0.36f, 0.7f), hazard);
+                Prim.Rod(gun, "Barrel", new Vector3(side * 0.19f, -0.03f, 0.86f), new Vector3(0.13f, 0.42f, 0.13f), dark, new Vector3(90f, 0f, 0f));
+                Prim.Rod(gun, "Muzzle", new Vector3(side * 0.19f, -0.03f, 1.28f), new Vector3(0.18f, 0.05f, 0.18f), metal, new Vector3(90f, 0f, 0f));
+            }
+            var glow = ArtMaterials.Emissive(new Color(0.9f, 0.75f, 0.2f));
+            eye = Prim.Ball(gun, "Eye", new Vector3(0f, 0.1f, 0.48f), new Vector3(0.24f, 0.24f, 0.12f), glow).GetComponent<Renderer>();
+            Prim.Rod(gun, "Mast", new Vector3(0f, 0.55f, -0.25f), new Vector3(0.06f, 0.3f, 0.06f), dark);
+            beacon = Prim.Ball(gun, "Beacon", new Vector3(0f, 0.97f, -0.25f), new Vector3(0.3f, 0.3f, 0.3f), glow).GetComponent<Renderer>();
+        }
+
         // ------------------------------------------------------------------
         // Passive gear, worn on the character
 

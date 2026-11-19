@@ -75,6 +75,36 @@ namespace Ouroboros.Interaction
                 OwnerTeam = Core.TeamID.None;
                 AimYaw = transform.eulerAngles.y;
             }
+            BuildModel(); // (v0.17)
+        }
+
+        private Renderer beacon, eye;
+        private Art.ThreatOutline outline;
+
+        /// <summary>
+        /// (v0.17) Replaces the scene's small drum and box with a full-size turret, widens the part that can be
+        /// shot to match, and outlines it. The turret was too easy to miss until it had already fired.
+        /// </summary>
+        private void BuildModel()
+        {
+            var body = GetComponent<Collider>();
+            float floorY = body != null ? body.bounds.min.y : transform.position.y;
+            foreach (var r in GetComponentsInChildren<Renderer>()) r.enabled = false; // the scene's placeholder
+            if (head == null)
+            {
+                head = new GameObject("Head").transform;
+                head.SetParent(transform, true);
+                head.position = new Vector3(transform.position.x, floorY + muzzleHeight, transform.position.z);
+            }
+            Art.GearBuilder.BuildTurret(transform, head, floorY, out beacon, out eye);
+
+            // The hit box grows with the model: 1 m square and 1.9 m tall, standing on the floor.
+            Vector3 s = transform.lossyScale;
+            var box = gameObject.AddComponent<BoxCollider>();
+            box.center = transform.InverseTransformPoint(new Vector3(transform.position.x, floorY + 0.95f, transform.position.z));
+            box.size = new Vector3(1f / Mathf.Max(0.01f, s.x), 1.9f / Mathf.Max(0.01f, s.y), 1f / Mathf.Max(0.01f, s.z));
+
+            outline = Art.ThreatOutline.Attach(gameObject, Art.ThreatOutline.Hostile);
         }
 
         public override void Despawned(NetworkRunner runner, bool hasState)
@@ -257,13 +287,25 @@ namespace Ouroboros.Interaction
 
             // 0 offline, 1 facility idle, 2 facility locked on, 3+ hijacked (by crew colour)
             int state = IsOffline ? 0 : (IsHijacked ? 3 + (int)OwnerTeam : (HasTarget ? 2 : 1));
-            if (state == shownState || indicator == null) return;
+            // [v0.16] if (state == shownState || indicator == null) return;
+            if (state == shownState) return;
             shownState = state;
-            if (block == null) block = new MaterialPropertyBlock();
             Color c = state == 0 ? new Color(0.15f, 0.15f, 0.18f)
                     : state == 1 ? new Color(0.9f, 0.75f, 0.2f)
                     : state == 2 ? new Color(1f, 0.15f, 0.1f)
                     : Player.TeamSpawnPoint.TeamColor(OwnerTeam);
+
+            // (v0.17) outlined in red while it serves the building, in a crew's colour once hijacked, and not at all when it is off
+            if (outline != null) outline.Set(state != 0, state >= 3 ? c : Art.ThreatOutline.Hostile);
+            if (beacon != null)
+            {
+                var glow = Art.ArtMaterials.Emissive(c);
+                beacon.sharedMaterial = glow;
+                if (eye != null) eye.sharedMaterial = glow;
+                return;
+            }
+            if (indicator == null) return;
+            if (block == null) block = new MaterialPropertyBlock();
             block.SetColor("_Color", c); block.SetColor("_BaseColor", c);
             indicator.SetPropertyBlock(block);
         }

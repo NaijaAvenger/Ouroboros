@@ -177,6 +177,7 @@ namespace Ouroboros.AI
             var built = Art.CharacterBuilder.BuildGuard(transform, kind, feetY: -1f);
             var walk = gameObject.AddComponent<Art.CharacterAnimator>();
             walk.Model = built;
+            Art.ThreatOutline.Attach(gameObject, Art.ThreatOutline.Hostile); // (v0.17) a guard is easy to lose against a busy room
         }
 
         public override void Despawned(NetworkRunner runner, bool hasState)

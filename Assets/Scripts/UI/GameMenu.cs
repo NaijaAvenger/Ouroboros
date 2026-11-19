@@ -400,6 +400,7 @@ namespace Ouroboros.UI
             content.Add(SliderRow("Screen shake", 0f, 1.5f, Core.GameSettings.ScreenShake, "P0", v => Core.GameSettings.ScreenShake = v));
             content.Add(ToggleRow("Controller vibration", Core.GameSettings.Vibration, v => Core.GameSettings.Vibration = v));
             content.Add(ToggleRow("Stylised look (cel shading and outlines)", Core.GameSettings.StylisedLook, v => Core.GameSettings.StylisedLook = v));
+            content.Add(ToggleRow("Threat outlines (guards, turrets, cameras)", Core.GameSettings.ThreatOutlines, v => Core.GameSettings.ThreatOutlines = v)); // (v0.17)
 
             var reset = new Button(() => { Core.GameSettings.ResetToDefaults(); BuildContent(); }) { text = "RESET TO DEFAULTS" };
             StyleButton(reset, false);

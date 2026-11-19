@@ -46,9 +46,14 @@ namespace Ouroboros.Interaction
             // (v0.14) a code-built camera in place of the scene's box
             var placeholder = GetComponent<Renderer>();
             if (placeholder != null) placeholder.enabled = false;
-            Art.GearBuilder.BuildCamera(transform, out lensRenderer);
+            // [v0.16] Art.GearBuilder.BuildCamera(transform, out lensRenderer);
+            // (v0.17) half as big again, and outlined: a camera high on a wall was easy to miss
+            var model = Art.GearBuilder.BuildCamera(transform, out lensRenderer);
+            model.localScale *= 1.5f;
+            outline = Art.ThreatOutline.Attach(gameObject, Art.ThreatOutline.Watcher);
         }
 
+        private Art.ThreatOutline outline;
         private Renderer lensRenderer;
         private int shownLens = -1;
 
@@ -66,6 +71,8 @@ namespace Ouroboros.Interaction
             cone.Configure(viewRange * scale, viewAngle);
             // [v0.10] cone.SetColor(IsDisabled ? AI.VisionCone.DisabledColor : Spotting ? AI.VisionCone.AlertColor : AI.VisionCone.IdleColor);
             cone.SetColor(IsOff ? AI.VisionCone.DisabledColor : Spotting ? AI.VisionCone.AlertColor : AI.VisionCone.IdleColor);
+
+            if (outline != null) outline.Set(!IsOff, Spotting ? Art.ThreatOutline.Hostile : Art.ThreatOutline.Watcher); // (v0.17)
 
             // (v0.14) the lens says the same thing as the cone: off, watching, or it has seen someone
             int lens = IsOff ? 0 : (Spotting ? 2 : 1);

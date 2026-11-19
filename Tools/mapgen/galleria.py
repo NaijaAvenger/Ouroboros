@@ -533,6 +533,40 @@ mass2 = boxes(1, (SOLID,))
 slab2 = boxes(1, (FLOOR, DOOR))
 floor1 = boxes(0, (FLOOR, DOOR))
 
+# Floor tints (v0.17). A zone used to be tinted as one rectangle, which on the upper level painted a floor
+# across the atrium, the voids between the walkways and every stairwell. Tints are now cut from the cells
+# that are really floor. A bridge carved through a zone after it was named takes that zone's tint.
+for (zname, zlevel, zx, zz, zw, zd, _poi) in zones:
+    for c in range(cz(zz - zd / 2), cz(zz + zd / 2)):
+        for r in range(cx(zx - zw / 2), cx(zx + zw / 2)):
+            if grid[zlevel][c][r] in (FLOOR, DOOR) and zone_of[zlevel][c][r] is None: zone_of[zlevel][c][r] = zname
+
+def zone_boxes(level, name):
+    used = [[False] * W for _ in range(H)]
+    ok = lambda c, r: not used[c][r] and grid[level][c][r] in (FLOOR, DOOR) and zone_of[level][c][r] == name
+    out = []
+    for c in range(H):
+        for r in range(W):
+            if not ok(c, r): continue
+            r1 = r
+            while r1 + 1 < W and ok(c, r1 + 1): r1 += 1
+            c1 = c
+            while c1 + 1 < H and all(ok(c1 + 1, k) for k in range(r, r1 + 1)): c1 += 1
+            for cc in range(c, c1 + 1):
+                for k in range(r, r1 + 1): used[cc][k] = True
+            out.append((XMIN + r * CELL, ZMIN + c * CELL, XMIN + (r1 + 1) * CELL, ZMIN + (c1 + 1) * CELL))
+    return out
+
+zone_floors, seen_zones = [], set()
+for (zname, zlevel, *_rest) in zones:
+    if (zname, zlevel) in seen_zones: continue
+    seen_zones.add((zname, zlevel))
+    for b in zone_boxes(zlevel, zname): zone_floors.append((zname, zlevel) + b)
+for (zname, zlevel, x0, z0, x1, z1) in zone_floors:
+    for c in range(cz(z0), cz(z1)):
+        for r in range(cx(x0), cx(x1)):
+            if grid[zlevel][c][r] == VOID: problems.append(f"floor tint for {zname} covers an opening at L{zlevel + 1} ({wx(r)}, {wz(c)})")
+
 # Rails where an upper floor meets a drop
 rails = []
 for c in range(H):
@@ -571,7 +605,7 @@ if '--ascii' in sys.argv:
         print(f'--- level {level + 1} (north at the top, one character = {CELL} m)')
         for c in range(H - 1, -1, -1): print(''.join(grid[level][c]))
 print(f'cells {W}x{H}  zones {len(zones)}  doors {len(doors)}  ramps {len(ramps)}  items {len(items)}  '
-      f'boxes: walls {len(walls1)} upper {len(mass2)} slabs {len(slab2)} floors {len(floor1)} rails {len(rails)}')
+      f'boxes: walls {len(walls1)} upper {len(mass2)} slabs {len(slab2)} floors {len(floor1)} rails {len(rails)} tints {len(zone_floors)}')
 if skipped: print(f'{len(skipped)} optional pieces skipped:'); [print('   ', s) for s in skipped]
 if problems:
     print(f'{len(problems)} PROBLEMS:'); [print('   ', p) for p in problems]
@@ -601,6 +635,10 @@ for name, data in (('GalleriaFloors', floor1), ('GalleriaWalls', walls1), ('Gall
     out.append(f'\n        private static readonly float[] {name} =\n        {{\n{rows(flat(data))}\n        }};')
 out.append('\n        private static readonly GZone[] GalleriaZones =\n        {')
 for (n, l, x, z, w, d, poi) in zones: out.append(f'            new GZone({q(n)}, {l}, {f(x)}, {f(z)}, {f(w)}, {f(d)}, {"true" if poi else "false"}),')
+out.append('        };')
+out.append('\n        // Tinted floor per zone, cut to the cells that are floor: name, level, x0, z0, x1, z1.')
+out.append('        private static readonly GTile[] GalleriaZoneFloors =\n        {')
+for (n, l, x0, z0, x1, z1) in zone_floors: out.append(f'            new GTile({q(n)}, {l}, {f(x0)}, {f(z0)}, {f(x1)}, {f(z1)}),')
 out.append('        };')
 out.append('\n        private static readonly GDoor[] GalleriaDoors =\n        {')
 for d in doors: out.append(f'            new GDoor({q(d["kind"])}, {d["level"]}, {f(d["x"])}, {f(d["z"])}, {"true" if d["along_x"] else "false"}, {f(d["width"])}, {q(d["name"])}, {q(d["arg"])}),')

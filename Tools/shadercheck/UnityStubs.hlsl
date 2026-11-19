@@ -15,6 +15,7 @@ SamplerState ouro_sampler;
 
 float4x4 unity_ObjectToWorld;
 float4x4 unity_MatrixVP;
+#define UNITY_MATRIX_VP unity_MatrixVP
 float3 _WorldSpaceCameraPos;
 float4 _WorldSpaceLightPos0;
 float4 _LightColor0;
