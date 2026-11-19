@@ -8,8 +8,11 @@ namespace Ouroboros.UI
     /// drawn over each teammate's head and visible through walls. When a teammate is off screen the marker
     /// slides to the screen edge in their direction. A teammate who is down shows a red marker where they fell.
     ///
-    /// Rule of thumb for the player: a marker means friend. Rivals never get one, except while a reveal
-    /// (Data Mine, Recon Drone, Net Sight) has tagged them, when they show a bare magenta diamond.
+    /// Rule of thumb for the player: a marker means friend. Rivals never get one, with two exceptions, both
+    /// shown as a bare magenta diamond (v0.18):
+    ///  - your own crew tagged them with a reveal ability (Recon Drone, Net Sight, Data Mine);
+    ///  - they are carrying loot for the richest crew during the getaway.
+    /// Being seen by a camera, a laser grid or a sniper no longer marks anyone.
     ///
     /// Built in code with UI Toolkit and added automatically by <see cref="HeistHUD"/>. Can be switched off in
     /// the settings (<c>Core.GameSettings.TeammateMarkers</c>).
@@ -141,7 +144,8 @@ namespace Ouroboros.UI
                     if (p == null || p == me || p.Object == null || p.IsExtracted) continue;
 
                     bool mate = p.Team == me.Team && Core.TeamUtil.IsValid(p.Team);
-                    bool tagged = !mate && p.IsAlive && p.HasStatus(Core.StatusFlags.Revealed);
+                    // [v0.17] bool tagged = !mate && p.IsAlive && p.HasStatus(Core.StatusFlags.Revealed);
+                    bool tagged = !mate && p.IsAlive && p.IsMarkedFor(me.Team); // (v0.18) only what this crew has earned
                     if (!mate && !tagged) continue;
 
                     Place(markers[used++], me, p, mate, width, height);

@@ -24,6 +24,16 @@ namespace Ouroboros.Art
         public static readonly Color Hostile = new Color(1f, 0.25f, 0.1f);
         /// <summary>It will see you and raise the alarm.</summary>
         public static readonly Color Watcher = new Color(1f, 0.78f, 0.1f);
+        /// <summary>(v0.18) Somewhere to take your money: a cash-out station.</summary>
+        public static readonly Color Objective = new Color(1f, 0.84f, 0.2f);
+        /// <summary>(v0.18) A way out that is open.</summary>
+        public static readonly Color WayOut = new Color(0.35f, 1f, 0.55f);
+
+        /// <summary>
+        /// (v0.18) Objectives (cash-out stations, open exits) are outlined whatever the Threat outlines
+        /// setting says: that setting is about clutter on enemies, and these are how a player finds the goal.
+        /// </summary>
+        public bool Always;
 
         private static Shader shader;
         private static bool looked, warned;
@@ -53,11 +63,13 @@ namespace Ouroboros.Art
         }
 
         /// <summary>Adds an outline to <paramref name="owner"/> (or returns the one it has) in <paramref name="colour"/>.</summary>
-        public static ThreatOutline Attach(GameObject owner, Color colour)
+        // [v0.17] public static ThreatOutline Attach(GameObject owner, Color colour)
+        public static ThreatOutline Attach(GameObject owner, Color colour, bool always = false)
         {
             if (owner == null) return null;
             var outline = owner.GetComponent<ThreatOutline>();
             if (outline == null) outline = owner.AddComponent<ThreatOutline>();
+            outline.Always = always;
             outline.colour = colour;
             outline.dirty = true;
             return outline;
@@ -135,7 +147,8 @@ namespace Ouroboros.Art
             if (!built) Build(); // on the first frame, so a model built in the owner's Spawned is all there
             if (shells.Count == 0) return;
 
-            bool show = wanted && Core.GameSettings.ThreatOutlines;
+            // [v0.17] bool show = wanted && Core.GameSettings.ThreatOutlines;
+            bool show = wanted && (Always || Core.GameSettings.ThreatOutlines);
             if (!dirty && show == shown && Time.unscaledTime < nextSync) return;
             nextSync = Time.unscaledTime + 0.25f; // parts that other code hides are followed four times a second
             bool recolour = dirty || colour != shownColour;

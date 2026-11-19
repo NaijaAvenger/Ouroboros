@@ -44,7 +44,11 @@ namespace Ouroboros.Art
             Show(ref boost, player.HasStatus(Core.StatusFlags.DamageBoost), BuildBoost);
             Show(ref flames, player.HasStatus(Core.StatusFlags.Burning), () => Fx.AttachFlames(root, new Vector3(0f, 0.9f, 0f)));
             Show(ref sparks, player.HasStatus(Core.StatusFlags.EMPDisabled), () => Fx.AttachSparks(root, new Vector3(0f, 1.1f, 0f), Fx.ShockColour));
-            Show(ref revealed, player.HasStatus(Core.StatusFlags.Revealed), BuildRevealed);
+            // [v0.17] Show(ref revealed, player.HasStatus(Core.StatusFlags.Revealed), BuildRevealed);
+            // (v0.18) the diamond over the head follows the same rule as the HUD marker: only a viewer whose
+            //         crew holds a mark on this player sees it. Cameras and lasers no longer put it there.
+            var viewer = Network.NetworkPlayer.FindLocal();
+            Show(ref revealed, viewer != null && viewer != player && player.IsMarkedFor(viewer.Team), BuildRevealed);
             Show(ref flashed, player.HasStatus(Core.StatusFlags.Flashed), BuildFlashed);
             Show(ref netSight, player.HasStatus(Core.StatusFlags.NetSight), BuildNetSight);
             Show(ref carried, player.HasStatus(Core.StatusFlags.Encumbered), BuildCarried);
@@ -84,7 +88,7 @@ namespace Ouroboros.Art
 
         private GameObject BuildRevealed()
         {
-            // A magenta diamond over the head: "everyone can see this one".
+            // A magenta diamond over the head: "your crew can see this one".
             var marker = Prim.Group(root, "Revealed Marker", new Vector3(0f, 2.35f, 0f)).gameObject;
             var mat = ArtMaterials.Emissive(new Color(1f, 0.2f, 0.9f));
             Prim.Box(marker.transform, "Diamond", Vector3.zero, new Vector3(0.2f, 0.2f, 0.2f), mat, new Vector3(45f, 0f, 45f));

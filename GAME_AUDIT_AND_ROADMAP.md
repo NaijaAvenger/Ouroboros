@@ -98,6 +98,22 @@ rivals steal the deposit. That difference is the biggest gap. In order of what I
 Already here in some form: several ways into every vault, gadgets, map events (their game-show events),
 low gravity, destructible containers, a carried objective, loot dropped on death.
 
+### Markers, cash-out markers and lift exits (v0.18, code complete, not seen running)
+
+| Request | State |
+|---------|-------|
+| No icon over enemy players | The icon was the "revealed" diamond, and almost anything set it: a camera, a laser grid, a sniper taking aim. Those no longer mark anyone. Crewmates keep their markers |
+| Enemy indicators only in certain scenarios | Two: your own crew tagged them with a reveal ability (only your crew sees it), or they carry loot for the richest crew during the getaway (everyone sees it). A crewmate's ping is a third, but it marks a place, not the player |
+| Cash-out spots easier to find | A coin-and-arrow marker turning and bobbing over every station, and a gold outline that is always on |
+| Exits as lift doors | Every exit is a lift car. Doors shut and red until the getaway is called, then they slide open and everything goes green. They shut again while an exit resets |
+| Nearest exit on the HUD | A line with the nearest open exit's name, distance and payout, and a marker on it through walls |
+
+Design choices worth knowing: the lift car has no colliders and does not touch the NavMesh. Solid doors could
+trap a player when they shut after another crew leaves, and solid walls would need the bots' paths rebuilt
+around them. Making it solid is a small follow-up once the rule for "someone is inside when the doors shut" is
+decided. More scenarios for marking a rival (the case carrier, whoever is hijacking your cash-out, whoever just
+killed a crewmate) are one line each: `MarkFor`.
+
 ### After your Galleria run (v0.17, code complete, not seen running)
 
 You ran the Galleria, so everything up to v0.15 compiles and plays. Two things you reported, and two you asked for:
@@ -469,7 +485,7 @@ Decision 2 affects the local `ViewMode.cs`: if it is a first/third-person toggle
    models) and builds the `Galleria` scene. Expect it to take a while: it places several thousand objects
    and bakes a two-level NavMesh.
 2. With the Galleria scene open, press Play and choose **Solo**.
-3. Work through sections 7m and 7l of `PHASE0_BRINGUP.md` first (the newest work), then 7j and 7k, then 7e to 7i,
+3. Work through sections 7n, 7m and 7l of `PHASE0_BRINGUP.md` first (the newest work), then 7j and 7k, then 7e to 7i,
    and list what breaks. On a Galleria scene you already built, run **Update Galleria Map (keeps the scene)** first.
 4. Tell me the frame rate. If it is low, the first cuts are the ceiling lights and the number of props.
 5. Find native speakers of Nigerian Pidgin, Swahili or Sheng, Twi and isiZulu to rewrite the crew radio lines

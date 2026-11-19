@@ -124,6 +124,7 @@ namespace Ouroboros.Classes
             foreach (var enemy in Network.NetworkPlayer.FindPlayersInRadius(context.Transform.position, reconDroneRange, context.Team, aliveOnly: true))
             {
                 enemy.ApplyTimedStatus(Core.StatusFlags.Revealed, reconRevealDuration);
+                enemy.MarkFor(context.Team, reconRevealDuration); // (v0.18) only this crew sees the marker
                 revealed++;
             }
             Log($"Recon drone revealed {revealed} enemies");

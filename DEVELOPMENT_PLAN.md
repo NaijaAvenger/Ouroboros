@@ -239,6 +239,14 @@ Awaiting in-engine validation: PHASE0_BRINGUP.md section 7l.
 
 Awaiting in-engine validation: PHASE0_BRINGUP.md section 7m.
 
+### v0.18 — who gets a marker, cash-out markers, lift exits
+- **Marks**: `NetworkPlayer.MarkFor(team, seconds)`, `IsMarkedFor(viewerTeam)`, `ClearMarks`, `FindLocal` (`Network/NetworkPlayer.Assist.cs`). A mark is per viewing crew (slot 0 is every crew). `TeammateMarkers` and the diamond in `Art/StatusEffects` show a rival only while marked for the viewer's crew. The Revealed status is unchanged as gameplay state; cameras, laser grids and snipers set it without marking.
+- **Cash-out stations**: a bobbing coin marker and an always-on outline (`ThreatOutline.Objective`, `ThreatOutline.Always`).
+- **Exits**: `ExtractionPoint` builds a lift car with four door leaves that open on `IsOpen`; `DoorYaw` is chosen by the state authority from the longer free axis. No colliders, no NavMesh change.
+- **HUD**: `UI/ExitHUD.cs` (nearest open exit: a line and a world marker).
+
+Awaiting in-engine validation: PHASE0_BRINGUP.md section 7n.
+
 ### Phase 5 — Meta
 - Lobby scene with class picker (`NetworkPlayer.RequestClass` is in place), session browser, late-join handling, host migration.
 - Progression/cosmetics via `ClassData`/`EquipmentData`.

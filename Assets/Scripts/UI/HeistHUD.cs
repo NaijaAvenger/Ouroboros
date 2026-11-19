@@ -103,6 +103,7 @@ namespace Ouroboros.UI
             if (GetComponent<MapHUD>() == null) gameObject.AddComponent<MapHUD>(); // zone name, event and scanner markers
             if (GetComponent<CashOutHUD>() == null) gameObject.AddComponent<CashOutHUD>(); // (v0.16) cash-out ticker, markers and prompt
             if (GetComponent<AssistHUD>() == null) gameObject.AddComponent<AssistHUD>(); // (v0.17) crew pings and revives
+            if (GetComponent<ExitHUD>() == null) gameObject.AddComponent<ExitHUD>(); // (v0.18) nearest exit once the getaway is called
 
             var ps = document.panelSettings;
             Debug.Log($"[HeistHUD] Enabled. PanelSettings='{(ps != null ? ps.name : "NONE")}', theme='{(ps != null && ps.themeStyleSheet != null ? ps.themeStyleSheet.name : "NONE")}', " +

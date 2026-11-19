@@ -144,6 +144,7 @@ namespace Ouroboros.Classes
                 foreach (var enemy in Network.NetworkPlayer.FindPlayersInRadius(d.HackPoint, netSightRevealRadius, context.Team, aliveOnly: true))
                 {
                     enemy.ApplyTimedStatus(Core.StatusFlags.Revealed, netSightDuration * 0.5f);
+                    enemy.MarkFor(context.Team, netSightDuration * 0.5f); // (v0.18)
                 }
             }
             return true;
@@ -173,6 +174,7 @@ namespace Ouroboros.Classes
             foreach (var enemy in Network.NetworkPlayer.FindPlayersInRadius(context.Transform.position, dataMineRange, context.Team, aliveOnly: true))
             {
                 enemy.ApplyTimedStatus(Core.StatusFlags.Revealed, dataMineRevealDuration);
+                enemy.MarkFor(context.Team, dataMineRevealDuration); // (v0.18)
             }
             return true;
         }

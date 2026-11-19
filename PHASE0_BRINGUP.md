@@ -431,6 +431,32 @@ Regeneration:
 - [ ] Six seconds after you last took damage, health climbs by 12 a second to full, and the health readout shows a **+** while it does. Taking damage stops it. Burning blocks it.
 - [ ] `GameModeConfig` has the numbers: `healthRegenDelay`, `healthRegenPerSecond` (0 switches it off), `healthRegenCap`, `reviveSeconds`, `reviveHealthFraction`, `allowRevive`.
 
+## 7n. Who gets a marker, cash-out markers, lift exits (v0.18)
+Setup: none. Everything here is built when the match starts, on any map.
+
+Markers over players:
+- [ ] Crewmates have their marker (diamond, name, health, distance) as before.
+- [ ] Rival players and rival bots have **nothing** over their heads in normal play: not when a camera sees them, not when they trip a laser grid, not when a sniper aims at them. Those still break stealth and raise the alarm; they just no longer mark anyone.
+- [ ] A rival shows a magenta diamond only in these cases:
+  - your crew tagged them with Recon Drone, Net Sight or Data Mine. Only your crew sees it (needs two crews of people to confirm the other crew does not);
+  - they are carrying loot for the richest crew during the getaway. Every crew sees that one.
+- [ ] Smoke takes a mark off. So does dying.
+- [ ] A crewmate's ping on a rival still leaves a red ENEMY marker at the place they were, for five seconds. It does not follow them.
+
+Cash-out stations:
+- [ ] Every station has a gold coin with an arrow under it, turning and bobbing about 3.8 m up, at all times.
+- [ ] Every station has a gold outline, also at all times, whatever Settings > Threat outlines says.
+- [ ] While a cash-out runs, coin and outline take the owner's colour; during a hijack they turn red.
+
+Exits:
+- [ ] Every extraction point is a lift car in the middle of its circle: steel posts, glass sides, a brass-trimmed roof, and a pair of doors on two opposite faces. Before the getaway the doors are shut and the lamps over them and the beacon on the roof are red.
+- [ ] When the getaway is called the doors slide apart into the posts, the lamps and beacon turn green, the cabin lights up, a green ring runs out to the edge of the circle, and the car and the circle get a green outline.
+- [ ] While a crew is leaving, the lamps take that crew's colour; contested, they turn orange. After a crew leaves, the doors shut and go red until the exit resets, then open again.
+- [ ] The doors face down the length of the room each exit is in. Tell me any that open onto a wall.
+- [ ] The car is a picture: you can walk through its sides and through shut doors. That is deliberate for now (see the roadmap); tell me if you want it solid.
+- [ ] From the moment the getaway is called a line near the bottom of the screen reads **NEAREST EXIT  name  distance  pays in full / pays 60%**, and a green **EXIT  distance** marker sits on that exit through walls. Both follow you to a different exit if another becomes nearer, skip an exit that is resetting, and go away once you are standing in the circle.
+- [ ] Check the line does not sit on top of anything else at the bottom of your screen.
+
 ## 7d. Expected flow and troubleshooting
 **Expected flow on Play (dev config):** spectator camera orbits the arena → session starts → your player spawns → the
 **class picker** appears with the cursor free (state *Waiting for players*) → host presses **Start match now** (or the

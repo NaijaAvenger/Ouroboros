@@ -314,7 +314,12 @@ namespace Ouroboros.GameMode
             {
                 var p = all[i];
                 if (p == null || p.Object == null || !p.IsActiveInMatch) continue;
-                if (p.Team == RichestTeam && p.CarriedLoot > 0) p.ApplyTimedStatus(Core.StatusFlags.Revealed, 1.5f);
+                // [v0.17] if (p.Team == RichestTeam && p.CarriedLoot > 0) p.ApplyTimedStatus(Core.StatusFlags.Revealed, 1.5f);
+                if (p.Team == RichestTeam && p.CarriedLoot > 0)
+                {
+                    p.ApplyTimedStatus(Core.StatusFlags.Revealed, 1.5f);
+                    p.MarkFor(Core.TeamID.None, 1.5f); // (v0.18) the one mark every crew sees
+                }
             }
         }
 

@@ -14,6 +14,8 @@ namespace Ouroboros.Network
     ///    (see <see cref="Interaction.IDCardDrop"/>). It is faster than waiting for a redeploy, it works during
     ///    the getaway when redeploys do not, and it does not use up a respawn.
     ///  - <b>Regeneration.</b> Health comes back after a few seconds without taking damage.
+    ///  - <b>Marks</b> (v0.18). A rival only ever gets a marker over their head while they are marked, and a
+    ///    mark belongs to the crew that earned it. See <see cref="MarkFor"/>.
     /// </summary>
     public partial class NetworkPlayer
     {
@@ -41,6 +43,64 @@ namespace Ouroboros.Network
             if (runner == null || idx < 0 || idx >= LatestPings.Length) return false;
             ping = LatestPings[idx];
             return ping.By != null && ping.By.Object != null && ((int)runner.Tick - ping.Tick) * runner.DeltaTime <= maxAgeSeconds;
+        }
+
+        // ------------------------------------------------------------------
+        // Marks (v0.18): the only way a rival gets a marker over their head
+        //
+        // Before v0.18 anything that set the Revealed status put a diamond over the player for every rival:
+        // a camera seeing them, a laser grid, a sniper taking aim. Those still set Revealed, which is a
+        // gameplay state (it breaks stealth), but they no longer show anything. A marker now needs a mark:
+        //   - a crew's own reveal ability (Recon Drone, Net Sight, Data Mine) marks for that crew only;
+        //   - carrying loot for the richest crew during the getaway marks for everyone.
+        // A crewmate's ping on a rival is a separate, static marker at the place they were seen.
+
+        /// <summary>Tick until which this player is marked: slot 0 for everyone, slots 1-4 for each crew.</summary>
+        [Networked, Capacity(Core.GameConstants.MAX_TEAMS + 1)]
+        private NetworkArray<int> MarkUntil => default;
+
+        private static NetworkPlayer localCache;
+
+        /// <summary>The player this peer controls, or null before they spawn.</summary>
+        public static NetworkPlayer FindLocal()
+        {
+            if (localCache != null && localCache.Object != null && localCache.IsLocalPlayer) return localCache;
+            localCache = null;
+            for (int i = 0; i < All.Count; i++)
+            {
+                if (All[i] != null && All[i].Object != null && All[i].IsLocalPlayer) { localCache = All[i]; break; }
+            }
+            return localCache;
+        }
+
+        /// <summary>
+        /// Lets <paramref name="viewers"/> see a marker over this player for <paramref name="seconds"/>.
+        /// <see cref="Core.TeamID.None"/> means every crew. State authority only.
+        /// </summary>
+        public void MarkFor(Core.TeamID viewers, float seconds)
+        {
+            if (!Object.HasStateAuthority || seconds <= 0f) return;
+            int slot = viewers == Core.TeamID.None ? 0 : Core.TeamUtil.ToIndex(viewers) + 1;
+            if (slot < 0 || slot >= MarkUntil.Length) return;
+            int until = (int)Runner.Tick + Mathf.CeilToInt(seconds / Mathf.Max(0.0001f, Runner.DeltaTime));
+            if (until > MarkUntil[slot]) MarkUntil.Set(slot, until);
+        }
+
+        /// <summary>Removes every mark: smoke, death.</summary>
+        public void ClearMarks()
+        {
+            if (!Object.HasStateAuthority) return;
+            for (int i = 0; i < MarkUntil.Length; i++) MarkUntil.Set(i, 0);
+        }
+
+        /// <summary>True if a player on <paramref name="viewer"/> may see a marker over this player right now.</summary>
+        public bool IsMarkedFor(Core.TeamID viewer)
+        {
+            if (Object == null || Runner == null || !IsActiveInMatch || viewer == Team) return false;
+            int now = (int)Runner.Tick;
+            if (MarkUntil[0] > now) return true;
+            int slot = Core.TeamUtil.ToIndex(viewer) + 1;
+            return slot > 0 && slot < MarkUntil.Length && MarkUntil[slot] > now;
         }
 
         // ------------------------------------------------------------------

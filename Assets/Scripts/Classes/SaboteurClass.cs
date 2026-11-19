@@ -166,6 +166,7 @@ namespace Ouroboros.Classes
                 {
                     player.ApplyTimedStatus(Core.StatusFlags.Stealthed, smokeDuration * 0.5f);
                     player.ApplyTimedStatus(Core.StatusFlags.Revealed, 0f);
+                    player.ClearMarks(); // (v0.18) smoke also takes the marker off
                 }
             }
             return true;

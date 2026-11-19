@@ -315,12 +315,30 @@ namespace Ouroboros.GameMode
                 lamps[i] = Art.Prim.Box(root, "Lamp", new Vector3(Mathf.Sin(a) * 0.62f, 2.08f, Mathf.Cos(a) * 0.42f), new Vector3(0.09f, 0.09f, 0.09f), Art.ArtMaterials.Colour(new Color(0.2f, 0.2f, 0.22f))).GetComponent<Renderer>();
             }
 
+            // (v0.18) A coin with an arrow under it, turning and bobbing over the station: "money goes here".
+            // Gold while the station is free, the owner's colour while a cash-out runs, red during a hijack.
+            marker = Art.Prim.Group(root, "Marker", new Vector3(0f, MarkerHeight, 0f));
+            var coinGold = Art.ArtMaterials.Emissive(Art.ThreatOutline.Objective);
+            markerParts.Add(Art.Prim.Rod(marker, "Coin", Vector3.zero, new Vector3(0.7f, 0.04f, 0.7f), coinGold, new Vector3(90f, 0f, 0f)).GetComponent<Renderer>());
+            Art.Prim.Rod(marker, "Coin Centre", Vector3.zero, new Vector3(0.42f, 0.055f, 0.42f), Art.ArtMaterials.Colour(new Color(0.55f, 0.38f, 0.08f)), new Vector3(90f, 0f, 0f));
+            markerParts.Add(Art.Prim.Box(marker, "Coin Bar", Vector3.zero, new Vector3(0.09f, 0.3f, 0.13f), coinGold).GetComponent<Renderer>());
+            foreach (float side in new[] { -1f, 1f })
+            {
+                // two strokes meeting at a point below the coin
+                markerParts.Add(Art.Prim.Box(marker, "Arrow", new Vector3(side * 0.12f, -0.62f, 0f), new Vector3(0.1f, 0.4f, 0.1f), coinGold, new Vector3(0f, 0f, side * 35f)).GetComponent<Renderer>());
+            }
+            outline = Art.ThreatOutline.Attach(gameObject, Art.ThreatOutline.Objective, always: true);
+
             column = Art.Prim.Rod(root, "Light Column", new Vector3(0f, 8f, 0f), new Vector3(0.9f, 5f, 0.9f), null);
             columnMaterial = Art.ArtMaterials.TranslucentInstance(new Color(1f, 1f, 1f, 0.16f));
             column.GetComponent<Renderer>().sharedMaterial = columnMaterial;
             column.SetActive(false);
         }
         private Renderer screenBack;
+        private const float MarkerHeight = 3.8f;
+        private Transform marker;
+        private readonly List<Renderer> markerParts = new List<Renderer>();
+        private Art.ThreatOutline outline;
 
         public override void Render()
         {
@@ -329,11 +347,23 @@ namespace Ouroboros.GameMode
             bool hijack = IsBeingHijacked;
             Color crew = active && Core.TeamUtil.IsValid(OwnerTeam) ? Art.CrewStyle.Get(OwnerTeam).Primary : new Color(0.35f, 0.9f, 0.5f);
 
+            // (v0.18) the marker bobs and turns all the time, so the station catches the eye even when idle
+            if (marker != null)
+            {
+                marker.localPosition = new Vector3(0f, MarkerHeight + Mathf.Sin(Time.time * 2.2f) * 0.18f, 0f);
+                marker.localRotation = Quaternion.Euler(0f, Time.time * 80f, 0f);
+            }
+
             if (OwnerTeam != shownOwner || hijack != shownHijack)
             {
                 shownOwner = OwnerTeam;
                 shownHijack = hijack;
                 shownLamps = -1;
+                // (v0.18) marker and outline say whose it is: gold when free, a crew's colour, red when being stolen
+                Color mark = hijack ? new Color(1f, 0.2f, 0.15f) : (active ? crew : Art.ThreatOutline.Objective);
+                var markMaterial = Art.ArtMaterials.Emissive(mark);
+                for (int i = 0; i < markerParts.Count; i++) if (markerParts[i] != null) markerParts[i].sharedMaterial = markMaterial;
+                if (outline != null) outline.Set(true, mark);
                 var face = Art.ArtMaterials.Emissive(hijack ? new Color(1f, 0.2f, 0.15f) : crew);
                 if (screen != null) screen.sharedMaterial = face;
                 if (screenBack != null) screenBack.sharedMaterial = face;

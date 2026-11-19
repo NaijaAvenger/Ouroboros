@@ -684,6 +684,7 @@ namespace Ouroboros.Network
             BurnTimer = TickTimer.None;
 
             currentClass?.OnOwnerDied();
+            ClearMarks();      // (v0.18)
             KeycardMask = 0;   // v0.7: keys and looted cards are lost on death (your own ID card drops via the game mode)
             EnemyCards = 0;
 

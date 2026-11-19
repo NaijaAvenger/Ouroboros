@@ -46,6 +46,8 @@ namespace Ouroboros.GameMode
         }
 
         [Networked] public NetworkBool IsActive { get; set; }
+        /// <summary>(v0.18) Which way the lift's doors face, in degrees. Chosen once by the state authority.</summary>
+        [Networked] public float DoorYaw { get; set; }
         [Networked] public Core.TeamID CurrentExtractingTeam { get; set; }
         [Networked] public float Progress { get; set; }
         [Networked] public NetworkBool IsContested { get; set; }
@@ -89,8 +91,185 @@ namespace Ouroboros.GameMode
                 IsActive = true;
                 CurrentExtractingTeam = Core.TeamID.None;
                 Progress = 0f;
+                DoorYaw = PickDoorYaw(); // (v0.18)
+            }
+            BuildLift(); // (v0.18)
+        }
+
+        // ------------------------------------------------------------------
+        // The lift (v0.18): every exit is a lift car whose doors open when the getaway is called
+        //
+        // The car is a picture only. It has no colliders and does not change the NavMesh, so it can never
+        // trap a player when the doors close after a crew leaves, and bots walk to an exit exactly as before.
+        // The zone is still the circle of extractionRadius around this object; the car stands in its centre.
+
+        /// <summary>True while a crew could leave from here: the getaway has been called and this exit is not resetting.</summary>
+        public bool IsOpen
+        {
+            get
+            {
+                var gm = ExtractionHeistGameMode.Instance;
+                return Object != null && IsActive && gm != null && gm.Object != null && gm.ExtractionOpen
+                       && gm.CurrentState != ExtractionHeistGameMode.GameState.MatchEnded;
             }
         }
+
+        public string ExitName => gameObject.name;
+
+        private const float LiftWidth = 3.4f, LiftDepth = 3.0f, DoorTravelSeconds = 0.9f;
+        private Transform lift;
+        private readonly Transform[] leaves = new Transform[4];
+        private readonly float[] leafSide = new float[4];
+        private readonly List<Renderer> lamps = new List<Renderer>();
+        private Renderer cabinPanel;
+        private Light cabinLight;
+        private Art.ThreatOutline liftOutline;
+        private float doorOpen;        // 0 shut, 1 open
+        private int shownLamp = -1;
+        private bool doorsKnown;
+
+        /// <summary>
+        /// The doors face along whichever of the exit's two axes has more open floor, so a car in a long room
+        /// opens toward the length of the room and not into a wall.
+        /// </summary>
+        private float PickDoorYaw()
+        {
+            float baseYaw = transform.eulerAngles.y;
+            Vector3 eye = transform.position + Vector3.up * 1.5f;
+            float Free(Vector3 dir) => Physics.Raycast(eye, dir, out RaycastHit hit, 40f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore) ? hit.distance : 40f;
+            Vector3 forward = Quaternion.Euler(0f, baseYaw, 0f) * Vector3.forward;
+            Vector3 right = Quaternion.Euler(0f, baseYaw, 0f) * Vector3.right;
+            float along = Free(forward) + Free(-forward);
+            float across = Free(right) + Free(-right);
+            return across > along + 0.5f ? baseYaw + 90f : baseYaw;
+        }
+
+        private void BuildLift()
+        {
+            lift = Art.Prim.Group(transform, "Lift");
+            Vector3 s = transform.lossyScale;
+            lift.localScale = new Vector3(1f / Mathf.Max(0.01f, s.x), 1f / Mathf.Max(0.01f, s.y), 1f / Mathf.Max(0.01f, s.z));
+            lift.position = transform.position;
+            lift.rotation = Quaternion.Euler(0f, DoorYaw, 0f);
+
+            var steel = Art.ArtMaterials.Colour(new Color(0.2f, 0.21f, 0.25f));
+            var dark = Art.ArtMaterials.Colour(new Color(0.11f, 0.11f, 0.14f));
+            var brass = Art.ArtMaterials.Colour(new Color(0.86f, 0.66f, 0.22f));
+            var hazard = Art.ArtMaterials.Colour(new Color(0.95f, 0.75f, 0.1f));
+            var door = Art.ArtMaterials.Colour(new Color(0.7f, 0.72f, 0.77f));
+            var glass = Art.ArtMaterials.Translucent(new Color(0.6f, 0.85f, 0.95f, 0.22f));
+            float hw = LiftWidth * 0.5f, hd = LiftDepth * 0.5f;
+
+            Art.Prim.Box(lift, "Pad", new Vector3(0f, 0.05f, 0f), new Vector3(LiftWidth, 0.08f, LiftDepth), dark);
+            Art.Prim.Box(lift, "Roof", new Vector3(0f, 3.22f, 0f), new Vector3(LiftWidth + 0.3f, 0.22f, LiftDepth + 0.3f), steel);
+            Art.Prim.Box(lift, "Roof Trim", new Vector3(0f, 3.08f, 0f), new Vector3(LiftWidth + 0.34f, 0.06f, LiftDepth + 0.34f), brass);
+            cabinPanel = Art.Prim.Box(lift, "Cabin Light", new Vector3(0f, 3.04f, 0f), new Vector3(2.4f, 0.04f, 2f), dark).GetComponent<Renderer>();
+            Art.Prim.Rod(lift, "Motor", new Vector3(0f, 3.5f, 0f), new Vector3(1.1f, 0.18f, 1.1f), dark);
+            lamps.Add(Art.Prim.Ball(lift, "Beacon", new Vector3(0f, 3.85f, 0f), new Vector3(0.34f, 0.34f, 0.34f), dark).GetComponent<Renderer>());
+
+            foreach (float x in new[] { -1f, 1f })
+            {
+                foreach (float z in new[] { -1f, 1f })
+                    Art.Prim.Box(lift, "Post", new Vector3(x * (hw - 0.12f), 1.55f, z * (hd - 0.12f)), new Vector3(0.24f, 3.1f, 0.24f), steel);
+                Art.Prim.Box(lift, "Side Panel", new Vector3(x * hw, 0.62f, 0f), new Vector3(0.1f, 1.1f, LiftDepth - 0.48f), steel);
+                Art.Prim.Box(lift, "Side Glass", new Vector3(x * hw, 2.1f, 0f), new Vector3(0.05f, 1.86f, LiftDepth - 0.48f), glass);
+                Art.Prim.Box(lift, "Handrail", new Vector3(x * (hw - 0.14f), 1.05f, 0f), new Vector3(0.06f, 0.06f, LiftDepth - 0.6f), brass);
+            }
+
+            int leaf = 0;
+            foreach (float z in new[] { -1f, 1f })
+            {
+                Art.Prim.Box(lift, "Threshold", new Vector3(0f, 0.095f, z * (hd - 0.15f)), new Vector3(LiftWidth - 0.5f, 0.02f, 0.3f), hazard);
+                Art.Prim.Box(lift, "Header", new Vector3(0f, 2.83f, z * (hd - 0.1f)), new Vector3(LiftWidth - 0.24f, 0.5f, 0.14f), dark);
+                lamps.Add(Art.Prim.Box(lift, "Door Lamp", new Vector3(0f, 2.83f, z * (hd - 0.01f)), new Vector3(1.8f, 0.14f, 0.05f), dark).GetComponent<Renderer>());
+                foreach (float x in new[] { -1f, 1f })
+                {
+                    var go = Art.Prim.Box(lift, "Door", Vector3.zero, Vector3.one, door);
+                    Art.Prim.Box(go.transform, "Door Stripe", new Vector3(-x * 0.42f, 0f, 0f), new Vector3(0.05f, 0.9f, 1.3f), brass);
+                    leaves[leaf] = go.transform;
+                    leafSide[leaf] = x;
+                    go.transform.localPosition = new Vector3(0f, 1.3f, z * (hd - 0.1f));
+                    leaf++;
+                }
+            }
+
+            var lightGo = new GameObject("Cabin Glow");
+            lightGo.transform.SetParent(lift, false);
+            lightGo.transform.localPosition = new Vector3(0f, 2.5f, 0f);
+            cabinLight = lightGo.AddComponent<Light>();
+            cabinLight.type = LightType.Point;
+            cabinLight.range = 8f;
+            cabinLight.intensity = 0f;
+            cabinLight.color = new Color(0.7f, 1f, 0.8f);
+            cabinLight.shadows = LightShadows.None;
+
+            PoseDoors(0f);
+            liftOutline = Art.ThreatOutline.Attach(gameObject, Art.ThreatOutline.WayOut, always: true);
+            liftOutline.Set(false, Art.ThreatOutline.WayOut);
+        }
+
+        /// <summary>Each leaf slides toward its own post and narrows as it goes, like a door running into its pocket.</summary>
+        private void PoseDoors(float open)
+        {
+            float t = open * open * (3f - 2f * open);
+            float half = (LiftWidth - 0.48f) * 0.5f;          // clear width between the posts, halved
+            float width = Mathf.Lerp(half, 0.14f, t);
+            for (int i = 0; i < leaves.Length; i++)
+            {
+                var l = leaves[i];
+                if (l == null) continue;
+                float outer = leafSide[i] * half;              // the post this leaf runs to
+                var p = l.localPosition;
+                l.localPosition = new Vector3(outer - leafSide[i] * width * 0.5f, p.y, p.z);
+                l.localScale = new Vector3(width, 2.56f, 0.07f);
+            }
+        }
+
+        public override void Render()
+        {
+            if (lift == null) return;
+            bool open = IsOpen;
+            if (!doorsKnown)
+            {
+                // The first frame shows the state as it is: no opening animation for a peer that joins late.
+                doorsKnown = true;
+                doorOpen = open ? 1f : 0f;
+                wasOpen = open;
+                PoseDoors(doorOpen);
+            }
+            float target = open ? 1f : 0f;
+            if (!Mathf.Approximately(doorOpen, target))
+            {
+                doorOpen = Mathf.MoveTowards(doorOpen, target, Time.deltaTime / DoorTravelSeconds);
+                PoseDoors(doorOpen);
+            }
+            if (open != wasOpen)
+            {
+                wasOpen = open;
+                if (open)
+                {
+                    Art.Fx.Ring(transform.position + Vector3.up * 0.1f, extractionRadius, Art.ThreatOutline.WayOut, 0.9f, 0.18f);
+                    Art.Fx.Flash(transform.position + Vector3.up * 2f, Art.ThreatOutline.WayOut, 14f, 4f, 0.6f);
+                }
+            }
+
+            // 0 shut, 1 open, 2 a crew is leaving, 3 contested
+            int lamp = !open ? 0 : (CurrentExtractingTeam == Core.TeamID.None ? 1 : (IsContested ? 3 : 2));
+            if (lamp != shownLamp)
+            {
+                shownLamp = lamp;
+                Color c = lamp == 0 ? new Color(0.85f, 0.14f, 0.1f)
+                        : lamp == 1 ? Art.ThreatOutline.WayOut
+                        : lamp == 3 ? new Color(1f, 0.55f, 0.1f)
+                        : (Core.TeamUtil.IsValid(CurrentExtractingTeam) ? Art.CrewStyle.Get(CurrentExtractingTeam).Primary : Art.ThreatOutline.WayOut);
+                var glow = Art.ArtMaterials.Emissive(c);
+                for (int i = 0; i < lamps.Count; i++) if (lamps[i] != null) lamps[i].sharedMaterial = glow;
+                if (cabinPanel != null) cabinPanel.sharedMaterial = open ? Art.ArtMaterials.Emissive(new Color(0.85f, 1f, 0.9f)) : Art.ArtMaterials.Colour(new Color(0.11f, 0.11f, 0.14f));
+                if (liftOutline != null) liftOutline.Set(open, lamp == 3 ? c : Art.ThreatOutline.WayOut);
+            }
+            if (cabinLight != null) cabinLight.intensity = Mathf.MoveTowards(cabinLight.intensity, open ? 2.2f : 0f, Time.deltaTime * 4f);
+        }
+        private bool wasOpen;
 
         public override void Despawned(NetworkRunner runner, bool hasState)
         {
