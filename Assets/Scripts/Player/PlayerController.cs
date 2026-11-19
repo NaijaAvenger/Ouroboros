@@ -252,7 +252,11 @@ namespace Ouroboros.Player
             if (cameraBaseY <= 0f) cameraBaseY = cameraTransform.localPosition.y;
             cameraBaseY = Mathf.Lerp(cameraBaseY, targetY, Time.deltaTime * 12f);
             Vector3 shake = Core.Juice.ShakeOffset;
-            cameraTransform.localPosition = new Vector3(shake.x, cameraBaseY + shake.y, shake.z);
+            // [v0.18] cameraTransform.localPosition = new Vector3(shake.x, cameraBaseY + shake.y, shake.z);
+            // (v0.19) Landing has weight: the view dips and thumps in proportion to how fast the player was
+            //         falling. Local and cosmetic only; scaled by the screen-shake setting like every other shake.
+            UpdateLandingFeel();
+            cameraTransform.localPosition = new Vector3(shake.x, cameraBaseY - landDip + shake.y, shake.z);
             cameraTransform.localRotation = Quaternion.Euler(localPitch - shake.y * 45f, shake.x * 35f, shake.x * -50f);
             UpdateAimView(); // (v0.13)
         }
@@ -272,6 +276,28 @@ namespace Ouroboros.Player
         private Camera viewCamera;
         private float cameraBaseY; // (v0.15) eye height without the shake
 
+        // (v0.19) movement feel, the owner's view only
+        private float moveFovScale = 1f, landDip, viewFallSpeed;
+        private bool viewWasGrounded = true;
+
+        private void UpdateLandingFeel()
+        {
+            bool grounded = IsGrounded;
+            if (!grounded) viewFallSpeed = Mathf.Max(viewFallSpeed, -Velocity.y);
+            else
+            {
+                if (!viewWasGrounded && viewFallSpeed > 5f && networkPlayer != null && networkPlayer.IsActiveInMatch)
+                {
+                    float feel = Mathf.Clamp01(Core.GameSettings.ScreenShake);
+                    landDip = Mathf.Clamp((viewFallSpeed - 5f) * 0.018f, 0f, 0.2f) * feel;
+                    Core.Juice.Shake(Mathf.Clamp((viewFallSpeed - 5f) * 0.004f, 0.008f, 0.05f), 0.16f, 20f);
+                }
+                viewFallSpeed = 0f;
+            }
+            viewWasGrounded = grounded;
+            landDip = Mathf.MoveTowards(landDip, 0f, Time.deltaTime * 0.9f);
+        }
+
         private void UpdateAimView()
         {
             if (viewCamera == null) viewCamera = cameraTransform.GetComponentInChildren<Camera>();
@@ -286,7 +312,15 @@ namespace Ouroboros.Player
             float baseFov = Core.GameSettings.FieldOfView;
             float aimFov = Core.CombatRules.ZoomedFov(baseFov, data != null ? data.adsZoom : 1f);
             float fov = Mathf.Lerp(baseFov, aimFov, eased);
-            viewCamera.fieldOfView = fov;
+            // [v0.18] viewCamera.fieldOfView = fov;
+            // (v0.19) Speed is something you see: the view opens up a little at a sprint and more in a slide,
+            //         and closes again when aiming. Look speed is still worked out from the unwidened view, so
+            //         the mouse does not speed up with it. Screen shake at 0% switches this off too.
+            Vector3 flatVelocity = Velocity; flatVelocity.y = 0f;
+            bool sprinting = networkPlayer != null && networkPlayer.HasStatus(Core.StatusFlags.Sprinting) && flatVelocity.sqrMagnitude > 9f;
+            float wantScale = 1f + (IsSliding ? 0.09f : sprinting ? 0.05f : 0f) * Mathf.Clamp01(Core.GameSettings.ScreenShake);
+            moveFovScale = Mathf.Lerp(moveFovScale, wantScale, Time.deltaTime * 7f);
+            viewCamera.fieldOfView = Mathf.Min(125f, Mathf.Lerp(baseFov * moveFovScale, aimFov, eased));
             LookSensitivityScale = Core.CombatRules.ZoomSensitivity(baseFov, fov) * Mathf.Lerp(1f, Core.GameSettings.AimSensitivity, eased);
         }
 

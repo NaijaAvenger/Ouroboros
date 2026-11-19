@@ -63,7 +63,19 @@ namespace Ouroboros.UI
 
         private struct FeedEntry { public VisualElement Element; public float Expires; }
 
-        private class TeamRow { public VisualElement Root; public Label Name, Score, Loot, Status; }
+        // [v0.18] private class TeamRow { public VisualElement Root; public Label Name, Score, Loot, Status; }
+        // (v0.19) the board is the game's scoreboard: one big cash total per crew, a bar toward the quota, and a line of detail
+        private class TeamRow
+        {
+            public VisualElement Root, BankFill, CarryFill;
+            public Label Name, Score, Loot, Status;   // Score is the big total; Loot is the detail line
+            public int ShownTotal = -1;
+        }
+        private int shownCarried = -1;
+        private Label boardRule;
+        private VisualElement boardPanel;
+        private readonly int[] boardOrder = new int[Core.GameConstants.MAX_TEAMS];
+        private readonly int[] boardTotals = new int[Core.GameConstants.MAX_TEAMS];
 
         private class AbilitySlotView { public VisualElement Root, CooldownFill; public Label Key, Name, Cooldown, Cost; }
 
@@ -104,6 +116,7 @@ namespace Ouroboros.UI
             if (GetComponent<CashOutHUD>() == null) gameObject.AddComponent<CashOutHUD>(); // (v0.16) cash-out ticker, markers and prompt
             if (GetComponent<AssistHUD>() == null) gameObject.AddComponent<AssistHUD>(); // (v0.17) crew pings and revives
             if (GetComponent<ExitHUD>() == null) gameObject.AddComponent<ExitHUD>(); // (v0.18) nearest exit once the getaway is called
+            if (GetComponent<ObjectiveHUD>() == null) gameObject.AddComponent<ObjectiveHUD>(); // (v0.19) what to do next, and the briefing
 
             var ps = document.panelSettings;
             Debug.Log($"[HeistHUD] Enabled. PanelSettings='{(ps != null ? ps.name : "NONE")}', theme='{(ps != null && ps.themeStyleSheet != null ? ps.themeStyleSheet.name : "NONE")}', " +
@@ -168,12 +181,25 @@ namespace Ouroboros.UI
                 bannerLabel.style.display = DisplayStyle.None;
             }
 
-            if (damageFlashAlpha > 0f)
+            // [v0.18] if (damageFlashAlpha > 0f)
+            // [v0.18] {
+            // [v0.18]     damageFlashAlpha = Mathf.Max(0f, damageFlashAlpha - Time.unscaledDeltaTime * 1.5f);
+            // [v0.18]     damageFlash.style.opacity = damageFlashAlpha;
+            // [v0.18]     damageFlash.style.display = damageFlashAlpha > 0f ? DisplayStyle.Flex : DisplayStyle.None;
+            // [v0.18] }
+            // (v0.19) Low health is felt, not read: under a third of full the screen keeps a red pulse that
+            //         deepens as health drops and quickens near death. It fades as regeneration brings health back.
+            damageFlashAlpha = Mathf.Max(0f, damageFlashAlpha - Time.unscaledDeltaTime * 1.5f);
+            float hurt = 0f;
+            if (local != null && local.Object != null && local.IsActiveInMatch && local.MaxHealth > 0f)
             {
-                damageFlashAlpha = Mathf.Max(0f, damageFlashAlpha - Time.unscaledDeltaTime * 1.5f);
-                damageFlash.style.opacity = damageFlashAlpha;
-                damageFlash.style.display = damageFlashAlpha > 0f ? DisplayStyle.Flex : DisplayStyle.None;
+                float danger = Mathf.Clamp01(1f - (local.Health / local.MaxHealth) / 0.33f);
+                if (danger > 0f) hurt = danger * (0.3f + 0.22f * Mathf.Sin(Time.unscaledTime * Mathf.Lerp(4f, 9f, danger)));
             }
+            float redness = Mathf.Max(damageFlashAlpha, hurt);
+            bool red = redness > 0.001f;
+            if (red) damageFlash.style.opacity = redness;
+            if ((damageFlash.resolvedStyle.display != DisplayStyle.None) != red) damageFlash.style.display = red ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         // ------------------------------------------------------------------
@@ -209,25 +235,73 @@ namespace Ouroboros.UI
             bannerLabel.style.unityTextAlign = TextAnchor.MiddleCenter;
             root.Add(bannerLabel);
 
-            // Top right: scoreboard
+            // Top right: the cash board (v0.19). This is the game's scoreboard, so it is the biggest thing on the
+            // HUD after the crosshair: each crew's money in large figures, a bar showing how close it is to the
+            // quota (solid = banked, pale = still being carried and still losable), and who is up.
+            // [v0.18] The board was a 300 px table of 12-14 px text headed "TEAMS":
+            // [v0.18] var board = Panel(PanelBg);
+            // [v0.18] board.style.position = Position.Absolute;
+            // [v0.18] board.style.top = 12; board.style.right = 12; board.style.minWidth = 300;
+            // [v0.18] board.Add(Text("TEAMS", 12, new Color(1f, 1f, 1f, 0.6f), bold: true));
+            // [v0.18] for (int i = 0; i < teamRows.Length; i++)
+            // [v0.18] {
+            // [v0.18] var row = new TeamRow { Root = new VisualElement() };
+            // [v0.18] row.Root.style.flexDirection = FlexDirection.Row;
+            // [v0.18] row.Root.style.justifyContent = Justify.SpaceBetween;
+            // [v0.18] row.Root.style.marginTop = 2;
+            // [v0.18] row.Name = Text("", 14, Player.TeamSpawnPoint.TeamColor(Core.TeamUtil.FromIndex(i)), bold: true);
+            // [v0.18] row.Name.style.minWidth = 100;
+            // [v0.18] row.Score = Text("", 14, Color.white, bold: true); row.Score.style.minWidth = 60; row.Score.style.unityTextAlign = TextAnchor.MiddleRight;
+            // [v0.18] row.Loot = Text("", 13, LootColor); row.Loot.style.minWidth = 60; row.Loot.style.unityTextAlign = TextAnchor.MiddleRight;
+            // [v0.18] row.Status = Text("", 12, new Color(1f, 1f, 1f, 0.7f)); row.Status.style.minWidth = 70; row.Status.style.unityTextAlign = TextAnchor.MiddleRight;
+            // [v0.18] row.Root.Add(row.Name); row.Root.Add(row.Score); row.Root.Add(row.Loot); row.Root.Add(row.Status);
+            // [v0.18] board.Add(row.Root);
+            // [v0.18] teamRows[i] = row;
+            // [v0.18] }
+            // [v0.18] root.Add(board);
             var board = Panel(PanelBg);
             board.style.position = Position.Absolute;
-            board.style.top = 12; board.style.right = 12; board.style.minWidth = 300;
-            board.Add(Text("TEAMS", 12, new Color(1f, 1f, 1f, 0.6f), bold: true));
+            board.style.top = 12; board.style.right = 12; board.style.width = 380;
+            boardPanel = board;
+            var head = new VisualElement();
+            head.style.flexDirection = FlexDirection.Row; head.style.justifyContent = Justify.SpaceBetween; head.style.alignItems = Align.FlexEnd;
+            head.Add(Text("CASH", 18, LootColor, bold: true));
+            boardRule = Text("", 12, new Color(1f, 1f, 1f, 0.7f), bold: true);
+            head.Add(boardRule);
+            board.Add(head);
             for (int i = 0; i < teamRows.Length; i++)
             {
+                Color crew = Player.TeamSpawnPoint.TeamColor(Core.TeamUtil.FromIndex(i));
                 var row = new TeamRow { Root = new VisualElement() };
-                row.Root.style.flexDirection = FlexDirection.Row;
-                row.Root.style.justifyContent = Justify.SpaceBetween;
-                row.Root.style.marginTop = 2;
-                row.Name = Text("", 14, Player.TeamSpawnPoint.TeamColor(Core.TeamUtil.FromIndex(i)), bold: true);
-                row.Name.style.minWidth = 100;
-                row.Score = Text("", 14, Color.white, bold: true); row.Score.style.minWidth = 60; row.Score.style.unityTextAlign = TextAnchor.MiddleRight;
-                row.Loot = Text("", 13, LootColor); row.Loot.style.minWidth = 60; row.Loot.style.unityTextAlign = TextAnchor.MiddleRight;
-                row.Status = Text("", 12, new Color(1f, 1f, 1f, 0.7f)); row.Status.style.minWidth = 70; row.Status.style.unityTextAlign = TextAnchor.MiddleRight;
-                row.Root.Add(row.Name); row.Root.Add(row.Score); row.Root.Add(row.Loot); row.Root.Add(row.Status);
+                row.Root.style.marginTop = 6; row.Root.style.paddingLeft = 8; row.Root.style.paddingRight = 6; row.Root.style.paddingTop = 2; row.Root.style.paddingBottom = 4;
+                row.Root.style.borderLeftWidth = 4; row.Root.style.borderLeftColor = crew;
+
+                var line = new VisualElement();
+                line.style.flexDirection = FlexDirection.Row; line.style.justifyContent = Justify.SpaceBetween; line.style.alignItems = Align.FlexEnd;
+                row.Name = Text("", 17, crew, bold: true);
+                row.Score = Text("", 30, LootColor, bold: true);
+                row.Score.style.unityTextAlign = TextAnchor.LowerRight;
+                line.Add(row.Name); line.Add(row.Score);
+                row.Root.Add(line);
+
+                var track = new VisualElement();
+                track.style.height = 7; track.style.marginTop = 1; track.style.flexDirection = FlexDirection.Row;
+                track.style.backgroundColor = new Color(1f, 1f, 1f, 0.12f);
+                row.BankFill = new VisualElement(); row.BankFill.style.backgroundColor = crew;
+                row.CarryFill = new VisualElement(); row.CarryFill.style.backgroundColor = new Color(crew.r, crew.g, crew.b, 0.45f);
+                track.Add(row.BankFill); track.Add(row.CarryFill);
+                row.Root.Add(track);
+
+                var detail = new VisualElement();
+                detail.style.flexDirection = FlexDirection.Row; detail.style.justifyContent = Justify.SpaceBetween; detail.style.marginTop = 2;
+                row.Loot = Text("", 12, new Color(1f, 1f, 1f, 0.8f));
+                row.Status = Text("", 12, new Color(1f, 1f, 1f, 0.8f), bold: true);
+                detail.Add(row.Loot); detail.Add(row.Status);
+                row.Root.Add(detail);
+
                 board.Add(row.Root);
                 teamRows[i] = row;
+                boardOrder[i] = i;
             }
             root.Add(board);
 
@@ -477,9 +551,11 @@ namespace Ouroboros.UI
                     break;
                 case GameMode.ExtractionHeistGameMode.GameState.InProgress:
                     // [v0.9] stateLabel.text = gm.ExtractionOpen ? "Extraction OPEN" : "Heist in progress";
-                    stateLabel.text = gm.Config.UseRunRules
-                        ? $"Heist  -  first crew to bank or carry ${gm.LootQuota} calls the getaway" // [v0.13] gm.Config.lootQuota
-                        : (gm.ExtractionOpen ? "Extraction OPEN" : "Heist in progress");
+                    // [v0.18] stateLabel.text = gm.Config.UseRunRules
+                    // [v0.18]     ? $"Heist  -  first crew to bank or carry ${gm.LootQuota} calls the getaway" // [v0.13] gm.Config.lootQuota
+                    // [v0.18]     : (gm.ExtractionOpen ? "Extraction OPEN" : "Heist in progress");
+                    // (v0.19) the rule now lives on the cash board and in the objective tracker; this is just the phase
+                    stateLabel.text = gm.ExtractionOpen ? "LIFTS OPEN" : "HEIST IN PROGRESS";
                     timerLabel.text = Fmt(gm.MatchTimeRemaining);
                     break;
                 case GameMode.ExtractionHeistGameMode.GameState.Extraction:
@@ -496,10 +572,69 @@ namespace Ouroboros.UI
             }
         }
 
+        // [v0.18] private void RefreshTeams()
+        // [v0.18] {
+        // [v0.18]     var gm = GameMode.ExtractionHeistGameMode.Instance;
+        // [v0.18]     var tm = Network.TeamManager.Instance;
+        // [v0.18]     for (int i = 0; i < teamRows.Length; i++)
+        // [v0.18]     {
+        // [v0.18]         var row = teamRows[i];
+        // [v0.18]         var team = Core.TeamUtil.FromIndex(i);
+        // [v0.18]         bool present = tm != null && tm.Object != null && tm.GetTeamPlayerCount(team) > 0;
+        // [v0.18]         row.Root.style.display = present ? DisplayStyle.Flex : DisplayStyle.None;
+        // [v0.18]         if (!present) continue;
+
+        // [v0.18]         var s = tm.GetTeamStatus(team);
+        // [v0.18]         row.Name.text = TeamName(team) + (local != null && local.Team == team ? " ★" : "");
+        // [v0.18]         row.Score.text = gm != null && gm.Object != null ? gm.TeamScores[i].ToString() : "0";
+        // [v0.18]         // [v0.9] row.Loot.text = gm != null && gm.Object != null ? $"${gm.TeamLoot[i]}" : "";
+        // [v0.18]         // [v0.9] row.Status.text = s.Extracted == s.Total && s.Total > 0 ? "out" : $"{s.Alive}/{s.Total} up";
+        // [v0.18]         bool live = gm != null && gm.Object != null;
+        // [v0.18]         if (live && gm.Config.UseRunRules)
+        // [v0.18]         {
+        // [v0.18]             // (v0.10) Score is what the crew got out with; this column is what it is carrying toward the quota.
+        // [v0.18]             int carried = gm.GetTeamCarried(team);
+        // [v0.18]             // [v0.15] row.Loot.text = gm.IsGetaway ? $"${carried}" : $"${carried} / {gm.LootQuota}"; // [v0.13] gm.Config.lootQuota
+        // [v0.18]             // (v0.16) banked money is shown on its own and counts toward the quota with what is carried
+        // [v0.18]             int banked = gm.GetTeamBanked(team);
+        // [v0.18]             row.Loot.text = gm.IsGetaway ? $"${banked} + ${carried}" : $"${banked} + ${carried} / {gm.LootQuota}";
+        // [v0.18]             row.Loot.style.color = gm.IsGetaway && gm.RichestTeam == team ? HealthColor : LootColor;
+        // [v0.18]             row.Status.text = gm.CrewEliminated[i] ? "OUT"
+        // [v0.18]                 : (s.Extracted == s.Total && s.Total > 0 ? "away" : $"{s.Alive}/{s.Total} up");
+        // [v0.18]         }
+        // [v0.18]         else
+        // [v0.18]         {
+        // [v0.18]             row.Loot.text = live ? $"${gm.TeamLoot[i]}" : "";
+        // [v0.18]             row.Status.text = s.Extracted == s.Total && s.Total > 0 ? "out" : $"{s.Alive}/{s.Total} up";
+        // [v0.18]         }
+        // [v0.18]     }
+        // [v0.18] }
+
+        /// <summary>
+        /// (v0.19) The cash board. Under the run rules a crew's figure is everything it has toward the quota:
+        /// banked plus carried. Rows are ordered richest first, the local crew's row is lit, and a figure pops
+        /// when it goes up so money arriving is something you see happen.
+        /// </summary>
         private void RefreshTeams()
         {
             var gm = GameMode.ExtractionHeistGameMode.Instance;
             var tm = Network.TeamManager.Instance;
+            bool live = gm != null && gm.Object != null;
+            bool run = live && gm.Config.UseRunRules;
+            int quota = run ? Mathf.Max(1, gm.LootQuota) : 1;
+
+            boardRule.text = !run ? "" : gm.IsGetaway ? "getaway called: get out with it" : $"first to ${quota:N0} calls the getaway";
+
+            int richest = 1;
+            for (int i = 0; i < teamRows.Length; i++)
+            {
+                var team = Core.TeamUtil.FromIndex(i);
+                boardTotals[i] = !live ? 0 : run ? gm.GetTeamHaul(team) : gm.TeamScores[i];
+                if (boardTotals[i] > richest) richest = boardTotals[i];
+            }
+            // Before the getaway the bar runs to the quota; after it, to the richest crew.
+            float full = run && !gm.IsGetaway ? quota : richest;
+
             for (int i = 0; i < teamRows.Length; i++)
             {
                 var row = teamRows[i];
@@ -508,30 +643,63 @@ namespace Ouroboros.UI
                 row.Root.style.display = present ? DisplayStyle.Flex : DisplayStyle.None;
                 if (!present) continue;
 
+                bool mine = local != null && local.Object != null && local.Team == team;
                 var s = tm.GetTeamStatus(team);
-                row.Name.text = TeamName(team) + (local != null && local.Team == team ? " ★" : "");
-                row.Score.text = gm != null && gm.Object != null ? gm.TeamScores[i].ToString() : "0";
-                // [v0.9] row.Loot.text = gm != null && gm.Object != null ? $"${gm.TeamLoot[i]}" : "";
-                // [v0.9] row.Status.text = s.Extracted == s.Total && s.Total > 0 ? "out" : $"{s.Alive}/{s.Total} up";
-                bool live = gm != null && gm.Object != null;
-                if (live && gm.Config.UseRunRules)
+                int total = boardTotals[i];
+                row.Name.text = mine ? $"{TeamName(team)}  (you)" : TeamName(team);
+                row.Root.style.backgroundColor = mine ? new Color(1f, 1f, 1f, 0.1f) : new Color(0f, 0f, 0f, 0f);
+                row.Score.text = run ? $"${total:N0}" : total.ToString("N0");
+
+                bool cashing = false, robbed = false;
+                var stations = GameMode.CashOutStation.All;
+                for (int k = 0; k < stations.Count; k++)
                 {
-                    // (v0.10) Score is what the crew got out with; this column is what it is carrying toward the quota.
-                    int carried = gm.GetTeamCarried(team);
-                    // [v0.15] row.Loot.text = gm.IsGetaway ? $"${carried}" : $"${carried} / {gm.LootQuota}"; // [v0.13] gm.Config.lootQuota
-                    // (v0.16) banked money is shown on its own and counts toward the quota with what is carried
-                    int banked = gm.GetTeamBanked(team);
-                    row.Loot.text = gm.IsGetaway ? $"${banked} + ${carried}" : $"${banked} + ${carried} / {gm.LootQuota}";
-                    row.Loot.style.color = gm.IsGetaway && gm.RichestTeam == team ? HealthColor : LootColor;
+                    var st = stations[k];
+                    if (st == null || st.Object == null || !st.IsActive || st.OwnerTeam != team) continue;
+                    cashing = true;
+                    if (st.IsBeingHijacked) robbed = true;
+                }
+
+                if (run)
+                {
+                    int banked = gm.GetTeamBanked(team), carried = gm.GetTeamCarried(team);
+                    float bankedShare = Mathf.Clamp01(banked / full);
+                    row.BankFill.style.width = Length.Percent(bankedShare * 100f);
+                    row.CarryFill.style.width = Length.Percent(Mathf.Min(Mathf.Clamp01(carried / full), 1f - bankedShare) * 100f);
+                    row.Loot.text = $"banked ${banked:N0}   carrying ${carried:N0}";
+                    row.Score.style.color = gm.IsGetaway && gm.RichestTeam == team ? HealthColor : LootColor;
                     row.Status.text = gm.CrewEliminated[i] ? "OUT"
-                        : (s.Extracted == s.Total && s.Total > 0 ? "away" : $"{s.Alive}/{s.Total} up");
+                        : s.Extracted == s.Total && s.Total > 0 ? "AWAY"
+                        : robbed ? "BEING ROBBED"
+                        : cashing ? "CASHING OUT"
+                        : $"{s.Alive}/{s.Total} up";
+                    row.Status.style.color = robbed ? HealthColor : cashing ? LootColor : new Color(1f, 1f, 1f, 0.8f);
                 }
                 else
                 {
-                    row.Loot.text = live ? $"${gm.TeamLoot[i]}" : "";
+                    row.BankFill.style.width = Length.Percent(Mathf.Clamp01(total / full) * 100f);
+                    row.CarryFill.style.width = Length.Percent(0f);
+                    row.Loot.text = live ? $"banked ${gm.TeamLoot[i]:N0}" : "";
                     row.Status.text = s.Extracted == s.Total && s.Total > 0 ? "out" : $"{s.Alive}/{s.Total} up";
                 }
+
+                // Money arriving is an event: the figure jumps. Only upward, and not on the first frame.
+                if (row.ShownTotal >= 0 && total > row.ShownTotal) Core.Juice.Pop(row.Score, mine ? 1.35f : 1.18f, 0.3f);
+                row.ShownTotal = total;
             }
+
+            // Richest first. Rows are only re-stacked when the order changes.
+            bool changed = false;
+            for (int pass = 0; pass < boardOrder.Length - 1; pass++)
+            {
+                for (int k = 0; k < boardOrder.Length - 1 - pass; k++)
+                {
+                    if (boardTotals[boardOrder[k + 1]] <= boardTotals[boardOrder[k]]) continue;
+                    int swap = boardOrder[k]; boardOrder[k] = boardOrder[k + 1]; boardOrder[k + 1] = swap;
+                    changed = true;
+                }
+            }
+            if (changed) for (int k = 0; k < boardOrder.Length; k++) teamRows[boardOrder[k]].Root.BringToFront();
         }
 
         private void RefreshLocal()
@@ -559,9 +727,15 @@ namespace Ouroboros.UI
             if (local.EnemyCards > 0) keys += $"  [ID cards: {local.EnemyCards}]";
             statusLabel.text = StatusText(local.Status) + keys;
             // [v0.9] lootLabel.text = $"${local.CarriedLoot}";
+            // [v0.18] lootLabel.text = local.CarriedItemCount > 0 || local.CarriedLoot > 0
+            // [v0.18]     ? $"${local.CarriedLoot}   {local.CarriedItemCount}/{local.ItemCapacity} items"
+            // [v0.18]     : "$0";
+            // (v0.19) says what the number is, and jumps when it grows
             lootLabel.text = local.CarriedItemCount > 0 || local.CarriedLoot > 0
-                ? $"${local.CarriedLoot}   {local.CarriedItemCount}/{local.ItemCapacity} items"
-                : "$0";
+                ? $"CARRYING ${local.CarriedLoot:N0}   {local.CarriedItemCount}/{local.ItemCapacity} items"
+                : "CARRYING $0";
+            if (shownCarried >= 0 && local.CarriedLoot > shownCarried) Core.Juice.Pop(lootLabel, 1.3f, 0.28f);
+            shownCarried = local.CarriedLoot;
             kdLabel.text = $"K {local.Kills}  D {local.Deaths}";
             RefreshAmmo();
 

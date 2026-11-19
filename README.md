@@ -22,6 +22,7 @@ A modular multiplayer extraction heist game built with **Photon Fusion 2**, feat
 - **4 crews of 3** (Lagos, Nairobi, Accra, Joburg); bots fill every empty seat, so one person can play a full match
 - **The Run**: crack vaults, carry the named loot they spill, and when a crew has the quota (banked plus carried) the getaway is called for everyone. The central getaway banks everything; side exits bank less. Score is what you got out with.
 - **Crew play**: ping what you are looking at for your crew (middle mouse or T); revive a downed crewmate by holding Interact at their ID card; health comes back out of combat.
+- **Always know what to do**: an objective tracker names the next thing and marks it; a briefing card explains the heist before it starts; the cash board top right is the scoreboard.
 - **Readable threats**: guards, turrets and cameras carry a bright outline. Rival players carry no marker unless your crew has tagged them.
 - **Exits are lifts**: doors shut until the getaway is called, then they open and the HUD points at the nearest one.
 - **Cash-out stations**: bank in the middle of the match by holding Interact at a station. It takes a minute, every crew is told where, and a rival who holds Interact at it steals the whole pot.

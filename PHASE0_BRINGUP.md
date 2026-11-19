@@ -457,6 +457,43 @@ Exits:
 - [ ] From the moment the getaway is called a line near the bottom of the screen reads **NEAREST EXIT  name  distance  pays in full / pays 60%**, and a green **EXIT  distance** marker sits on that exit through walls. Both follow you to a different exit if another becomes nearer, skip an exit that is resetting, and go away once you are standing in the circle.
 - [ ] Check the line does not sit on top of anything else at the bottom of your screen.
 
+## 7o. Feel and clarity pass: cash board, objective, briefing, movement feel (v0.19)
+Setup: none.
+
+The cash board (top right):
+- [ ] It is headed **CASH** with the rule beside it ("first to $6,000 calls the getaway"), and it is the largest panel on the HUD.
+- [ ] Each crew has one large figure: everything it has toward the quota, banked plus carried.
+- [ ] Under the figure a bar runs toward the quota: the solid part is banked, the pale part is still being carried (and can still be lost).
+- [ ] The detail line reads "banked $X   carrying $Y", and the status on the right reads `3/4 up`, **CASHING OUT**, **BEING ROBBED**, **AWAY** or **OUT**.
+- [ ] Your crew's row is lit and marked "(you)". Rows are ordered richest first and re-stack when the lead changes.
+- [ ] A figure jumps when it goes up. Yours jumps harder.
+- [ ] Check the board does not cover anything on your screen size; it is 380 px wide and about 300 tall with four crews.
+
+The objective tracker (left edge, under the feed):
+- [ ] One instruction in large type with one or two lines of how. It changes as your situation does and pops when it changes:
+  - nothing in hand: **CRACK A VAULT**, with the nearest vault's name and distance, and a gold **VAULT** marker on it through walls;
+  - loot on the floor near you: **GRAB THE LOOT**;
+  - carrying an eighth of the quota or more: **CASH OUT $X**, with the nearest usable station;
+  - your crew's cash-out running: **DEFEND YOUR CASH-OUT** with the time left; being hijacked: **YOUR CASH-OUT IS BEING STOLEN**;
+  - a rival cashing out: **STEAL $X**, with crew, zone, distance and time left;
+  - a crewmate down within 45 m: **REVIVE name**;
+  - getaway called: **GET TO A LIFT**, with the nearest open lift, distance and payout; in the circle: **HOLD THE LIFT**;
+  - down: **YOU ARE DOWN** with the revive or redeploy state.
+- [ ] Urgent ones (stolen, revive, steal, get out) are red; defending and holding are green; the rest gold.
+- [ ] Tell me any moment where the instruction was wrong for what you should have been doing. The order is one function with tests (`Core/ObjectiveRules.cs`).
+
+The briefing:
+- [ ] Before the match, and for the first 12 seconds of it, a card in the upper middle reads **HOW A HEIST GOES**: 1 TAKE IT, 2 BANK IT, 3 GET OUT, with the quota and the Interact and Ping keys.
+- [ ] It is hidden while the class picker is up and does not cover the crosshair once the match is live. Tell me if 12 seconds is too long.
+
+Movement and damage feel:
+- [ ] Sprinting opens the view slightly; sliding opens it more; aiming closes it. Mouse speed does not change with it.
+- [ ] Landing from a height dips and thumps the view in proportion to the fall. A small hop does nothing.
+- [ ] Settings > Screen shake at 0% removes the widening and the landing dip as well.
+- [ ] Under a third of health the screen keeps a red pulse that deepens and quickens as health drops, and fades as health comes back.
+- [ ] The carried readout (bottom right) reads **CARRYING $X** and jumps when it grows.
+- [ ] The top panel now reads only the phase: HEIST IN PROGRESS or LIFTS OPEN.
+
 ## 7d. Expected flow and troubleshooting
 **Expected flow on Play (dev config):** spectator camera orbits the arena → session starts → your player spawns → the
 **class picker** appears with the cursor free (state *Waiting for players*) → host presses **Start match now** (or the

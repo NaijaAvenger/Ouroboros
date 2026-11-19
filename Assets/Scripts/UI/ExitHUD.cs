@@ -19,6 +19,11 @@ namespace Ouroboros.UI
     public class ExitHUD : MonoBehaviour
     {
         private const string RootName = "exit-hud";
+        /// <summary>
+        /// (v0.19) The line is off: the objective tracker now says "GET TO A LIFT" with the same name, distance
+        /// and payout, and the line sat where the crew radio captions are drawn. The world marker stays.
+        /// </summary>
+        private static readonly bool ShowLine = false;
         private static readonly Color ExitColour = new Color(0.35f, 1f, 0.55f);
 
         private VisualElement root, chip, marker, dot;
@@ -129,7 +134,8 @@ namespace Ouroboros.UI
                 // every exit is resetting after a crew left
                 chipText.text = "EXITS RESETTING";
                 chipText.style.color = new Color(1f, 0.8f, 0.3f);
-                if (chip.resolvedStyle.display == DisplayStyle.None) chip.style.display = DisplayStyle.Flex;
+                // [v0.18] if (chip.resolvedStyle.display == DisplayStyle.None) chip.style.display = DisplayStyle.Flex;
+                if (ShowLine && chip.resolvedStyle.display == DisplayStyle.None) chip.style.display = DisplayStyle.Flex;
                 if (marker.resolvedStyle.display != DisplayStyle.None) marker.style.display = DisplayStyle.None;
                 shown = null;
                 return;
@@ -141,7 +147,8 @@ namespace Ouroboros.UI
             string pays = exit.PayoutMultiplier >= 0.999f ? "pays in full" : $"pays {exit.PayoutMultiplier:P0}";
             chipText.text = $"NEAREST EXIT   {exit.ExitName}   {distance:0} m   {pays}";
             chipText.style.color = Color.white;
-            if (chip.resolvedStyle.display == DisplayStyle.None || exit != shown)
+            // [v0.18] if (chip.resolvedStyle.display == DisplayStyle.None || exit != shown)
+            if (ShowLine && (chip.resolvedStyle.display == DisplayStyle.None || exit != shown))
             {
                 chip.style.display = DisplayStyle.Flex;
                 Core.Juice.Pop(chip, 1.2f, 0.25f); // the nearest exit changed, or the getaway was just called

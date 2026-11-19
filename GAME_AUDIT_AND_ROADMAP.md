@@ -98,6 +98,42 @@ rivals steal the deposit. That difference is the biggest gap. In order of what I
 Already here in some form: several ways into every vault, gadgets, map events (their game-show events),
 low gravity, destructible containers, a carried objective, loot dropped on death.
 
+### Feel and clarity next to The Finals and Hyenas (v0.19)
+
+A pass over what the player sees, hears and feels minute to minute, set against the two games this one is
+measured by. It is a read of the code, not of the game running: where a line says "have", it means the code
+is there, not that it has been tuned.
+
+**Does the player know what to do?** This was the largest gap. The Finals keeps one objective on screen at
+all times and its announcers say the rest; Hyenas put its loot target and a "go here" on the HUD from the
+first second. Ouroboros had the pieces (markers, banners, a feed) but nothing that said which of them mattered now.
+
+| Area | The Finals / Hyenas | Ouroboros before | Now (v0.19) |
+|------|---------------------|------------------|-------------|
+| One current objective | Always on screen | None. The rule was a sentence in the timer panel | **Objective tracker**: one instruction and how, chosen from the player's situation, with a marker on the target |
+| The score | Cash totals are the biggest numbers on screen | A 300 px table of 12 to 14 px text headed "TEAMS", with points and loot in separate columns | **Cash board**: one large figure per crew, a banked and carried bar toward the quota, richest first |
+| First-match teaching | Tutorial and practice range (Finals), briefing (Hyenas) | A premise line on the class picker | **Briefing card** before the match and for its first seconds: take it, bank it, get out |
+| Where things are | Objective icons through walls | Stations, exits, rival cash-outs, crewmates, pings | Adds the nearest vault. Still no map or compass |
+| Whose is what | Team colour on everything | Crew colours on players, stations, turrets | Unchanged |
+
+**Does the game feel good in the hand?**
+
+| Area | The Finals / Hyenas | Ouroboros | Verdict |
+|------|---------------------|-----------|---------|
+| Gunplay feedback | Recoil, bloom, hit markers, kill confirm, damage numbers | Have all of these, plus damage direction and a death recap | Good on paper. Needs tuning by playing: recoil per weapon, time to kill |
+| Speed you can see | View widens at a sprint; slides and landings have weight | View did not react to movement at all | **Added**: sprint and slide widen the view, landings dip and thump |
+| Being hurt | Screen edge reddens, heartbeat, health regenerates | A flash per hit; regeneration since v0.17 | **Added**: a red pulse under a third of health |
+| Money arriving | Coins fly, numbers tick, the announcer shouts | A feed line and a pickup sound | **Added**: figures pop on the board and on the carried readout. Banking still has no sound of its own |
+| Jump forgiveness | Coyote time and jump buffering, so a jump a frame late still happens | None: a jump pressed a tick after leaving a ledge is lost | **Not done.** It changes the predicted movement code and wants testing with two clients. Small, and worth doing next |
+| Mantle and slide | Mantle anything waist to head height; slide keeps momentum | Have both | Tune by playing |
+| Sound | Every action has one; footsteps tell you who is near | Clip slots for shots, reloads, hits, kills, pickups and match events; no footsteps at all, no announcer voice | **Not done**, needs audio assets. The largest remaining feel gap |
+| Hit stop / time effects | Brief freeze on a kill | None, on purpose: slowing local time would desynchronise a networked peer | Leave |
+| Animation | Full first-person arms, reloads, inspect | Code-built view model that kicks when fired, dips to reload and centres when aiming; no sway, no arms | Needs real art |
+
+**What I would do next for feel, in order:** coyote time and jump buffering; footsteps and a cash sound; a
+compass strip or minimap; spectating crewmates while down; a short kill-cam on the death recap. And the
+session that tunes numbers: time to kill, recoil, the 60 second cash-out, the quota.
+
 ### Markers, cash-out markers and lift exits (v0.18, code complete, not seen running)
 
 | Request | State |
@@ -485,7 +521,7 @@ Decision 2 affects the local `ViewMode.cs`: if it is a first/third-person toggle
    models) and builds the `Galleria` scene. Expect it to take a while: it places several thousand objects
    and bakes a two-level NavMesh.
 2. With the Galleria scene open, press Play and choose **Solo**.
-3. Work through sections 7n, 7m and 7l of `PHASE0_BRINGUP.md` first (the newest work), then 7j and 7k, then 7e to 7i,
+3. Work through sections 7o, 7n, 7m and 7l of `PHASE0_BRINGUP.md` first (the newest work), then 7j and 7k, then 7e to 7i,
    and list what breaks. On a Galleria scene you already built, run **Update Galleria Map (keeps the scene)** first.
 4. Tell me the frame rate. If it is low, the first cuts are the ceiling lights and the number of props.
 5. Find native speakers of Nigerian Pidgin, Swahili or Sheng, Twi and isiZulu to rewrite the crew radio lines

@@ -247,6 +247,14 @@ Awaiting in-engine validation: PHASE0_BRINGUP.md section 7m.
 
 Awaiting in-engine validation: PHASE0_BRINGUP.md section 7n.
 
+### v0.19 — feel and clarity pass
+- **Cash board**: `HeistHUD` builds the top-right board as the scoreboard: one large haul per crew, a banked/carried bar toward the quota, status, richest first, the local crew lit, figures that pop.
+- **Objective**: `Core/ObjectiveRules.cs` (`Objective`, `ObjectiveFacts`, `Choose`, `WorthBanking`, `IsUrgent`; unit-tested) and `UI/ObjectiveHUD.cs` (tracker, briefing card, vault marker). The nearest-exit line from v0.18 is folded into the tracker; `ExitHUD` keeps its marker.
+- **Feel**: `PlayerController` widens the view at a sprint and in a slide and dips on landing (owner's view only, scaled by the screen-shake setting); `HeistHUD` pulses red at low health and pops the carried readout.
+- **Audit**: GAME_AUDIT_AND_ROADMAP.md, "Feel and clarity next to The Finals and Hyenas".
+
+Awaiting in-engine validation: PHASE0_BRINGUP.md section 7o.
+
 ### Phase 5 — Meta
 - Lobby scene with class picker (`NetworkPlayer.RequestClass` is in place), session browser, late-join handling, host migration.
 - Progression/cosmetics via `ClassData`/`EquipmentData`.
