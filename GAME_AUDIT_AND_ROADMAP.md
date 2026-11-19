@@ -84,11 +84,11 @@ rivals steal the deposit. That difference is the biggest gap. In order of what I
 
 | # | Missing | Why it matters | Size |
 |---|---------|----------------|------|
-| 1 | **Cash-out stations.** Deposit carried loot at a terminal; it banks over about a minute; everyone is told where; a rival can hijack the deposit by hacking the terminal | Turns banking from an exit into a fight. Gives every vault a second act and uses the counter-hack the game already has | Large |
+| 1 | **Cash-out stations.** Deposit carried loot at a terminal; it banks over about a minute; everyone is told where; a rival can hijack the deposit by hacking the terminal | Turns banking from an exit into a fight. Gives every vault a second act and uses the counter-hack the game already has | **Done in code (v0.16), not play-tested.** See below |
 | 2 | **Contextual ping.** One key marks what you are looking at for your crew: enemy, loot, door, "go here" | A team shooter without voice chat needs it, and bots can read it | Small |
 | 3 | **Revive, and health that comes back.** A downed crewmate can be brought back with their ID card (cards already drop); health regenerates after a few seconds out of combat | Today a death is a long wait and chip damage is permanent. Both slow the match down | Medium |
 | 4 | **Things to pick up and throw.** Explosive, gas and foam canisters lying around the map | The Finals' answer to "the room is the weapon". Breakables are the first half of this | Medium |
-| 5 | **A house announcer and live money standings.** Called moments ("Lagos are cashing out in the Bank"), and a constant view of who holds what | Money only drives decisions if everyone can see it | Small |
+| 5 | **A house announcer and live money standings.** Called moments ("Lagos are cashing out in the Bank"), and a constant view of who holds what | Money only drives decisions if everyone can see it | Small. The cash-out half arrived with v0.16 (called moments, a ticker, banked and carried on the scoreboard); kills, vaults and events still need calling |
 | 6 | **Passing the loot.** Throw the case or a loot item to a crewmate | Makes the carry a team play and not one player's burden | Small |
 | 7 | **A cost for a crew wipe.** A wiped crew loses a share of what it has banked | Makes a wipe matter beyond the respawn timer | Small |
 | 8 | **Movement gadgets.** Deployable jump pad and zipline | The Galleria has two levels and long halls; these would open it up | Medium |
@@ -97,6 +97,22 @@ rivals steal the deposit. That difference is the biggest gap. In order of what I
 
 Already here in some form: several ways into every vault, gadgets, map events (their game-show events),
 low gravity, destructible containers, a carried objective, loot dropped on death.
+
+### Cash-out stations (v0.16, code complete, not seen running)
+
+| Part | State |
+|------|-------|
+| Deposit | Hold Interact at a station for a second. Everything you carry, a case included, goes into the pot. The station takes your crew's colour and a column of light marks it across the hall |
+| Public | A banner and a feed line tell every crew who, how much and in which zone. A ticker under the match timer lists every running cash-out. Markers point at them through walls: DEFEND on yours, STEAL on a rival's. The alarm rises |
+| Slow | 60 seconds to bank. Crewmates can add more, which adds 10 seconds |
+| Stealable | A rival holds Interact for 4.5 seconds (Cipher 40% faster) and the pot and the timer become theirs, with at least 18 seconds left to hold. An owner standing at the station blocks it. The countdown freezes while a hijack is under way |
+| Counts | Banked money scores at once and counts toward the getaway quota with what is carried. The exits still bank whatever is left at the end |
+| Bots | Bank when carrying enough, stand on their own cash-out, go for a rival's |
+| Where | Galleria: beside the escalators in the North and South Concourses, and on each side of the upper level. Freeport: either side of the plaza |
+
+Design choices worth knowing: the hijack is a held interaction and not the sign-matching hack, so any class
+can do it under fire; a cash-out still running when the match ends is lost; all four numbers above are fields
+on the station.
 
 ### After your first run (v0.14, code complete, not play-tested beyond the main menu)
 
@@ -438,7 +454,7 @@ Decision 2 affects the local `ViewMode.cs`: if it is a first/third-person toggle
    models) and builds the `Galleria` scene. Expect it to take a while: it places several thousand objects
    and bakes a two-level NavMesh.
 2. With the Galleria scene open, press Play and choose **Solo**.
-3. Work through section 7j of `PHASE0_BRINGUP.md` first, then 7e to 7i, and list what breaks.
+3. Work through section 7j of `PHASE0_BRINGUP.md` first, then 7k and 7l, then 7e to 7i, and list what breaks.
 4. Tell me the frame rate. If it is low, the first cuts are the ceiling lights and the number of props.
 5. Find native speakers of Nigerian Pidgin, Swahili or Sheng, Twi and isiZulu to rewrite the crew radio lines
    in `Assets/Scripts/UI/CrewCallouts.cs`, and someone who can review the artefact names and stories.

@@ -215,6 +215,16 @@ Awaiting in-engine validation: PHASE0_BRINGUP.md section 7j.
 
 Awaiting in-engine validation: PHASE0_BRINGUP.md section 7k.
 
+### v0.16 — cash-out stations
+- **Rules** (`Core/MatchRules.cs`, unit-tested): `CrewHaul`, `CashOutTimeAfterDeposit`, `CashOutTimeAfterHijack`, `HijackStep`, `CashOutCountdown`.
+- **Station**: `GameMode/CashOutStation.cs`. Hold Interact to deposit; the pot banks after `cashOutSeconds`; owners can add; rivals hold Interact to hijack, blocked while an owner stands in range, countdown frozen during a hijack. Static event `Moment` (started, added, hijacked, banked). Builds its own kiosk model.
+- **Game mode**: `BankCashOut`, `GetTeamBanked`, `GetTeamHaul`, `CashBanked`; the quota is checked against carried plus banked (`GameModeConfig.quotaCountsBanked`, `cashOutPayout`).
+- **HUD**: `UI/CashOutHUD.cs` (ticker, world markers, station prompt), announcer lines and banners in `HeistHUD`, scoreboard shows banked and carried, haptics in `JuiceEvents`.
+- **Bots**: `BotBrain.TryCashOutGoal` (defend ours, hijack theirs, bank what is carried).
+- **Maps**: four stations in the Galleria layout (`'CashOut'` in `Tools/mapgen/galleria.py`), two added to the Freeport by its builder at the nearest clear floor.
+
+Awaiting in-engine validation: PHASE0_BRINGUP.md section 7l.
+
 ### Phase 5 — Meta
 - Lobby scene with class picker (`NetworkPlayer.RequestClass` is in place), session browser, late-join handling, host migration.
 - Progression/cosmetics via `ClassData`/`EquipmentData`.

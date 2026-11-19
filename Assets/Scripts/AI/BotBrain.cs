@@ -252,6 +252,8 @@ namespace Ouroboros.AI
                 }
                 float toLeader = Flat(leader.Position - me.Position).magnitude;
                 if (toLeader > 12f) { SetGoal(leader.Position, 4f, false); currentObjective = null; return; }
+                // (v0.16) help with a cash-out near the leader, but never start one: where and when to go public is the human's call
+                if (TryCashOutGoal(gm, leader.Position, 16f, allowStart: false)) return;
                 if (TryLootGoal(12f)) return;
                 if (TryObjectiveGoal(leader.Position, 30f, tick)) return;
                 SetGoal(leader.Position, 5f, false);
@@ -272,6 +274,9 @@ namespace Ouroboros.AI
                     return;
                 }
             }
+
+            // (v0.16) 3b. Cash-out stations: hold ours, steal theirs, bank what we carry.
+            if (!gm.ExtractionOpen && TryCashOutGoal(gm, me.Position, 70f, allowStart: true)) return;
 
             // 4. Loot on the floor nearby.
             if (TryLootGoal(30f)) return;
@@ -329,6 +334,57 @@ namespace Ouroboros.AI
                 if (score < bestScore) { bestScore = score; best = e; }
             }
             return best;
+        }
+
+        /// <summary>
+        /// (v0.16) Cash-out stations within <paramref name="range"/> of <paramref name="reference"/>, in order of
+        /// what matters most: our own running cash-out (stand on it, and add what we carry), a rival's (hijack
+        /// it), then a free station if this bot is carrying enough to be worth a minute's defence.
+        /// </summary>
+        private bool TryCashOutGoal(GameMode.ExtractionHeistGameMode gm, Vector3 reference, float range, bool allowStart)
+        {
+            var stations = GameMode.CashOutStation.All;
+            if (stations.Count == 0) return false;
+
+            GameMode.CashOutStation best = null;
+            float bestScore = float.MaxValue;
+            bool bestInteract = false;
+            int worthBanking = Mathf.Max(250, gm.LootQuota / 10);
+
+            for (int i = 0; i < stations.Count; i++)
+            {
+                var s = stations[i];
+                if (s == null || s.Object == null) continue;
+                Vector3 offset = s.transform.position - reference;
+                if (Mathf.Abs(offset.y) > 3f && !s.IsActive) continue; // a free station on another floor is not worth the trip
+                float distance = Flat(offset).magnitude;
+                if (distance > range) continue;
+
+                float score; bool interact;
+                if (s.IsActive && s.OwnerTeam == me.Team)
+                {
+                    score = distance - (s.IsBeingHijacked ? 200f : 120f); // ours: nothing matters more
+                    interact = me.CarriedLoot > 0;
+                }
+                else if (s.IsActive)
+                {
+                    if (s.IsBeingHijacked && s.HijackTeam != me.Team) continue; // a third crew is already on it
+                    score = distance - 60f - Mathf.Min(40f, s.Pot / 100f);
+                    interact = true;
+                }
+                else
+                {
+                    if (!allowStart || me.CarriedLoot < worthBanking) continue;
+                    score = distance;
+                    interact = true;
+                }
+                if (score < bestScore) { bestScore = score; best = s; bestInteract = interact; }
+            }
+
+            if (best == null) return false;
+            SetGoal(best.transform.position, Mathf.Max(1.6f, best.InteractRadius * 0.65f), bestInteract);
+            currentObjective = null;
+            return true;
         }
 
         /// <summary>Loot pickups and rival ID cards within <paramref name="range"/>.</summary>

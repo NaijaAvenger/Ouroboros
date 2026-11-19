@@ -474,6 +474,7 @@ namespace Ouroboros.EditorTools
             }
 
             BuildFreeportDevices(); // (v0.11, M3)
+            BuildFreeportCashOuts(); // (v0.16)
             BuildFreeportGravityZones(); // (v0.12)
             LinkGalleryLampsToPower(); // (v0.12, M4) the Gallery's warm lamps go out in a Gallery blackout
 
@@ -660,6 +661,65 @@ namespace Ouroboros.EditorTools
             SetString(node, "nodeName", name);
             SetReference(node, "indicator", go.GetComponent<Renderer>());
             SetReferenceArray(node, "lights", new Object[] { light });
+        }
+
+        /// <summary>
+        /// (v0.16) Two cash-out stations on open ground either side of the plaza, between the vault districts
+        /// and the exits. Added to an existing Freeport scene on the next run of the menu.
+        /// </summary>
+        private static void BuildFreeportCashOuts()
+        {
+            if (Object.FindFirstObjectByType<GameMode.CashOutStation>() != null) return;
+            var stations = new GameObject("Cash-Out Stations").transform;
+            Physics.SyncTransforms();
+            CashOut(stations, "East Cash-Out", FreeSpot(new Vector3(22f, 0f, 14f)), 90f);
+            CashOut(stations, "West Cash-Out", FreeSpot(new Vector3(-22f, 0f, -14f)), 90f);
+            Debug.Log("[Ouroboros] Freeport cash-out stations ready: 2.");
+        }
+
+        /// <summary>The nearest clear patch of floor to <paramref name="want"/>, so a station never lands inside a prop.</summary>
+        private static Vector3 FreeSpot(Vector3 want)
+        {
+            var half = new Vector3(1.4f, 0.8f, 1.4f); // the station plus room to walk round it
+            for (int ring = 0; ring <= 8; ring++)
+            {
+                for (int dx = -ring; dx <= ring; dx++)
+                {
+                    for (int dz = -ring; dz <= ring; dz++)
+                    {
+                        if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dz)) != ring) continue;
+                        Vector3 at = want + new Vector3(dx, 0f, dz);
+                        if (!Physics.CheckBox(at + Vector3.up * 1.1f, half, Quaternion.identity, ~0, QueryTriggerInteraction.Ignore)) return at;
+                    }
+                }
+            }
+            Debug.LogWarning($"[Ouroboros] No clear floor near {want} for a cash-out station; placed it there anyway. Move it by hand.");
+            return want;
+        }
+
+        /// <summary>(v0.16) A cash-out station. The kiosk model is built at run time; the box is its collider and placeholder.</summary>
+        private static GameMode.CashOutStation CashOut(Transform parent, string name, Vector3 floor, float yaw)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = name;
+            go.transform.SetParent(parent);
+            go.transform.position = floor;
+            go.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            var size = new Vector3(1.3f, 2f, 0.9f);
+            var box = go.GetComponent<BoxCollider>();
+            box.size = size;
+            box.center = new Vector3(0f, size.y * 0.5f, 0f);
+            go.GetComponent<Renderer>().enabled = false; // the model is built at run time
+            var obstacle = go.AddComponent<UnityEngine.AI.NavMeshObstacle>();
+            obstacle.carving = true;
+            obstacle.shape = UnityEngine.AI.NavMeshObstacleShape.Box;
+            obstacle.size = size;
+            obstacle.center = box.center;
+
+            go.AddComponent<NetworkObject>();
+            var station = go.AddComponent<GameMode.CashOutStation>();
+            SetString(station, "stationName", name);
+            return station;
         }
 
         private static void LiftPad(Transform parent, string name, Vector3 position, float liftHeight)

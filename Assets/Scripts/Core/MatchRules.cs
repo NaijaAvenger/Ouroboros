@@ -129,6 +129,59 @@ namespace Ouroboros.Core
             return (int)Math.Round(carriedValue * (double)m, MidpointRounding.AwayFromZero);
         }
 
+        // ------------------------------------------------------------------
+        // Cash-out stations (v0.16): banking in the middle of a match, in public, and stealable
+
+        /// <summary>
+        /// What a crew has toward the getaway quota. With stations, money already banked counts as well as
+        /// what is being carried, so cashing out never moves a crew away from the quota.
+        /// </summary>
+        public static int CrewHaul(int carried, int banked, bool countBanked)
+        {
+            return Math.Max(0, carried) + (countBanked ? Math.Max(0, banked) : 0);
+        }
+
+        /// <summary>Seconds left on a cash-out after its owners add more loot: a little longer, never past a full timer.</summary>
+        public static float CashOutTimeAfterDeposit(float remaining, float fullSeconds, float extendSeconds)
+        {
+            float full = Math.Max(0f, fullSeconds);
+            return Math.Min(full, Math.Max(0f, remaining) + Math.Max(0f, extendSeconds));
+        }
+
+        /// <summary>
+        /// Seconds left after a hijack. The thief never inherits a cash-out that is about to finish: they must
+        /// hold it for at least <paramref name="floorSeconds"/>.
+        /// </summary>
+        public static float CashOutTimeAfterHijack(float remaining, float floorSeconds)
+        {
+            return Math.Max(Math.Max(0f, remaining), Math.Max(0f, floorSeconds));
+        }
+
+        /// <summary>
+        /// One step of a hijack, as a fraction from 0 to 1. It fills while a rival works the station and no owner
+        /// stands at it, holds while it is contested, and drains when the rival lets go.
+        /// </summary>
+        public static float HijackStep(float progress, bool rivalWorking, bool ownerPresent, float deltaTime, float hijackSeconds, float drainPerSecond)
+        {
+            float p = Clamp01(progress);
+            if (deltaTime <= 0f) return p;
+            if (rivalWorking)
+            {
+                if (ownerPresent || hijackSeconds <= 0f) return p;
+                return Clamp01(p + deltaTime / hijackSeconds);
+            }
+            return Clamp01(p - Math.Max(0f, drainPerSecond) * deltaTime);
+        }
+
+        /// <summary>A cash-out counts down only while nobody is in the middle of stealing it.</summary>
+        public static float CashOutCountdown(float remaining, bool beingHijacked, float deltaTime)
+        {
+            if (beingHijacked || deltaTime <= 0f) return Math.Max(0f, remaining);
+            return Math.Max(0f, remaining - deltaTime);
+        }
+
+        private static float Clamp01(float v) => v < 0f ? 0f : (v > 1f ? 1f : v);
+
         public enum WipeOutcome
         {
             /// <summary>The whole crew redeploys together after the wipe delay.</summary>

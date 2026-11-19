@@ -368,6 +368,31 @@ Motion (DOTween):
 - [ ] Loot bounces as it lands. Breakables flinch when hit. Delivery crates pop in.
 - [ ] HUD banners land with a bounce, feed lines slide in, the menu panels slide in, the death recap rises.
 
+## 7l. Cash-out stations (v0.16)
+Setup: **Create Galleria Map (M6)** (or **Recreate Galleria Map**) places four stations: one beside the escalator in the North and South Concourses and one on each side of the upper level. On an existing Freeport scene, run **Create Freeport Map (M2)** again; it adds two stations beside the plaza and leaves the rest alone. A station is a dark kiosk with a gold plinth and a beacon on a mast.
+
+Banking:
+- [ ] Carrying loot, a green **CASH OUT** marker points at the nearest free station, through walls and pinned to the screen edge when it is behind you.
+- [ ] At the station a prompt says what holding Interact will do. Hold it for a second: your loot leaves your HUD, the station lights up in your crew's colour with a column of light, and a banner and a feed line tell **everyone** who is cashing out, how much and in which zone. The alarm rises.
+- [ ] A row for the cash-out appears under the match timer for every player: crew, amount, time left, zone. The station's ring of lamps fills as it runs.
+- [ ] A crewmate (or you, with more loot) holding Interact adds to the pot and adds 10 s, never past the full minute.
+- [ ] After 60 s the pot is banked: gold burst, "banked" feed line, score goes up. On the scoreboard the crew's money reads `$banked + $carried / quota`.
+- [ ] Banked money counts toward the getaway quota. Banking the last of the quota calls the getaway, the same as carrying it.
+- [ ] A carried case can be cashed out too.
+
+Stealing:
+- [ ] A rival's running cash-out shows a red **STEAL** marker with the amount and time; your own shows **DEFEND**.
+- [ ] Hold Interact at a rival's station for about 4.5 s (Cipher is faster): the bar fills, their countdown freezes, then the pot and the timer are yours, the column changes colour, and both crews get a banner.
+- [ ] A hijack never hands over a nearly finished cash-out: the thief gets at least 18 s on the clock.
+- [ ] While an owner stands at the station the hijack does not advance and the row reads "contested". Letting go drains the bar.
+- [ ] A third crew cannot start a second hijack while one is under way.
+- [ ] If the match ends with a cash-out still running, that money is not banked.
+
+Bots and feel:
+- [ ] Bot crews carry loot to a station, stand on their own cash-out, and go for a rival's. Bots following you help at a station near you but never start a cash-out on their own.
+- [ ] A gamepad taps on your crew's start, steal and bank, and warns when a rival starts a cash-out or steals yours.
+- [ ] Balance to report: is 60 s too long or short in the Galleria, are four stations enough, and does the quota still feel right now that banked money counts.
+
 ## 7d. Expected flow and troubleshooting
 **Expected flow on Play (dev config):** spectator camera orbits the arena → session starts → your player spawns → the
 **class picker** appears with the cursor free (state *Waiting for players*) → host presses **Start match now** (or the

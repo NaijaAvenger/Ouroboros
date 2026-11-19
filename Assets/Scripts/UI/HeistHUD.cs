@@ -101,6 +101,7 @@ namespace Ouroboros.UI
             if (GetComponent<DamageNumbers>() == null) gameObject.AddComponent<DamageNumbers>();
             if (GetComponent<DeathRecap>() == null) gameObject.AddComponent<DeathRecap>();
             if (GetComponent<MapHUD>() == null) gameObject.AddComponent<MapHUD>(); // zone name, event and scanner markers
+            if (GetComponent<CashOutHUD>() == null) gameObject.AddComponent<CashOutHUD>(); // (v0.16) cash-out ticker, markers and prompt
 
             var ps = document.panelSettings;
             Debug.Log($"[HeistHUD] Enabled. PanelSettings='{(ps != null ? ps.name : "NONE")}', theme='{(ps != null && ps.themeStyleSheet != null ? ps.themeStyleSheet.name : "NONE")}', " +
@@ -122,6 +123,7 @@ namespace Ouroboros.UI
             GameMode.MapEventDirector.Warned += OnMapEventWarned;
             GameMode.MapEventDirector.Fired += OnMapEventFired;
             Interaction.LaserGrid.Tripped += OnLaserTripped;
+            GameMode.CashOutStation.Moment += OnCashOutMoment; // (v0.16)
             Network.NetworkPlayer.Jammed += OnJammed;
         }
 
@@ -134,6 +136,7 @@ namespace Ouroboros.UI
             GameMode.MapEventDirector.Warned -= OnMapEventWarned;
             GameMode.MapEventDirector.Fired -= OnMapEventFired;
             Interaction.LaserGrid.Tripped -= OnLaserTripped;
+            GameMode.CashOutStation.Moment -= OnCashOutMoment;
             Network.NetworkPlayer.Jammed -= OnJammed;
             GameMode.ExtractionHeistGameMode.GetawayCalled -= OnGetawayCalled;
             GameMode.ExtractionHeistGameMode.CrewWiped -= OnCrewWiped;
@@ -471,7 +474,7 @@ namespace Ouroboros.UI
                 case GameMode.ExtractionHeistGameMode.GameState.InProgress:
                     // [v0.9] stateLabel.text = gm.ExtractionOpen ? "Extraction OPEN" : "Heist in progress";
                     stateLabel.text = gm.Config.UseRunRules
-                        ? $"Heist  -  first crew carrying ${gm.LootQuota} calls the getaway" // [v0.13] gm.Config.lootQuota
+                        ? $"Heist  -  first crew to bank or carry ${gm.LootQuota} calls the getaway" // [v0.13] gm.Config.lootQuota
                         : (gm.ExtractionOpen ? "Extraction OPEN" : "Heist in progress");
                     timerLabel.text = Fmt(gm.MatchTimeRemaining);
                     break;
@@ -511,7 +514,10 @@ namespace Ouroboros.UI
                 {
                     // (v0.10) Score is what the crew got out with; this column is what it is carrying toward the quota.
                     int carried = gm.GetTeamCarried(team);
-                    row.Loot.text = gm.IsGetaway ? $"${carried}" : $"${carried} / {gm.LootQuota}"; // [v0.13] gm.Config.lootQuota
+                    // [v0.15] row.Loot.text = gm.IsGetaway ? $"${carried}" : $"${carried} / {gm.LootQuota}"; // [v0.13] gm.Config.lootQuota
+                    // (v0.16) banked money is shown on its own and counts toward the quota with what is carried
+                    int banked = gm.GetTeamBanked(team);
+                    row.Loot.text = gm.IsGetaway ? $"${banked} + ${carried}" : $"${banked} + ${carried} / {gm.LootQuota}";
                     row.Loot.style.color = gm.IsGetaway && gm.RichestTeam == team ? HealthColor : LootColor;
                     row.Status.text = gm.CrewEliminated[i] ? "OUT"
                         : (s.Extracted == s.Total && s.Total > 0 ? "away" : $"{s.Alive}/{s.Total} up");
@@ -854,6 +860,40 @@ namespace Ouroboros.UI
         {
             ShowBanner(EventLine(e).ToUpperInvariant());
             AddFeed(EventLine(e), LootColor);
+        }
+
+        /// <summary>
+        /// (v0.16) The house announcer for cash-outs. Everyone hears every one: who, how much, and where.
+        /// The local crew gets the banner worded for them.
+        /// </summary>
+        private void OnCashOutMoment(GameMode.CashOutStation station, GameMode.CashOutMoment moment, Core.TeamID team, Core.TeamID from, int value)
+        {
+            if (station == null) return;
+            string where = GameMode.MapZone.NameAt(station.transform.position + Vector3.up);
+            string place = where.Length > 0 ? $" in the {where}" : "";
+            string crew = TeamName(team);
+            bool mine = local != null && local.Object != null && local.Team == team;
+            bool wasMine = local != null && local.Object != null && local.Team == from && Core.TeamUtil.IsValid(from);
+            Color colour = Core.TeamUtil.IsValid(team) ? CrewSkin.TextColour(team) : Color.white;
+
+            switch (moment)
+            {
+                case GameMode.CashOutMoment.Started:
+                    AddFeed($"{crew} is cashing out ${value}{place}", colour);
+                    ShowBanner(mine ? $"CASHING OUT ${value} - HOLD THE STATION" : $"{crew.ToUpperInvariant()} IS CASHING OUT ${value}{place.ToUpperInvariant()}");
+                    break;
+                case GameMode.CashOutMoment.Added:
+                    AddFeed($"{crew} added ${value} to the cash-out{place}", colour);
+                    break;
+                case GameMode.CashOutMoment.Hijacked:
+                    AddFeed($"{crew} hijacked {TeamName(from)}'s cash-out{place}: ${value}", colour);
+                    ShowBanner(mine ? $"HIJACKED - ${value} IS YOURS IF YOU HOLD IT" : wasMine ? "YOUR CASH-OUT WAS HIJACKED - TAKE IT BACK" : $"{crew.ToUpperInvariant()} HIJACKED THE CASH-OUT{place.ToUpperInvariant()}");
+                    break;
+                case GameMode.CashOutMoment.Banked:
+                    AddFeed($"{crew} banked ${value}{place}", LootColor);
+                    if (mine) ShowBanner($"BANKED ${value}");
+                    break;
+            }
         }
 
         private void OnLaserTripped(Interaction.LaserGrid grid, Network.NetworkPlayer who)

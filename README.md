@@ -20,7 +20,8 @@ A modular multiplayer extraction heist game built with **Photon Fusion 2**, feat
 
 ## Overview
 - **4 crews of 3** (Lagos, Nairobi, Accra, Joburg); bots fill every empty seat, so one person can play a full match
-- **The Run**: crack vaults, carry the named loot they spill, and when a crew is carrying the quota the getaway is called for everyone. The central getaway banks everything; side exits bank less. Score is what you got out with.
+- **The Run**: crack vaults, carry the named loot they spill, and when a crew has the quota (banked plus carried) the getaway is called for everyone. The central getaway banks everything; side exits bank less. Score is what you got out with.
+- **Cash-out stations**: bank in the middle of the match by holding Interact at a station. It takes a minute, every crew is told where, and a rival who holds Interact at it steals the whole pot.
 - **4 specialists**: Cipher, Spider, Smith, Shield (`Hacker`, `Saboteur`, `Demolitions`, `Agent` in code)
 - **Premise**: the Ouroboros Freeport holds what was taken from a continent. Four crews are here to take it back.
 - **Heist loop**: crack vaults → carry loot → extract to bank it. Dying drops your loot for anyone to grab.
@@ -105,7 +106,7 @@ Assets/Scripts/
 4. **Extraction window** — match timer expired, 2 minutes (default) to get out; no respawns
 5. **Results** — highest score wins (ties: banked loot, then extracted members)
 
-Scoring: objectives, kills, first extraction per team, each member extracted, and banked loot (`GameModeConfig`).
+Scoring: objectives, kills, first extraction per team, each member extracted, and banked loot (`GameModeConfig`). Loot is banked at an exit during the getaway or at a cash-out station at any time.
 
 ## Look and feel
 - **Look**: a toon shader whose light ends in a woven band of marks, indigo shade and warm light, ring highlights, brushed ink outlines and a banded dusk sky (`Assets/Resources/OuroborosShaders`, `Art/Stylizer.cs`, `Art/StyleDirector.cs`). It is applied to everything at run time and can be switched off in the settings.

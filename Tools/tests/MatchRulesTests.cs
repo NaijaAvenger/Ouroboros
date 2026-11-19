@@ -267,6 +267,71 @@ namespace Ouroboros.Tests
             Assert.That(seen.Count, Is.GreaterThan(20), "different vaults should not all hold the same items");
         }
 
+        // ---- cash-out stations (v0.16)
+
+        [Test]
+        public void CrewHaul_CountsBankedMoneyOnlyWhenTheRuleIsOn()
+        {
+            Assert.That(MatchRules.CrewHaul(400, 1500, true), Is.EqualTo(1900));
+            Assert.That(MatchRules.CrewHaul(400, 1500, false), Is.EqualTo(400));
+            Assert.That(MatchRules.CrewHaul(-5, -10, true), Is.EqualTo(0), "bad values never count against a crew");
+        }
+
+        [Test]
+        public void CrewHaul_CashingOut_NeverMovesACrewAwayFromTheQuota()
+        {
+            int before = MatchRules.CrewHaul(1200, 800, true);
+            int after = MatchRules.CrewHaul(0, 800 + MatchRules.BankedValue(1200, 1f), true);
+            Assert.That(after, Is.EqualTo(before));
+        }
+
+        [Test]
+        public void CashOutTimeAfterDeposit_ExtendsButNeverPastAFullTimer()
+        {
+            Assert.That(MatchRules.CashOutTimeAfterDeposit(20f, 60f, 10f), Is.EqualTo(30f));
+            Assert.That(MatchRules.CashOutTimeAfterDeposit(55f, 60f, 10f), Is.EqualTo(60f));
+            Assert.That(MatchRules.CashOutTimeAfterDeposit(-3f, 60f, 10f), Is.EqualTo(10f));
+            Assert.That(MatchRules.CashOutTimeAfterDeposit(20f, 60f, -10f), Is.EqualTo(20f));
+        }
+
+        [Test]
+        public void CashOutTimeAfterHijack_TheThiefMustHoldItForAWhile()
+        {
+            Assert.That(MatchRules.CashOutTimeAfterHijack(2f, 18f), Is.EqualTo(18f), "no stealing a cash-out one second before it banks");
+            Assert.That(MatchRules.CashOutTimeAfterHijack(40f, 18f), Is.EqualTo(40f), "a hijack never shortens the timer");
+            Assert.That(MatchRules.CashOutTimeAfterHijack(-1f, -1f), Is.EqualTo(0f));
+        }
+
+        [Test]
+        public void HijackStep_FillsWhileWorked_AndCompletesInTheStatedTime()
+        {
+            float p = 0f;
+            for (int i = 0; i < 44; i++) p = MatchRules.HijackStep(p, true, false, 0.1f, 4.5f, 0.5f);
+            Assert.That(p, Is.LessThan(1f));
+            for (int i = 0; i < 2; i++) p = MatchRules.HijackStep(p, true, false, 0.1f, 4.5f, 0.5f);
+            Assert.That(p, Is.EqualTo(1f));
+        }
+
+        [Test]
+        public void HijackStep_HoldsWhileContested_AndDrainsWhenLetGo()
+        {
+            Assert.That(MatchRules.HijackStep(0.4f, true, true, 1f, 4.5f, 0.5f), Is.EqualTo(0.4f), "an owner at the station stops it");
+            Assert.That(MatchRules.HijackStep(0.4f, false, false, 0.2f, 4.5f, 0.5f), Is.EqualTo(0.3f).Within(1e-5f));
+            Assert.That(MatchRules.HijackStep(0.1f, false, true, 1f, 4.5f, 0.5f), Is.EqualTo(0f));
+            Assert.That(MatchRules.HijackStep(0.4f, true, false, 0f, 4.5f, 0.5f), Is.EqualTo(0.4f));
+            Assert.That(MatchRules.HijackStep(0.4f, true, false, 1f, 0f, 0.5f), Is.EqualTo(0.4f), "a zero duration never divides by zero");
+            Assert.That(MatchRules.HijackStep(7f, false, false, 0f, 4.5f, 0.5f), Is.EqualTo(1f));
+        }
+
+        [Test]
+        public void CashOutCountdown_FreezesDuringAHijack()
+        {
+            Assert.That(MatchRules.CashOutCountdown(10f, false, 0.5f), Is.EqualTo(9.5f));
+            Assert.That(MatchRules.CashOutCountdown(10f, true, 0.5f), Is.EqualTo(10f));
+            Assert.That(MatchRules.CashOutCountdown(0.2f, false, 0.5f), Is.EqualTo(0f));
+            Assert.That(MatchRules.CashOutCountdown(-4f, true, 0.5f), Is.EqualTo(0f));
+        }
+
         [Test]
         public void PickDistinct_SmallPool_ReturnsWhatThereIs()
         {

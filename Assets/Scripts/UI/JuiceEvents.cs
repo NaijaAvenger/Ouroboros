@@ -33,6 +33,7 @@ namespace Ouroboros.UI
             GameMode.MapEventDirector.Fired += OnMapEvent;
             Interaction.Breakable.Broken += OnBroken;
             Interaction.LaserGrid.Tripped += OnLaserTripped;
+            GameMode.CashOutStation.Moment += OnCashOut; // (v0.16)
         }
 
         private void OnDisable()
@@ -47,6 +48,7 @@ namespace Ouroboros.UI
             GameMode.MapEventDirector.Fired -= OnMapEvent;
             Interaction.Breakable.Broken -= OnBroken;
             Interaction.LaserGrid.Tripped -= OnLaserTripped;
+            GameMode.CashOutStation.Moment -= OnCashOut;
         }
 
         private Network.NetworkPlayer Local()
@@ -140,6 +142,19 @@ namespace Ouroboros.UI
             if (b == null) return;
             bool big = b.Kind == Interaction.BreakableKind.WeakWall;
             Core.Juice.ShakeAt(b.Position, big ? 0.09f : 0.03f, big ? 26f : 10f, big ? 0.4f : 0.2f);
+        }
+
+        private void OnCashOut(GameMode.CashOutStation station, GameMode.CashOutMoment moment, Core.TeamID team, Core.TeamID from, int value)
+        {
+            var me = Local();
+            if (me == null) return;
+            bool mine = me.Team == team, wasMine = me.Team == from;
+            switch (moment)
+            {
+                case GameMode.CashOutMoment.Started:  Core.Juice.Haptic(mine ? Core.Juice.Tap.Success : Core.Juice.Tap.Warning); break;
+                case GameMode.CashOutMoment.Hijacked: if (mine || wasMine) Core.Juice.Haptic(mine ? Core.Juice.Tap.Success : Core.Juice.Tap.Failure); break;
+                case GameMode.CashOutMoment.Banked:   if (mine) Core.Juice.Haptic(Core.Juice.Tap.Success); break;
+            }
         }
 
         private void OnLaserTripped(Interaction.LaserGrid grid, Network.NetworkPlayer who)

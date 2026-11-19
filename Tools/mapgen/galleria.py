@@ -285,7 +285,8 @@ FOOT = {'Shelf': (6, 0.9), 'Counter': (4, 0.9), 'Table': (2.2, 2.2), 'Bench': (2
         'Arcade': (1.0, 1.0), 'Treadmill': (1.0, 2.0), 'Seats': (4.0, 1.0), 'Plinth': (1.1, 1.1),
         'B:Crate': (1.1, 1.1), 'B:DisplayCase': (1.2, 1.2), 'B:VendingMachine': (1.1, 0.9), 'B:Atm': (0.9, 0.7), 'B:CashRegister': (0.6, 0.6),
         'B:Locker': (1.2, 0.6), 'B:StrongBox': (1.1, 0.9), 'B:Safe': (0.9, 0.9), 'B:AirdropCrate': (1.6, 1.6),
-        'Turret': (1.0, 1.0), 'Power': (0.8, 0.8), 'Terminal': (1.0, 0.5), 'Vault': (1.5, 1.5)}
+        'Turret': (1.0, 1.0), 'Power': (0.8, 0.8), 'Terminal': (1.0, 0.5), 'Vault': (1.5, 1.5),
+        'CashOut': (1.6, 1.2)}
 skipped = []
 
 def place(kind, level, x, z, yaw=0, arg='', strict=False, gap=1.2):
@@ -315,6 +316,13 @@ mark('Exit', 0, 0, -84, arg='Truck Bay Exit')
 mark('Exit', 0, -104, 0, arg='Metro Exit')
 for (sx, sz), crew in CREW.items():
     mark('Spawn', 0, sx * 97, sz * 77, arg=crew)
+
+# ---- cash-out stations (v0.16): public places between the vaults and the exits, two on each level,
+# each reachable from several sides so a cash-out can be attacked as well as held
+place('CashOut', 0, -5, 38, 90, strict=True)    # North Concourse, beside the escalator to the Bank
+place('CashOut', 0, -5, -38, 90, strict=True)   # South Concourse, beside the escalator to the Truck Bay
+place('CashOut', 1, 66, 0, 90, strict=True)     # upper level, east
+place('CashOut', 1, -66, 0, 90, strict=True)    # upper level, west
 
 # ---- the atrium: the emblem fountain is off-centre so the getaway stays open ground
 for sx in (-1, 1):

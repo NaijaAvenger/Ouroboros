@@ -244,6 +244,43 @@ namespace Ouroboros.GameMode
             return total;
         }
 
+        // ------------------------------------------------------------------
+        // Cash-out stations (v0.16)
+
+        /// <summary>Raised on the state authority when a station's pot is banked (team, value banked).</summary>
+        public static event Action<Core.TeamID, int> CashBanked;
+
+        /// <summary>What <paramref name="team"/> has safely banked so far. Works on every peer.</summary>
+        public int GetTeamBanked(Core.TeamID team)
+        {
+            int idx = Core.TeamUtil.ToIndex(team);
+            return idx >= 0 && idx < Core.GameConstants.MAX_TEAMS ? TeamLoot[idx] : 0;
+        }
+
+        /// <summary>Banked plus carried: what the crew has toward the getaway quota. Works on every peer.</summary>
+        public int GetTeamHaul(Core.TeamID team)
+        {
+            return Core.MatchRules.CrewHaul(GetTeamCarried(team), GetTeamBanked(team), Config.quotaCountsBanked);
+        }
+
+        /// <summary>
+        /// Banks a finished cash-out for <paramref name="team"/>. Unlike an exit, nobody leaves the match: the
+        /// money is safe and the crew plays on. Returns the value banked. State authority only.
+        /// </summary>
+        public int BankCashOut(Core.TeamID team, int potValue)
+        {
+            if (!Object.HasStateAuthority || !Core.TeamUtil.IsValid(team) || potValue <= 0) return 0;
+            int idx = Core.TeamUtil.ToIndex(team);
+            int banked = Core.MatchRules.BankedValue(potValue, Config.cashOutPayout);
+            if (banked <= 0) return 0;
+
+            TeamLoot.Set(idx, TeamLoot[idx] + banked);
+            // Under run rules the score is the money. Under the older rules loot is worth points at the usual rate.
+            AwardTeamScore(team, Config.scoreIsBankedLootOnly ? banked : Mathf.RoundToInt(banked * Config.pointsPerLoot));
+            CashBanked?.Invoke(team, banked);
+            return banked;
+        }
+
         private void CheckQuota()
         {
             if (((int)Runner.Tick) % 10 != 0) return;
@@ -252,7 +289,10 @@ namespace Ouroboros.GameMode
             {
                 int i = Core.MatchRules.RotatedIndex((int)Runner.Tick, step, Core.GameConstants.MAX_TEAMS);
                 // [v0.13] if (activeScratch[i] && Core.MatchRules.QuotaReached(carriedScratch[i], Config.lootQuota))
-                if (activeScratch[i] && Core.MatchRules.QuotaReached(carriedScratch[i], LootQuota)) // (v0.14) a map can set its own quota
+                // [v0.15] if (activeScratch[i] && Core.MatchRules.QuotaReached(carriedScratch[i], LootQuota)) // (v0.14) a map can set its own quota
+                // (v0.16) what a crew has banked at a station counts toward the quota too
+                int haul = Core.MatchRules.CrewHaul(carriedScratch[i], TeamLoot[i], Config.quotaCountsBanked);
+                if (activeScratch[i] && Core.MatchRules.QuotaReached(haul, LootQuota))
                 {
                     EnterExtractionPhase(Core.TeamUtil.FromIndex(i));
                     return;

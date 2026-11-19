@@ -103,6 +103,12 @@ namespace Ouroboros.Data
         [Range(0f, 1f)] public float sideExitPayout = 0.6f;
         [Tooltip("Score is the value a crew extracted, nothing else. Kills and cracked vaults matter only through loot.")]
         public bool scoreIsBankedLootOnly = true;
+
+        [Header("Cash-out stations (v0.16)")]
+        [Tooltip("Fraction of a station's pot that is banked when the cash-out finishes.")]
+        [Range(0f, 1f)] public float cashOutPayout = 1f;
+        [Tooltip("Money already banked counts toward the getaway quota, as well as what a crew is carrying.")]
+        public bool quotaCountsBanked = true;
         [Tooltip("Named loot items one player can carry (the list holds 8 at most). Forces a crew to share the load.")]
         [Range(1, 8)] public int maxCarriedItems = 4;
         [Tooltip("During the getaway, players of the richest crew who carry loot are revealed to everyone.")]

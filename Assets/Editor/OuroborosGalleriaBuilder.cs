@@ -452,6 +452,7 @@ namespace Ouroboros.EditorTools
 
                     // ---- devices
                     case "Turret": Turret(devices, GalleriaZoneName(item.X, item.Z, item.Level) + " Turret", floor); break;
+                    case "CashOut": CashOut(devices, GalleriaZoneName(item.X, item.Z, item.Level) + " Cash-Out", floor, item.Yaw); break; // (v0.16)
                     case "Power":
                         PowerJunction(devices, item.Arg, floor);
                         var node = GameObject.Find(item.Arg);
